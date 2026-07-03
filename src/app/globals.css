@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+:root {
+  --background: #101410;
+  --card: #0a0e0b;
+  --foreground: #f5f7f2;
+  --accent: #d4ff3a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --font-display: var(--font-kanit);
+  --font-sans: var(--font-anuphan);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-anuphan), Arial, Helvetica, sans-serif;
+}

@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,600;1,700;1,800;1,900&family=Anuphan:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#101410;font-family:'Anuphan',system-ui,sans-serif}
+.dv-turn{padding:40px 44px 32px}
+.dv-opts{display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:#D4FF3A;color:#0A0E0B;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:500 12px/1.3 'Anuphan',sans-serif;color:rgba(255,255,255,.6)}
+.dv-card{max-width:100%;background:#0A0E0B;border:1px solid rgba(255,255,255,.1);border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.5);overflow:hidden}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-opts">
+
+<!-- ============ 1a LANDING ============ -->
+<div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>หน้า Landing โปรโมตลีก — เดสก์ท็อป 1440</div>
+<div class="dv-card" style="width:1440px" data-screen-label="Landing">
+  <!-- nav -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:72px;border-bottom:1px solid rgba(255,255,255,.08);background:#0A0E0B">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:36px;height:36px;background:#D4FF3A;border-radius:8px;display:grid;place-items:center;font:800 18px 'Kanit';color:#0A0E0B;font-style:italic;transform:skewX(-6deg)">L7</div>
+      <div style="font:800 22px 'Kanit';font-style:italic;color:#fff;letter-spacing:.5px">LEAGUE<span style="color:#D4FF3A">HUB</span></div>
+    </div>
+    <div style="display:flex;gap:32px;font:500 15px 'Anuphan';color:rgba(255,255,255,.75)">
+      <span style="color:#D4FF3A">หน้าแรก</span><span>ลีกทั้งหมด</span><span>ตารางคะแนน</span><span>โปรแกรมแข่ง</span><span>ข่าวสาร</span>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center">
+      <div style="font:500 15px 'Anuphan';color:#fff;padding:9px 18px">เข้าสู่ระบบ</div>
+      <div style="font:600 15px 'Anuphan';color:#0A0E0B;background:#D4FF3A;padding:9px 22px;border-radius:8px">สมัครจัดลีก</div>
+    </div>
+  </div>
+  <!-- live ticker -->
+  <div style="background:#D4FF3A;overflow:hidden;height:38px;display:flex;align-items:center">
+    <div style="display:flex;gap:48px;white-space:nowrap;animation:ticker 22s linear infinite;font:600 14px 'Kanit';color:#0A0E0B">
+      <span>● LIVE — สิงห์บุรี ยูไนเต็ด 2-1 เสือดำ เอฟซี (67')</span><span>คอร์ปลีก: TCB แบงค์ 0-0 ปตท. สปิริต (HT)</span><span>ลีกเยาวชน U15: ราชบุรี จูเนียร์ 3-2 อคาเดมี่ บางกอก (FT)</span><span>● LIVE — สิงห์บุรี ยูไนเต็ด 2-1 เสือดำ เอฟซี (67')</span><span>คอร์ปลีก: TCB แบงค์ 0-0 ปตท. สปิริต (HT)</span><span>ลีกเยาวชน U15: ราชบุรี จูเนียร์ 3-2 อคาเดมี่ บางกอก (FT)</span>
+    </div>
+  </div>
+  <!-- hero -->
+  <div style="position:relative;padding:80px 48px 72px;background:linear-gradient(160deg,#0A0E0B 40%,#12240F 100%);overflow:hidden">
+    <div style="position:absolute;right:-120px;top:-80px;width:560px;height:560px;border:2px solid rgba(212,255,58,.12);border-radius:50%"></div>
+    <div style="position:absolute;right:40px;top:60px;width:280px;height:280px;border:2px solid rgba(212,255,58,.18);border-radius:50%"></div>
+    <div style="position:absolute;right:100px;bottom:-40px;font:900 260px 'Kanit';font-style:italic;color:rgba(212,255,58,.06);line-height:1">7</div>
+    <div style="max-width:760px;position:relative">
+      <div style="display:inline-block;font:600 13px 'Kanit';color:#D4FF3A;border:1px solid rgba(212,255,58,.4);padding:5px 14px;border-radius:99px;letter-spacing:2px;margin-bottom:24px">ฤดูกาล 2026 เปิดรับสมัครแล้ว</div>
+      <div style="font:900 84px/1.02 'Kanit';font-style:italic;color:#fff;letter-spacing:-1px">จัดลีกของคุณ<br>ให้เป็น <span style="color:#D4FF3A">ลีกอาชีพ</span></div>
+      <div style="font:400 19px/1.7 'Anuphan';color:rgba(255,255,255,.7);margin:26px 0 36px;max-width:560px">แพลตฟอร์มจัดการลีกฟุตบอลครบวงจร — ฟุตบอล 7 คน ลีกเยาวชน ลีกองค์กร จัดหลายลีกพร้อมกัน ตารางแข่งอัตโนมัติ ผลสดเรียลไทม์ หน้าโปรโมตสวยระดับมืออาชีพ</div>
+      <div style="display:flex;gap:16px;align-items:center">
+        <div style="font:700 18px 'Kanit';color:#0A0E0B;background:#D4FF3A;padding:15px 36px;border-radius:10px;transform:skewX(-6deg)"><span style="display:inline-block;transform:skewX(6deg)">เริ่มจัดลีกฟรี</span></div>
+        <div style="font:600 17px 'Kanit';color:#fff;border:1.5px solid rgba(255,255,255,.3);padding:14px 32px;border-radius:10px">ดูลีกที่กำลังแข่ง</div>
+      </div>
+      <div style="display:flex;gap:48px;margin-top:56px">
+        <div><div style="font:800 40px 'Kanit';font-style:italic;color:#D4FF3A">128</div><div style="font:500 14px 'Anuphan';color:rgba(255,255,255,.55)">ลีกที่กำลังแข่ง</div></div>
+        <div><div style="font:800 40px 'Kanit';font-style:italic;color:#D4FF3A">2,340</div><div style="font:500 14px 'Anuphan';color:rgba(255,255,255,.55)">ทีมทั้งหมด</div></div>
+        <div><div style="font:800 40px 'Kanit';font-style:italic;color:#D4FF3A">18,500+</div><div style="font:500 14px 'Anuphan';color:rgba(255,255,255,.55)">นักเตะลงทะเบียน</div></div>
+        <div><div style="font:800 40px 'Kanit';font-style:italic;color:#D4FF3A">45K</div><div style="font:500 14px 'Anuphan';color:rgba(255,255,255,.55)">แมตช์ที่บันทึกผล</div></div>
+      </div>
+    </div>
+  </div>
+  <!-- featured leagues -->
+  <div style="padding:64px 48px;background:#0A0E0B">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:32px">
+      <div style="font:800 36px 'Kanit';font-style:italic;color:#fff">ลีกเด่น<span style="color:#D4FF3A">ประจำสัปดาห์</span></div>
+      <div style="font:600 15px 'Kanit';color:#D4FF3A">ดูทั้งหมด →</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px">
+      <sc-for list="{{ featuredLeagues }}" as="lg" hint-placeholder-count="3">
+        <div style="background:#11170F;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden">
+          <div style="height:110px;background:{{ lg.bg }};position:relative;display:flex;align-items:flex-end;padding:16px 20px">
+            <div style="position:absolute;top:14px;right:16px;font:600 11px 'Kanit';letter-spacing:1.5px;color:#0A0E0B;background:#D4FF3A;padding:3px 10px;border-radius:99px">{{ lg.tag }}</div>
+            <div style="font:800 26px 'Kanit';font-style:italic;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.5)">{{ lg.name }}</div>
+          </div>
+          <div style="padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;gap:20px;font:500 13px 'Anuphan';color:rgba(255,255,255,.6)">
+              <span>⚽ {{ lg.teams }} ทีม</span><span>📅 นัดที่ {{ lg.round }}</span><span style="color:#D4FF3A">● {{ lg.live }} แมตช์สด</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px">
+              <div style="font:600 14px 'Kanit';color:#fff">{{ lg.leader }}</div>
+              <div style="font:500 12px 'Anuphan';color:rgba(255,255,255,.5)">จ่าฝูง · {{ lg.pts }} แต้ม</div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <!-- features strip -->
+  <div style="padding:64px 48px;background:#D4FF3A">
+    <div style="font:800 34px 'Kanit';font-style:italic;color:#0A0E0B;margin-bottom:36px">ทุกอย่างที่ผู้จัดลีกต้องการ</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px">
+      <sc-for list="{{ features }}" as="f" hint-placeholder-count="4">
+        <div style="background:#0A0E0B;border-radius:12px;padding:24px 22px">
+          <div style="font:800 24px 'Kanit';color:#D4FF3A;margin-bottom:10px">{{ f.icon }}</div>
+          <div style="font:700 18px 'Kanit';color:#fff;margin-bottom:6px">{{ f.title }}</div>
+          <div style="font:400 14px/1.6 'Anuphan';color:rgba(255,255,255,.6)">{{ f.desc }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <!-- footer -->
+  <div style="padding:40px 48px;background:#0A0E0B;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,.08)">
+    <div style="font:800 18px 'Kanit';font-style:italic;color:#fff">LEAGUE<span style="color:#D4FF3A">HUB</span></div>
+    <div style="font:400 13px 'Anuphan';color:rgba(255,255,255,.4)">© 2026 LeagueHub — แพลตฟอร์มจัดการลีกฟุตบอล</div>
+  </div>
+</div></div>
+
+<!-- ============ 1b DASHBOARD ============ -->
+<div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Dashboard แอดมิน — จัดการหลายลีกพร้อมกัน</div>
+<div class="dv-card" style="width:1440px;display:flex" data-screen-label="Dashboard">
+  <!-- sidebar -->
+  <div style="width:240px;flex:none;background:#0A0E0B;border-right:1px solid rgba(255,255,255,.08);padding:24px 0;display:flex;flex-direction:column;min-height:900px">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 22px;margin-bottom:32px">
+      <div style="width:30px;height:30px;background:#D4FF3A;border-radius:7px;display:grid;place-items:center;font:800 15px 'Kanit';color:#0A0E0B;font-style:italic">L7</div>
+      <div style="font:800 17px 'Kanit';font-style:italic;color:#fff">LEAGUE<span style="color:#D4FF3A">HUB</span></div>
+    </div>
+    <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="6">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 22px;font:500 15px 'Anuphan';color:{{ n.color }};background:{{ n.bg }};border-left:3px solid {{ n.border }}">
+        <span style="font-size:16px">{{ n.icon }}</span>{{ n.label }}
+      </div>
+    </sc-for>
+    <div style="margin-top:auto;padding:16px 22px;display:flex;align-items:center;gap:10px;border-top:1px solid rgba(255,255,255,.08)">
+      <div style="width:34px;height:34px;border-radius:50%;background:#2E4A22;display:grid;place-items:center;font:700 14px 'Kanit';color:#D4FF3A">ส</div>
+      <div><div style="font:600 13px 'Anuphan';color:#fff">สมชาย ผู้จัดลีก</div><div style="font:400 11px 'Anuphan';color:rgba(255,255,255,.4)">Super Admin</div></div>
+    </div>
+  </div>
+  <!-- main -->
+  <div style="flex:1;background:#101410;padding:28px 32px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font:800 30px 'Kanit';font-style:italic;color:#fff">ศูนย์ควบคุมลีก</div>
+        <div style="font:400 14px 'Anuphan';color:rgba(255,255,255,.5)">จัดการ 4 ลีกที่กำลังดำเนินการ · อัปเดตล่าสุด 2 นาทีที่แล้ว</div>
+      </div>
+      <div style="display:flex;gap:12px">
+        <div style="font:600 14px 'Kanit';color:#fff;border:1.5px solid rgba(255,255,255,.2);padding:10px 20px;border-radius:9px">📥 นำเข้าผลแข่ง</div>
+        <div style="font:700 14px 'Kanit';color:#0A0E0B;background:#D4FF3A;padding:10px 22px;border-radius:9px">+ สร้างลีกใหม่</div>
+      </div>
+    </div>
+    <!-- league cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+      <sc-for list="{{ myLeagues }}" as="ml" hint-placeholder-count="4">
+        <div style="background:#0A0E0B;border:1px solid {{ ml.border }};border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div style="width:40px;height:40px;border-radius:9px;background:{{ ml.bg }};display:grid;place-items:center;font:800 16px 'Kanit';font-style:italic;color:#0A0E0B">{{ ml.abbr }}</div>
+            <div style="font:600 11px 'Kanit';color:{{ ml.statusColor }};display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:{{ ml.statusColor }};display:inline-block;animation:pulse 2s infinite"></span>{{ ml.status }}</div>
+          </div>
+          <div>
+            <div style="font:700 17px 'Kanit';color:#fff">{{ ml.name }}</div>
+            <div style="font:400 12px 'Anuphan';color:rgba(255,255,255,.45)">{{ ml.type }} · {{ ml.teams }} ทีม</div>
+          </div>
+          <div style="background:rgba(255,255,255,.05);border-radius:99px;height:6px;overflow:hidden"><div style="height:100%;width:{{ ml.progress }};background:#D4FF3A;border-radius:99px"></div></div>
+          <div style="display:flex;justify-content:space-between;font:500 12px 'Anuphan';color:rgba(255,255,255,.5)">
+            <span>นัดที่ {{ ml.round }}/{{ ml.totalRounds }}</span><span style="color:#D4FF3A">{{ ml.pending }} รอยืนยันผล</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <!-- two col: today matches + tasks -->
+    <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:20px">
+      <div style="background:#0A0E0B;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:22px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:18px">
+          <div style="font:700 19px 'Kanit';color:#fff">แมตช์วันนี้ <span style="font:600 13px 'Kanit';color:#D4FF3A">· 6 แมตช์ · 2 สด</span></div>
+          <div style="font:600 13px 'Kanit';color:rgba(255,255,255,.5)">3 ก.ค. 2026</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ todayMatches }}" as="m" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:130px 1fr 90px 1fr 110px;align-items:center;gap:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px 16px">
+              <div style="font:600 11px 'Kanit';color:{{ m.leagueColor }};letter-spacing:.5px">{{ m.league }}</div>
+              <div style="font:600 15px 'Kanit';color:#fff;text-align:right">{{ m.home }}</div>
+              <div style="text-align:center">
+                <div style="font:800 20px 'Kanit';font-style:italic;color:{{ m.scoreColor }}">{{ m.score }}</div>
+                <div style="font:600 10px 'Kanit';color:{{ m.timeColor }}">{{ m.time }}</div>
+              </div>
+              <div style="font:600 15px 'Kanit';color:#fff">{{ m.away }}</div>
+              <div style="font:600 12px 'Kanit';color:{{ m.actionColor }};text-align:center;border:1px solid {{ m.actionBorder }};border-radius:7px;padding:6px 0">{{ m.action }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div style="background:#0A0E0B;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:22px">
+          <div style="font:700 19px 'Kanit';color:#fff;margin-bottom:16px">งานที่รอดำเนินการ</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ tasks }}" as="t" hint-placeholder-count="4">
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <div style="width:8px;height:8px;border-radius:50%;background:{{ t.dot }};margin-top:6px;flex:none"></div>
+                <div style="flex:1"><div style="font:500 14px 'Anuphan';color:#fff">{{ t.text }}</div><div style="font:400 12px 'Anuphan';color:rgba(255,255,255,.4)">{{ t.sub }}</div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="background:linear-gradient(140deg,#1D2E12,#0A0E0B);border:1px solid rgba(212,255,58,.3);border-radius:12px;padding:22px">
+          <div style="font:700 16px 'Kanit';color:#D4FF3A;margin-bottom:8px">📣 หน้าโปรโมตลีก</div>
+          <div style="font:400 13px/1.6 'Anuphan';color:rgba(255,255,255,.7);margin-bottom:14px">แชร์หน้าลีกสาธารณะให้สปอนเซอร์และแฟนบอล — เข้าชม 3,204 ครั้งสัปดาห์นี้ (+18%)</div>
+          <div style="display:inline-block;font:600 13px 'Kanit';color:#0A0E0B;background:#D4FF3A;padding:8px 18px;border-radius:8px">คัดลอกลิงก์แชร์</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ============ 1c STANDINGS ============ -->
+<div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>ตารางคะแนน + โปรแกรมแข่ง — หน้าสาธารณะ</div>
+<div class="dv-card" style="width:1440px" data-screen-label="Standings">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;background:#0A0E0B;border-bottom:1px solid rgba(255,255,255,.08)">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:30px;height:30px;background:#D4FF3A;border-radius:7px;display:grid;place-items:center;font:800 15px 'Kanit';color:#0A0E0B;font-style:italic">L7</div>
+      <div style="font:800 17px 'Kanit';font-style:italic;color:#fff">LEAGUE<span style="color:#D4FF3A">HUB</span></div>
+    </div>
+    <div style="display:flex;gap:28px;font:500 14px 'Anuphan';color:rgba(255,255,255,.7)"><span>หน้าแรก</span><span style="color:#D4FF3A">ตารางคะแนน</span><span>โปรแกรมแข่ง</span><span>ทีม</span></div>
+  </div>
+  <!-- league header -->
+  <div style="background:linear-gradient(120deg,#12240F,#0A0E0B);padding:36px 48px;display:flex;justify-content:space-between;align-items:center">
+    <div style="display:flex;align-items:center;gap:20px">
+      <div style="width:64px;height:64px;background:#D4FF3A;border-radius:14px;display:grid;place-items:center;font:900 26px 'Kanit';font-style:italic;color:#0A0E0B;transform:skewX(-4deg)">SB</div>
+      <div>
+        <div style="font:900 34px 'Kanit';font-style:italic;color:#fff">สิงห์บุรี ซันเดย์ลีก 7 คน</div>
+        <div style="font:500 14px 'Anuphan';color:rgba(255,255,255,.55)">ฤดูกาล 2026 · ดิวิชัน 1 · 12 ทีม · นัดที่ 14 จาก 22</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <sc-for list="{{ leagueTabs }}" as="tab" hint-placeholder-count="4">
+        <div style="font:600 14px 'Kanit';color:{{ tab.color }};background:{{ tab.bg }};padding:9px 20px;border-radius:99px;border:1px solid {{ tab.border }}">{{ tab.label }}</div>
+      </sc-for>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1.7fr 1fr;gap:24px;padding:28px 48px 44px;background:#101410">
+    <!-- table -->
+    <div style="background:#0A0E0B;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:44px 1fr 52px 52px 52px 52px 60px 64px 120px;padding:14px 20px;font:600 12px 'Kanit';color:rgba(255,255,255,.45);letter-spacing:1px;border-bottom:1px solid rgba(255,255,255,.08)">
+        <span>#</span><span>ทีม</span><span style="text-align:center">แข่ง</span><span style="text-align:center">ชนะ</span><span style="text-align:center">เสมอ</span><span style="text-align:center">แพ้</span><span style="text-align:center">+/-</span><span style="text-align:center">แต้ม</span><span style="text-align:center">ฟอร์ม 5 นัด</span>
+      </div>
+      <sc-for list="{{ standings }}" as="row" hint-placeholder-count="10">
+        <div style="display:grid;grid-template-columns:44px 1fr 52px 52px 52px 52px 60px 64px 120px;padding:13px 20px;align-items:center;border-bottom:1px solid rgba(255,255,255,.05);background:{{ row.bg }};border-left:3px solid {{ row.accent }}">
+          <span style="font:700 15px 'Kanit';color:{{ row.posColor }}">{{ row.pos }}</span>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:30px;height:30px;border-radius:50%;background:{{ row.logo }};display:grid;place-items:center;font:700 12px 'Kanit';color:#fff">{{ row.abbr }}</div>
+            <span style="font:600 15px 'Kanit';color:#fff">{{ row.team }}</span>
+          </div>
+          <span style="text-align:center;font:500 14px 'Anuphan';color:rgba(255,255,255,.7)">{{ row.p }}</span>
+          <span style="text-align:center;font:500 14px 'Anuphan';color:rgba(255,255,255,.7)">{{ row.w }}</span>
+          <span style="text-align:center;font:500 14px 'Anuphan';color:rgba(255,255,255,.7)">{{ row.d }}</span>
+          <span style="text-align:center;font:500 14px 'Anuphan';color:rgba(255,255,255,.7)">{{ row.l }}</span>
+          <span style="text-align:center;font:500 14px 'Anuphan';color:rgba(255,255,255,.7)">{{ row.gd }}</span>
+          <span style="text-align:center;font:800 17px 'Kanit';font-style:italic;color:#D4FF3A">{{ row.pts }}</span>
+          <div style="display:flex;gap:4px;justify-content:center">
+            <sc-for list="{{ row.form }}" as="fm" hint-placeholder-count="5">
+              <span style="width:18px;height:18px;border-radius:4px;background:{{ fm.bg }};display:grid;place-items:center;font:700 10px 'Kanit';color:{{ fm.fg }}">{{ fm.t }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+      <div style="display:flex;gap:20px;padding:14px 20px;font:400 12px 'Anuphan';color:rgba(255,255,255,.45)">
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#D4FF3A;display:inline-block"></span>เข้ารอบแชมเปียนส์</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#E5484D;display:inline-block"></span>ตกชั้น</span>
+      </div>
+    </div>
+    <!-- fixtures -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:#0A0E0B;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font:700 18px 'Kanit';color:#fff">โปรแกรมนัดที่ 15</div>
+          <div style="font:600 12px 'Kanit';color:#D4FF3A">เสาร์ 5 ก.ค.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ fixtures }}" as="fx" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:1fr 64px 1fr;align-items:center;gap:8px;background:rgba(255,255,255,.03);border-radius:9px;padding:11px 14px">
+              <div style="font:600 13.5px 'Kanit';color:#fff;text-align:right">{{ fx.home }}</div>
+              <div style="text-align:center;font:700 12px 'Kanit';color:#0A0E0B;background:#D4FF3A;border-radius:6px;padding:4px 0">{{ fx.time }}</div>
+              <div style="font:600 13.5px 'Kanit';color:#fff">{{ fx.away }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background:#0A0E0B;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px">
+        <div style="font:700 18px 'Kanit';color:#fff;margin-bottom:16px">ดาวซัลโว</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ topScorers }}" as="sc" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="font:800 16px 'Kanit';font-style:italic;color:{{ sc.rankColor }};width:22px">{{ sc.rank }}</div>
+              <div style="width:34px;height:34px;border-radius:50%;background:{{ sc.avatar }};display:grid;place-items:center;font:700 13px 'Kanit';color:#fff">{{ sc.initial }}</div>
+              <div style="flex:1"><div style="font:600 14px 'Kanit';color:#fff">{{ sc.name }}</div><div style="font:400 11.5px 'Anuphan';color:rgba(255,255,255,.45)">{{ sc.team }}</div></div>
+              <div style="font:800 20px 'Kanit';font-style:italic;color:#D4FF3A">{{ sc.goals }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ============ 1d MATCH DETAIL ============ -->
+<div class="dv-opt" id="1d"><div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>หน้ารายละเอียดแมตช์ — ผลสด</div>
+<div class="dv-card" style="width:1440px" data-screen-label="Match Detail">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;background:#0A0E0B;border-bottom:1px solid rgba(255,255,255,.08)">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:30px;height:30px;background:#D4FF3A;border-radius:7px;display:grid;place-items:center;font:800 15px 'Kanit';color:#0A0E0B;font-style:italic">L7</div>
+      <div style="font:800 17px 'Kanit';font-style:italic;color:#fff">LEAGUE<span style="color:#D4FF3A">HUB</span></div>
+    </div>
+    <div style="font:500 13px 'Anuphan';color:rgba(255,255,255,.5)">สิงห์บุรี ซันเดย์ลีก › นัดที่ 14 › แมตช์ #087</div>
+  </div>
+  <!-- scoreboard -->
+  <div style="background:linear-gradient(180deg,#12240F,#0A0E0B);padding:44px 48px 36px;position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 120px,rgba(255,255,255,.015) 120px 240px)"></div>
+    <div style="display:flex;justify-content:center;margin-bottom:24px;position:relative">
+      <div style="display:flex;align-items:center;gap:8px;font:700 13px 'Kanit';color:#E5484D;background:rgba(229,72,77,.12);border:1px solid rgba(229,72,77,.4);padding:6px 18px;border-radius:99px;letter-spacing:1px"><span style="width:8px;height:8px;border-radius:50%;background:#E5484D;display:inline-block;animation:pulse 1.5s infinite"></span>LIVE · ครึ่งหลัง 67'</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:40px;position:relative">
+      <div style="display:flex;align-items:center;gap:20px;justify-content:flex-end">
+        <div style="text-align:right"><div style="font:800 30px 'Kanit';font-style:italic;color:#fff">สิงห์บุรี ยูไนเต็ด</div><div style="font:500 13px 'Anuphan';color:rgba(255,255,255,.5)">อันดับ 1 · เหย้า</div></div>
+        <div style="width:72px;height:72px;border-radius:50%;background:#2E5CB8;display:grid;place-items:center;font:800 24px 'Kanit';color:#fff">SU</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font:900 88px/1 'Kanit';font-style:italic;color:#fff;letter-spacing:2px">2<span style="color:rgba(255,255,255,.3);margin:0 16px">–</span>1</div>
+        <div style="font:600 13px 'Kanit';color:#D4FF3A;margin-top:8px">สนามกีฬาเทศบาลสิงห์บุรี · ผู้ชม 340</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:20px">
+        <div style="width:72px;height:72px;border-radius:50%;background:#3A3A3A;display:grid;place-items:center;font:800 24px 'Kanit';color:#D4FF3A">BP</div>
+        <div><div style="font:800 30px 'Kanit';font-style:italic;color:#fff">เสือดำ เอฟซี</div><div style="font:500 13px 'Anuphan';color:rgba(255,255,255,.5)">อันดับ 4 · เยือน</div></div>
+      </div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:24px;padding:28px 48px 44px;background:#101410">
+    <!-- stats -->
+    <div style="background:#0A0E0B;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:22px">
+      <div style="font:700 18px 'Kanit';color:#fff;margin-bottom:20px">สถิติแมตช์</div>
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <sc-for list="{{ matchStats }}" as="st" hint-placeholder-count="6">
+          <div>
+            <div style="display:flex;justify-content:space-between;font:700 15px 'Kanit';color:#fff;margin-bottom:7px"><span style="color:{{ st.hColor }}">{{ st.h }}</span><span style="font:500 12.5px 'Anuphan';color:rgba(255,255,255,.5)">{{ st.label }}</span><span style="color:{{ st.aColor }}">{{ st.a }}</span></div>
+            <div style="display:flex;gap:4px;height:6px">
+              <div style="flex:{{ st.hFlex }};background:#D4FF3A;border-radius:99px"></div>
+              <div style="flex:{{ st.aFlex }};background:rgba(255,255,255,.18);border-radius:99px"></div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <!-- timeline -->
+    <div style="background:#0A0E0B;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:22px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font:700 18px 'Kanit';color:#fff">เหตุการณ์ในเกม</div>
+        <div style="font:600 12px 'Kanit';color:#D4FF3A;border:1px solid rgba(212,255,58,.35);padding:5px 14px;border-radius:99px">อัปเดตอัตโนมัติ</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <sc-for list="{{ events }}" as="ev" hint-placeholder-count="8">
+          <div style="display:grid;grid-template-columns:1fr 76px 1fr;align-items:center;min-height:44px">
+            <div style="text-align:right;padding-right:14px">
+              <sc-if value="{{ ev.isHome }}" hint-placeholder-val="{{ true }}">
+                <div style="font:600 14px 'Kanit';color:#fff">{{ ev.text }} <span style="font-size:16px">{{ ev.icon }}</span></div>
+                <div style="font:400 11.5px 'Anuphan';color:rgba(255,255,255,.45)">{{ ev.sub }}</div>
+              </sc-if>
+            </div>
+            <div style="text-align:center;font:800 14px 'Kanit';font-style:italic;color:{{ ev.minColor }};background:{{ ev.minBg }};border-radius:7px;padding:5px 0">{{ ev.min }}</div>
+            <div style="padding-left:14px">
+              <sc-if value="{{ ev.isAway }}" hint-placeholder-val="{{ false }}">
+                <div style="font:600 14px 'Kanit';color:#fff"><span style="font-size:16px">{{ ev.icon }}</span> {{ ev.text }}</div>
+                <div style="font:400 11.5px 'Anuphan';color:rgba(255,255,255,.45)">{{ ev.sub }}</div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <!-- lineups -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:#0A0E0B;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:22px">
+        <div style="font:700 18px 'Kanit';color:#fff;margin-bottom:16px">ผู้เล่นตัวจริง (7 คน)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 18px">
+          <div style="font:600 12px 'Kanit';color:#D4FF3A;margin-bottom:10px">สิงห์บุรี ยูไนเต็ด</div>
+          <div style="font:600 12px 'Kanit';color:rgba(255,255,255,.6);margin-bottom:10px">เสือดำ เอฟซี</div>
+          <sc-for list="{{ lineupPairs }}" as="lp" hint-placeholder-count="7">
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+              <span style="font:700 12px 'Kanit';color:#D4FF3A;width:20px">{{ lp.hNum }}</span><span style="font:500 13px 'Anuphan';color:#fff">{{ lp.hName }}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+              <span style="font:700 12px 'Kanit';color:rgba(255,255,255,.55);width:20px">{{ lp.aNum }}</span><span style="font:500 13px 'Anuphan';color:#fff">{{ lp.aName }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background:linear-gradient(140deg,#1D2E12,#0A0E0B);border:1px solid rgba(212,255,58,.3);border-radius:14px;padding:20px">
+        <div style="font:700 15px 'Kanit';color:#D4FF3A;margin-bottom:6px">นัดถัดไปของทั้งคู่</div>
+        <div style="font:500 13.5px/1.7 'Anuphan';color:rgba(255,255,255,.75)">สิงห์บุรี ยูไนเต็ด vs ช้างเผือก — เสาร์ 5 ก.ค. 17:00<br>เสือดำ เอฟซี vs ราชสีห์ — อาทิตย์ 6 ก.ค. 09:30</div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ============ 1e TEAMS ============ -->
+<div class="dv-opt" id="1e"><div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>จัดการทีมและนักเตะ — มุมมองผู้จัดการทีม</div>
+<div class="dv-card" style="width:1440px" data-screen-label="Team Management">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;background:#0A0E0B;border-bottom:1px solid rgba(255,255,255,.08)">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:30px;height:30px;background:#D4FF3A;border-radius:7px;display:grid;place-items:center;font:800 15px 'Kanit';color:#0A0E0B;font-style:italic">L7</div>
+      <div style="font:800 17px 'Kanit';font-style:italic;color:#fff">LEAGUE<span style="color:#D4FF3A">HUB</span></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:32px;height:32px;border-radius:50%;background:#2E5CB8;display:grid;place-items:center;font:700 13px 'Kanit';color:#fff">SU</div>
+      <div style="font:600 14px 'Kanit';color:#fff">สิงห์บุรี ยูไนเต็ด · ผู้จัดการทีม</div>
+    </div>
+  </div>
+  <!-- team header -->
+  <div style="background:linear-gradient(120deg,#14213E,#0A0E0B);padding:32px 48px;display:flex;justify-content:space-between;align-items:center">
+    <div style="display:flex;align-items:center;gap:20px">
+      <div style="width:68px;height:68px;border-radius:50%;background:#2E5CB8;display:grid;place-items:center;font:800 26px 'Kanit';color:#fff;border:3px solid rgba(255,255,255,.2)">SU</div>
+      <div>
+        <div style="font:900 32px 'Kanit';font-style:italic;color:#fff">สิงห์บุรี ยูไนเต็ด</div>
+        <div style="font:500 14px 'Anuphan';color:rgba(255,255,255,.55)">สิงห์บุรี ซันเดย์ลีก 7 คน · อันดับ 1 · 34 แต้ม</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px">
+      <div style="font:600 14px 'Kanit';color:#fff;border:1.5px solid rgba(255,255,255,.25);padding:10px 20px;border-radius:9px">📋 ส่งรายชื่อนัดหน้า</div>
+      <div style="font:700 14px 'Kanit';color:#0A0E0B;background:#D4FF3A;padding:10px 22px;border-radius:9px">+ เพิ่มนักเตะ</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;padding:28px 48px 44px;background:#101410">
+    <!-- roster -->
+    <div style="background:#0A0E0B;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid rgba(255,255,255,.08)">
+        <div style="font:700 18px 'Kanit';color:#fff">รายชื่อนักเตะ · 14 คน</div>
+        <div style="display:flex;gap:8px">
+          <div style="font:600 12px 'Kanit';color:#0A0E0B;background:#D4FF3A;padding:6px 14px;border-radius:99px">ทั้งหมด</div>
+          <div style="font:600 12px 'Kanit';color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.15);padding:6px 14px;border-radius:99px">ตัวจริง</div>
+          <div style="font:600 12px 'Kanit';color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.15);padding:6px 14px;border-radius:99px">บาดเจ็บ</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:56px 1fr 110px 90px 80px 80px 100px;padding:12px 22px;font:600 11.5px 'Kanit';color:rgba(255,255,255,.45);letter-spacing:1px;border-bottom:1px solid rgba(255,255,255,.08)">
+        <span>เบอร์</span><span>ชื่อ</span><span>ตำแหน่ง</span><span style="text-align:center">ลงเล่น</span><span style="text-align:center">ประตู</span><span style="text-align:center">ใบเหลือง</span><span style="text-align:center">สถานะ</span>
+      </div>
+      <sc-for list="{{ roster }}" as="pl" hint-placeholder-count="9">
+        <div style="display:grid;grid-template-columns:56px 1fr 110px 90px 80px 80px 100px;padding:12px 22px;align-items:center;border-bottom:1px solid rgba(255,255,255,.05)">
+          <span style="font:800 17px 'Kanit';font-style:italic;color:#D4FF3A">{{ pl.num }}</span>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:32px;height:32px;border-radius:50%;background:{{ pl.avatar }};display:grid;place-items:center;font:700 13px 'Kanit';color:#fff">{{ pl.initial }}</div>
+            <span style="font:600 15px 'Kanit';color:#fff">{{ pl.name }}</span>
+          </div>
+          <span style="font:500 13px 'Anuphan';color:rgba(255,255,255,.65)">{{ pl.pos }}</span>
+          <span style="text-align:center;font:500 14px 'Anuphan';color:rgba(255,255,255,.7)">{{ pl.apps }}</span>
+          <span style="text-align:center;font:700 15px 'Kanit';color:#fff">{{ pl.goals }}</span>
+          <span style="text-align:center;font:500 14px 'Anuphan';color:rgba(255,255,255,.7)">{{ pl.yc }}</span>
+          <span style="text-align:center;font:600 11.5px 'Kanit';color:{{ pl.statusFg }};background:{{ pl.statusBg }};border-radius:99px;padding:4px 0">{{ pl.status }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <!-- side -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:#0A0E0B;border:1px solid rgba(212,255,58,.35);border-radius:14px;padding:22px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font:700 17px 'Kanit';color:#fff">ส่งรายชื่อนัดที่ 15</div>
+          <div style="font:600 11px 'Kanit';color:#FFB224;background:rgba(255,178,36,.12);border:1px solid rgba(255,178,36,.4);padding:4px 12px;border-radius:99px">เหลือ 2 วัน</div>
+        </div>
+        <div style="font:400 13px/1.6 'Anuphan';color:rgba(255,255,255,.6);margin-bottom:16px">vs ช้างเผือก — เสาร์ 5 ก.ค. 17:00<br>เลือกตัวจริง 7 + สำรองสูงสุด 5</div>
+        <div style="background:rgba(255,255,255,.05);border-radius:99px;height:8px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:75%;background:#D4FF3A;border-radius:99px"></div></div>
+        <div style="font:500 12px 'Anuphan';color:rgba(255,255,255,.5);margin-bottom:16px">เลือกแล้ว 9 จาก 12 คน</div>
+        <div style="font:700 14px 'Kanit';color:#0A0E0B;background:#D4FF3A;padding:11px 0;border-radius:9px;text-align:center">จัดรายชื่อต่อ</div>
+      </div>
+      <div style="background:#0A0E0B;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:22px">
+        <div style="font:700 17px 'Kanit';color:#fff;margin-bottom:16px">ฟอร์มทีม 5 นัดล่าสุด</div>
+        <div style="display:flex;gap:8px;margin-bottom:18px">
+          <div style="flex:1;text-align:center;background:#D4FF3A;border-radius:9px;padding:10px 0"><div style="font:800 16px 'Kanit';color:#0A0E0B">ชนะ</div><div style="font:600 11px 'Anuphan';color:rgba(10,14,11,.65)">3-1</div></div>
+          <div style="flex:1;text-align:center;background:#D4FF3A;border-radius:9px;padding:10px 0"><div style="font:800 16px 'Kanit';color:#0A0E0B">ชนะ</div><div style="font:600 11px 'Anuphan';color:rgba(10,14,11,.65)">2-0</div></div>
+          <div style="flex:1;text-align:center;background:rgba(255,255,255,.14);border-radius:9px;padding:10px 0"><div style="font:800 16px 'Kanit';color:#fff">เสมอ</div><div style="font:600 11px 'Anuphan';color:rgba(255,255,255,.55)">1-1</div></div>
+          <div style="flex:1;text-align:center;background:#D4FF3A;border-radius:9px;padding:10px 0"><div style="font:800 16px 'Kanit';color:#0A0E0B">ชนะ</div><div style="font:600 11px 'Anuphan';color:rgba(10,14,11,.65)">4-2</div></div>
+          <div style="flex:1;text-align:center;background:#E5484D;border-radius:9px;padding:10px 0"><div style="font:800 16px 'Kanit';color:#fff">แพ้</div><div style="font:600 11px 'Anuphan';color:rgba(255,255,255,.7)">0-1</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div style="background:rgba(255,255,255,.04);border-radius:9px;padding:12px;text-align:center"><div style="font:800 22px 'Kanit';font-style:italic;color:#D4FF3A">31</div><div style="font:500 11px 'Anuphan';color:rgba(255,255,255,.5)">ยิงได้</div></div>
+          <div style="background:rgba(255,255,255,.04);border-radius:9px;padding:12px;text-align:center"><div style="font:800 22px 'Kanit';font-style:italic;color:#fff">12</div><div style="font:500 11px 'Anuphan';color:rgba(255,255,255,.5)">เสียประตู</div></div>
+          <div style="background:rgba(255,255,255,.04);border-radius:9px;padding:12px;text-align:center"><div style="font:800 22px 'Kanit';font-style:italic;color:#fff">6</div><div style="font:500 11px 'Anuphan';color:rgba(255,255,255,.5)">คลีนชีต</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ============ 1f MOBILE ============ -->
+<div class="dv-opt" id="1f"><div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>เวอร์ชันมือถือ — หน้าแรก + ตารางคะแนน</div>
+<div style="display:flex;gap:24px">
+  <!-- mobile home -->
+  <div class="dv-card" style="width:390px;border-radius:28px" data-screen-label="Mobile Home">
+    <div style="background:#0A0E0B;padding:14px 20px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center;font:600 12px 'Kanit';color:#fff;padding-bottom:10px"><span>09:41</span><span>📶 🔋</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 14px">
+        <div style="font:800 18px 'Kanit';font-style:italic;color:#fff">LEAGUE<span style="color:#D4FF3A">HUB</span></div>
+        <div style="width:34px;height:34px;border-radius:50%;background:#2E4A22;display:grid;place-items:center;font:700 13px 'Kanit';color:#D4FF3A">ส</div>
+      </div>
+    </div>
+    <div style="background:linear-gradient(160deg,#12240F,#0A0E0B);padding:20px;position:relative;overflow:hidden">
+      <div style="position:absolute;right:-40px;top:-30px;width:180px;height:180px;border:2px solid rgba(212,255,58,.15);border-radius:50%"></div>
+      <div style="font:600 11px 'Kanit';color:#D4FF3A;letter-spacing:2px;margin-bottom:8px">ลีกของฉัน</div>
+      <div style="font:900 30px/1.1 'Kanit';font-style:italic;color:#fff;margin-bottom:14px">สิงห์บุรี<br>ซันเดย์ลีก 7 คน</div>
+      <div style="display:flex;gap:14px;font:500 12px 'Anuphan';color:rgba(255,255,255,.6)"><span>นัดที่ 14/22</span><span style="color:#D4FF3A">● 2 แมตช์สด</span></div>
+    </div>
+    <div style="background:#101410;padding:18px 20px;display:flex;flex-direction:column;gap:14px;min-height:340px">
+      <div style="font:700 16px 'Kanit';color:#fff">แมตช์สดตอนนี้</div>
+      <div style="background:#0A0E0B;border:1px solid rgba(229,72,77,.35);border-radius:14px;padding:16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+          <span style="font:600 10.5px 'Kanit';color:#E5484D;display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:50%;background:#E5484D;display:inline-block;animation:pulse 1.5s infinite"></span>LIVE 67'</span>
+          <span style="font:500 10.5px 'Anuphan';color:rgba(255,255,255,.45)">ดิวิชัน 1</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px">
+          <div style="text-align:center"><div style="width:40px;height:40px;border-radius:50%;background:#2E5CB8;display:grid;place-items:center;font:700 14px 'Kanit';color:#fff;margin:0 auto 6px">SU</div><div style="font:600 12px 'Kanit';color:#fff">สิงห์บุรี ยทด.</div></div>
+          <div style="font:900 34px 'Kanit';font-style:italic;color:#fff">2-1</div>
+          <div style="text-align:center"><div style="width:40px;height:40px;border-radius:50%;background:#3A3A3A;display:grid;place-items:center;font:700 14px 'Kanit';color:#D4FF3A;margin:0 auto 6px">BP</div><div style="font:600 12px 'Kanit';color:#fff">เสือดำ เอฟซี</div></div>
+        </div>
+      </div>
+      <div style="font:700 16px 'Kanit';color:#fff">โปรแกรมนัดหน้า</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:grid;grid-template-columns:1fr 58px 1fr;align-items:center;background:#0A0E0B;border-radius:12px;padding:12px 14px">
+          <div style="font:600 12.5px 'Kanit';color:#fff;text-align:right">สิงห์บุรี ยทด.</div>
+          <div style="text-align:center;font:700 11px 'Kanit';color:#0A0E0B;background:#D4FF3A;border-radius:6px;padding:4px 0;margin:0 6px">17:00</div>
+          <div style="font:600 12.5px 'Kanit';color:#fff">ช้างเผือก</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 58px 1fr;align-items:center;background:#0A0E0B;border-radius:12px;padding:12px 14px">
+          <div style="font:600 12.5px 'Kanit';color:#fff;text-align:right">ราชสีห์</div>
+          <div style="text-align:center;font:700 11px 'Kanit';color:#0A0E0B;background:#D4FF3A;border-radius:6px;padding:4px 0;margin:0 6px">09:30</div>
+          <div style="font:600 12.5px 'Kanit';color:#fff">เสือดำ เอฟซี</div>
+        </div>
+      </div>
+    </div>
+    <div style="background:#0A0E0B;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-around;padding:12px 0 22px">
+      <div style="text-align:center;font:600 10.5px 'Kanit';color:#D4FF3A"><div style="font-size:18px">🏠</div>หน้าแรก</div>
+      <div style="text-align:center;font:600 10.5px 'Kanit';color:rgba(255,255,255,.45)"><div style="font-size:18px">🏆</div>ตาราง</div>
+      <div style="text-align:center;font:600 10.5px 'Kanit';color:rgba(255,255,255,.45)"><div style="font-size:18px">📅</div>โปรแกรม</div>
+      <div style="text-align:center;font:600 10.5px 'Kanit';color:rgba(255,255,255,.45)"><div style="font-size:18px">👥</div>ทีม</div>
+    </div>
+  </div>
+  <!-- mobile standings -->
+  <div class="dv-card" style="width:390px;border-radius:28px" data-screen-label="Mobile Standings">
+    <div style="background:#0A0E0B;padding:14px 20px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center;font:600 12px 'Kanit';color:#fff;padding-bottom:10px"><span>09:41</span><span>📶 🔋</span></div>
+      <div style="font:800 22px 'Kanit';font-style:italic;color:#fff;padding:6px 0 4px">ตารางคะแนน</div>
+      <div style="font:500 12px 'Anuphan';color:rgba(255,255,255,.5);padding-bottom:12px">สิงห์บุรี ซันเดย์ลีก · นัดที่ 14</div>
+      <div style="display:flex;gap:8px;padding-bottom:14px">
+        <div style="font:600 12px 'Kanit';color:#0A0E0B;background:#D4FF3A;padding:6px 16px;border-radius:99px">ดิวิชัน 1</div>
+        <div style="font:600 12px 'Kanit';color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.15);padding:6px 16px;border-radius:99px">ดิวิชัน 2</div>
+      </div>
+    </div>
+    <div style="background:#101410;padding:16px 14px 24px">
+      <div style="display:grid;grid-template-columns:32px 1fr 34px 34px 44px;padding:0 10px 10px;font:600 10.5px 'Kanit';color:rgba(255,255,255,.4);letter-spacing:.5px">
+        <span>#</span><span>ทีม</span><span style="text-align:center">แข่ง</span><span style="text-align:center">+/-</span><span style="text-align:center">แต้ม</span>
+      </div>
+      <sc-for list="{{ mobileStandings }}" as="mr" hint-placeholder-count="8">
+        <div style="display:grid;grid-template-columns:32px 1fr 34px 34px 44px;align-items:center;background:#0A0E0B;border-left:3px solid {{ mr.accent }};border-radius:10px;padding:11px 10px;margin-bottom:6px">
+          <span style="font:700 13px 'Kanit';color:{{ mr.posColor }}">{{ mr.pos }}</span>
+          <div style="display:flex;align-items:center;gap:9px">
+            <div style="width:26px;height:26px;border-radius:50%;background:{{ mr.logo }};display:grid;place-items:center;font:700 10px 'Kanit';color:#fff">{{ mr.abbr }}</div>
+            <span style="font:600 13px 'Kanit';color:#fff">{{ mr.team }}</span>
+          </div>
+          <span style="text-align:center;font:500 12px 'Anuphan';color:rgba(255,255,255,.65)">{{ mr.p }}</span>
+          <span style="text-align:center;font:500 12px 'Anuphan';color:rgba(255,255,255,.65)">{{ mr.gd }}</span>
+          <span style="text-align:center;font:800 15px 'Kanit';font-style:italic;color:#D4FF3A">{{ mr.pts }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="background:#0A0E0B;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-around;padding:12px 0 22px">
+      <div style="text-align:center;font:600 10.5px 'Kanit';color:rgba(255,255,255,.45)"><div style="font-size:18px">🏠</div>หน้าแรก</div>
+      <div style="text-align:center;font:600 10.5px 'Kanit';color:#D4FF3A"><div style="font-size:18px">🏆</div>ตาราง</div>
+      <div style="text-align:center;font:600 10.5px 'Kanit';color:rgba(255,255,255,.45)"><div style="font-size:18px">📅</div>โปรแกรม</div>
+      <div style="text-align:center;font:600 10.5px 'Kanit';color:rgba(255,255,255,.45)"><div style="font-size:18px">👥</div>ทีม</div>
+    </div>
+  </div>
+</div></div>
+
+</div>
+<p style="margin:22px 0 0;font:12px/1.5 'Anuphan';color:rgba(255,255,255,.5)">ลองต่อ: "ทำ <a class="dv-oid" href="#1a">1a</a> เป็นธีมสว่าง" · "เพิ่มหน้าจัดตารางแข่งอัตโนมัติ" · "ทำ <a class="dv-oid" href="#1b">1b</a> เป็น prototype กดได้จริง"</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+class Component extends DCLogic {
+  renderVals() {
+    const lime = "#D4FF3A";
+    const dim = "rgba(255,255,255,.65)";
+    return {
+      featuredLeagues: [
+        { name: "สิงห์บุรี ซันเดย์ลีก", tag: "7 คน", bg: "linear-gradient(120deg,#1D4ED8,#12240F)", teams: 12, round: 14, live: 2, leader: "สิงห์บุรี ยูไนเต็ด", pts: 34 },
+        { name: "แบงค็อก คอร์ปลีก", tag: "องค์กร", bg: "linear-gradient(120deg,#7C2D12,#12240F)", teams: 16, round: 9, live: 1, leader: "TCB แบงค์ เอฟซี", pts: 25 },
+        { name: "จูเนียร์ คัพ U15", tag: "เยาวชน", bg: "linear-gradient(120deg,#166534,#12240F)", teams: 10, round: 11, live: 0, leader: "อคาเดมี่ บางกอก", pts: 28 },
+      ],
+      features: [
+        { icon: "⚙", title: "ตารางแข่งอัตโนมัติ", desc: "สร้างโปรแกรมพบกันหมด/น็อกเอาต์ในคลิกเดียว จัดสนามและเวลาให้เอง" },
+        { icon: "⚡", title: "ผลสดเรียลไทม์", desc: "บันทึกประตู ใบเหลือง-แดง จากมือถือข้างสนาม อัปเดตทุกหน้าอัตโนมัติ" },
+        { icon: "🏆", title: "หลายลีกในที่เดียว", desc: "จัดฟุตบอล 7 คน ลีกเยาวชน ลีกองค์กร พร้อมกันไม่จำกัดจำนวน" },
+        { icon: "📣", title: "หน้าโปรโมตมืออาชีพ", desc: "หน้าลีกสาธารณะสวยพร้อมแชร์ ดึงสปอนเซอร์และแฟนบอลเข้าหาลีกคุณ" },
+      ],
+      navItems: [
+        { icon: "▦", label: "ภาพรวม", color: "#D4FF3A", bg: "rgba(212,255,58,.08)", border: lime },
+        { icon: "🏆", label: "ลีกของฉัน", color: dim, bg: "transparent", border: "transparent" },
+        { icon: "📅", label: "โปรแกรมแข่ง", color: dim, bg: "transparent", border: "transparent" },
+        { icon: "⚽", label: "บันทึกผล", color: dim, bg: "transparent", border: "transparent" },
+        { icon: "👥", label: "ทีมและนักเตะ", color: dim, bg: "transparent", border: "transparent" },
+        { icon: "📣", label: "หน้าโปรโมต", color: dim, bg: "transparent", border: "transparent" },
+        { icon: "⚙", label: "ตั้งค่าลีก", color: dim, bg: "transparent", border: "transparent" },
+      ],
+      myLeagues: [
+        { abbr: "SB", name: "สิงห์บุรี ซันเดย์ลีก", type: "ฟุตบอล 7 คน", teams: 12, bg: "#D4FF3A", border: "rgba(212,255,58,.4)", status: "แข่งอยู่", statusColor: "#D4FF3A", progress: "64%", round: 14, totalRounds: 22, pending: 2 },
+        { abbr: "BC", name: "แบงค็อก คอร์ปลีก", type: "ลีกองค์กร 11 คน", teams: 16, bg: "#FFB224", border: "rgba(255,255,255,.1)", status: "แข่งอยู่", statusColor: "#D4FF3A", progress: "38%", round: 9, totalRounds: 30, pending: 4 },
+        { abbr: "JC", name: "จูเนียร์ คัพ U15", type: "ลีกเยาวชน", teams: 10, bg: "#6EE7B7", border: "rgba(255,255,255,.1)", status: "แข่งอยู่", statusColor: "#D4FF3A", progress: "61%", round: 11, totalRounds: 18, pending: 0 },
+        { abbr: "SS", name: "ซัมเมอร์ ซิกส์", type: "ฟุตบอล 6 คน", teams: 8, bg: "#93C5FD", border: "rgba(255,255,255,.1)", status: "เปิดรับสมัคร", statusColor: "#FFB224", progress: "0%", round: 0, totalRounds: 14, pending: 0 },
+      ],
+      todayMatches: [
+        { league: "ซันเดย์ลีก", home: "สิงห์บุรี ยทด.", away: "เสือดำ เอฟซี", score: "2-1", time: "LIVE 67'", scoreColor: "#fff", timeColor: "#E5484D", leagueColor: "#D4FF3A", action: "บันทึกผลสด", actionColor: "#D4FF3A", actionBorder: "rgba(212,255,58,.4)" },
+        { league: "คอร์ปลีก", home: "TCB แบงค์", away: "ปตท. สปิริต", score: "0-0", time: "LIVE HT", scoreColor: "#fff", timeColor: "#E5484D", leagueColor: "#FFB224", action: "บันทึกผลสด", actionColor: "#D4FF3A", actionBorder: "rgba(212,255,58,.4)" },
+        { league: "จูเนียร์ U15", home: "ราชบุรี จูเนียร์", away: "อคาเดมี่ บกก.", score: "3-2", time: "จบแล้ว", scoreColor: "rgba(255,255,255,.7)", timeColor: "rgba(255,255,255,.4)", leagueColor: "#6EE7B7", action: "ยืนยันผล", actionColor: "#FFB224", actionBorder: "rgba(255,178,36,.4)" },
+        { league: "ซันเดย์ลีก", home: "ช้างเผือก", away: "ราชสีห์", score: "17:00", time: "วันนี้", scoreColor: "rgba(255,255,255,.5)", timeColor: "rgba(255,255,255,.4)", leagueColor: "#D4FF3A", action: "เช็คชื่อ", actionColor: "rgba(255,255,255,.6)", actionBorder: "rgba(255,255,255,.2)" },
+        { league: "คอร์ปลีก", home: "SCG ยูไนเต็ด", away: "ทรู ไทเทนส์", score: "19:30", time: "วันนี้", scoreColor: "rgba(255,255,255,.5)", timeColor: "rgba(255,255,255,.4)", leagueColor: "#FFB224", action: "เช็คชื่อ", actionColor: "rgba(255,255,255,.6)", actionBorder: "rgba(255,255,255,.2)" },
+      ],
+      tasks: [
+        { text: "ยืนยันผล ราชบุรี จูเนียร์ 3-2 อคาเดมี่", sub: "จูเนียร์ คัพ U15 · รอ 25 นาที", dot: "#FFB224" },
+        { text: "อนุมัติทะเบียนนักเตะใหม่ 3 คน", sub: "แบงค็อก คอร์ปลีก", dot: "#FFB224" },
+        { text: "ทีมสมัครใหม่ 2 ทีม รอตรวจเอกสาร", sub: "ซัมเมอร์ ซิกส์", dot: "#D4FF3A" },
+        { text: "ใบแดง รอพิจารณาโทษแบน", sub: "ซันเดย์ลีก · นัดที่ 13", dot: "#E5484D" },
+      ],
+      leagueTabs: [
+        { label: "ตารางคะแนน", color: "#0A0E0B", bg: "#D4FF3A", border: "#D4FF3A" },
+        { label: "โปรแกรม", color: "rgba(255,255,255,.7)", bg: "transparent", border: "rgba(255,255,255,.2)" },
+        { label: "สถิติ", color: "rgba(255,255,255,.7)", bg: "transparent", border: "rgba(255,255,255,.2)" },
+        { label: "ทีม", color: "rgba(255,255,255,.7)", bg: "transparent", border: "rgba(255,255,255,.2)" },
+      ],
+      standings: this.makeStandings(),
+      fixtures: [
+        { home: "สิงห์บุรี ยทด.", time: "17:00", away: "ช้างเผือก" },
+        { home: "ราชสีห์", time: "09:30", away: "เสือดำ เอฟซี" },
+        { home: "อินทรีแดง", time: "10:45", away: "พยัคฆ์ขาว" },
+        { home: "เหยี่ยวดำ", time: "15:00", away: "กระทิงเพลิง" },
+        { home: "มังกรทอง", time: "16:15", away: "หงส์เหนือ" },
+        { home: "นาคราช", time: "18:30", away: "จ้าวสมุทร" },
+      ],
+      topScorers: [
+        { rank: 1, rankColor: "#D4FF3A", initial: "ธ", avatar: "#2E5CB8", name: "ธนกร ศรีสว่าง", team: "สิงห์บุรี ยทด.", goals: 18 },
+        { rank: 2, rankColor: "rgba(255,255,255,.7)", initial: "อ", avatar: "#7C2D12", name: "อานนท์ แก้วใส", team: "เสือดำ เอฟซี", goals: 15 },
+        { rank: 3, rankColor: "rgba(255,255,255,.7)", initial: "ก", avatar: "#166534", name: "กิตติ พลอยงาม", team: "ราชสีห์", goals: 12 },
+        { rank: 4, rankColor: "rgba(255,255,255,.5)", initial: "ศ", avatar: "#5B21B6", name: "ศุภชัย ทองดี", team: "อินทรีแดง", goals: 11 },
+        { rank: 5, rankColor: "rgba(255,255,255,.5)", initial: "ป", avatar: "#3A3A3A", name: "ประวิทย์ มั่นคง", team: "ช้างเผือก", goals: 10 },
+      ],
+      matchStats: [
+        { label: "ครองบอล %", h: 58, a: 42, hFlex: 58, aFlex: 42, hColor: "#D4FF3A", aColor: "#fff" },
+        { label: "ยิงทั้งหมด", h: 14, a: 9, hFlex: 14, aFlex: 9, hColor: "#D4FF3A", aColor: "#fff" },
+        { label: "ยิงเข้ากรอบ", h: 6, a: 4, hFlex: 6, aFlex: 4, hColor: "#D4FF3A", aColor: "#fff" },
+        { label: "เตะมุม", h: 5, a: 3, hFlex: 5, aFlex: 3, hColor: "#D4FF3A", aColor: "#fff" },
+        { label: "ฟาวล์", h: 8, a: 12, hFlex: 8, aFlex: 12, hColor: "#fff", aColor: "#D4FF3A" },
+        { label: "ใบเหลือง", h: 1, a: 3, hFlex: 1, aFlex: 3, hColor: "#fff", aColor: "#D4FF3A" },
+      ],
+      events: [
+        { min: "63'", icon: "⚽", text: "ประตู! ธนกร ศรีสว่าง", sub: "แอสซิสต์: วีระ จันทร์แจ่ม", isHome: true, isAway: false, minColor: "#0A0E0B", minBg: "#D4FF3A" },
+        { min: "55'", icon: "🟨", text: "ใบเหลือง — สมพงษ์ ดีเลิศ", sub: "เข้าบอลรุนแรง", isHome: false, isAway: true, minColor: "#fff", minBg: "rgba(255,255,255,.08)" },
+        { min: "48'", icon: "⚽", text: "ประตู! อานนท์ แก้วใส", sub: "ลูกโทษ", isHome: false, isAway: true, minColor: "#0A0E0B", minBg: "#D4FF3A" },
+        { min: "HT", icon: "", text: "พักครึ่ง 1-0", sub: "", isHome: true, isAway: false, minColor: "rgba(255,255,255,.6)", minBg: "rgba(255,255,255,.06)" },
+        { min: "31'", icon: "🟨", text: "ใบเหลือง — เดชา กล้าหาญ", sub: "ถ่วงเวลา", isHome: false, isAway: true, minColor: "#fff", minBg: "rgba(255,255,255,.08)" },
+        { min: "22'", icon: "⚽", text: "ประตู! ธนกร ศรีสว่าง", sub: "โหม่งจากเตะมุม", isHome: true, isAway: false, minColor: "#0A0E0B", minBg: "#D4FF3A" },
+        { min: "1'", icon: "▶", text: "เริ่มการแข่งขัน", sub: "", isHome: true, isAway: false, minColor: "rgba(255,255,255,.6)", minBg: "rgba(255,255,255,.06)" },
+      ],
+      lineupPairs: [
+        { hNum: 1, hName: "จักริน บุญมา (GK)", aNum: 1, aName: "วิชัย สมบูรณ์ (GK)" },
+        { hNum: 4, hName: "วีระ จันทร์แจ่ม", aNum: 3, aName: "เดชา กล้าหาญ" },
+        { hNum: 5, hName: "สุรชัย พงษ์พันธ์", aNum: 5, aName: "สมพงษ์ ดีเลิศ" },
+        { hNum: 7, hName: "ธนกร ศรีสว่าง (C)", aNum: 8, aName: "อานนท์ แก้วใส (C)" },
+        { hNum: 9, hName: "ณัฐพล รุ่งเรือง", aNum: 10, aName: "พีระ วงศ์ใหญ่" },
+        { hNum: 10, hName: "อภิชาติ แสงทอง", aNum: 11, aName: "มานพ ใจดี" },
+        { hNum: 11, hName: "กฤษณะ เพชรดี", aNum: 14, aName: "ยุทธนา ทรงพล" },
+      ],
+      roster: [
+        { num: 1, initial: "จ", avatar: "#166534", name: "จักริน บุญมา", pos: "ผู้รักษาประตู", apps: 14, goals: 0, yc: 0, status: "พร้อมแข่ง", statusFg: "#D4FF3A", statusBg: "rgba(212,255,58,.1)" },
+        { num: 4, initial: "ว", avatar: "#2E5CB8", name: "วีระ จันทร์แจ่ม", pos: "กองหลัง", apps: 13, goals: 1, yc: 2, status: "พร้อมแข่ง", statusFg: "#D4FF3A", statusBg: "rgba(212,255,58,.1)" },
+        { num: 5, initial: "ส", avatar: "#7C2D12", name: "สุรชัย พงษ์พันธ์", pos: "กองหลัง", apps: 14, goals: 0, yc: 3, status: "ติดโทษแบน", statusFg: "#E5484D", statusBg: "rgba(229,72,77,.1)" },
+        { num: 7, initial: "ธ", avatar: "#5B21B6", name: "ธนกร ศรีสว่าง (C)", pos: "กองหน้า", apps: 14, goals: 18, yc: 1, status: "พร้อมแข่ง", statusFg: "#D4FF3A", statusBg: "rgba(212,255,58,.1)" },
+        { num: 8, initial: "ท", avatar: "#0E7490", name: "ทศพร นาคน้อย", pos: "กองกลาง", apps: 11, goals: 3, yc: 1, status: "พร้อมแข่ง", statusFg: "#D4FF3A", statusBg: "rgba(212,255,58,.1)" },
+        { num: 9, initial: "ณ", avatar: "#BE185D", name: "ณัฐพล รุ่งเรือง", pos: "กองกลาง", apps: 12, goals: 5, yc: 0, status: "พร้อมแข่ง", statusFg: "#D4FF3A", statusBg: "rgba(212,255,58,.1)" },
+        { num: 10, initial: "อ", avatar: "#B45309", name: "อภิชาติ แสงทอง", pos: "กองกลางตัวรุก", apps: 14, goals: 8, yc: 1, status: "พร้อมแข่ง", statusFg: "#D4FF3A", statusBg: "rgba(212,255,58,.1)" },
+        { num: 11, initial: "ก", avatar: "#166534", name: "กฤษณะ เพชรดี", pos: "ปีก", apps: 10, goals: 4, yc: 0, status: "บาดเจ็บ", statusFg: "#FFB224", statusBg: "rgba(255,178,36,.1)" },
+        { num: 14, initial: "ภ", avatar: "#3A3A3A", name: "ภูวดล คำแก้ว", pos: "กองหน้า", apps: 8, goals: 2, yc: 0, status: "พร้อมแข่ง", statusFg: "#D4FF3A", statusBg: "rgba(212,255,58,.1)" },
+      ],
+      mobileStandings: this.makeStandings().slice(0, 8).map(r => ({ pos: r.pos, posColor: r.posColor, accent: r.accent, logo: r.logo, abbr: r.abbr, team: r.team, p: r.p, gd: r.gd, pts: r.pts })),
+    };
+  }
+
+  makeStandings() {
+    const F = (arr) => arr.map(t => t === "W" ? { t: "ช", bg: "#D4FF3A", fg: "#0A0E0B" } : t === "D" ? { t: "ส", bg: "rgba(255,255,255,.16)", fg: "#fff" } : { t: "พ", bg: "#E5484D", fg: "#fff" });
+    const rows = [
+      { team: "สิงห์บุรี ยูไนเต็ด", abbr: "SU", logo: "#2E5CB8", p: 14, w: 11, d: 1, l: 2, gd: "+19", pts: 34, form: F(["W","W","D","W","L"]) },
+      { team: "ราชสีห์", abbr: "RS", logo: "#166534", p: 14, w: 10, d: 2, l: 2, gd: "+15", pts: 32, form: F(["W","W","W","D","W"]) },
+      { team: "อินทรีแดง", abbr: "IR", logo: "#B91C1C", p: 14, w: 9, d: 2, l: 3, gd: "+11", pts: 29, form: F(["W","L","W","W","D"]) },
+      { team: "เสือดำ เอฟซี", abbr: "BP", logo: "#3A3A3A", p: 14, w: 8, d: 3, l: 3, gd: "+9", pts: 27, form: F(["D","W","W","L","W"]) },
+      { team: "ช้างเผือก", abbr: "CP", logo: "#0E7490", p: 14, w: 7, d: 3, l: 4, gd: "+4", pts: 24, form: F(["L","W","D","W","W"]) },
+      { team: "มังกรทอง", abbr: "MT", logo: "#B45309", p: 14, w: 6, d: 4, l: 4, gd: "+2", pts: 22, form: F(["D","D","W","L","W"]) },
+      { team: "พยัคฆ์ขาว", abbr: "PK", logo: "#64748B", p: 14, w: 5, d: 4, l: 5, gd: "-1", pts: 19, form: F(["L","D","W","D","L"]) },
+      { team: "เหยี่ยวดำ", abbr: "YD", logo: "#1E293B", p: 14, w: 4, d: 5, l: 5, gd: "-3", pts: 17, form: F(["D","L","D","W","D"]) },
+      { team: "กระทิงเพลิง", abbr: "KP", logo: "#9A3412", p: 14, w: 4, d: 3, l: 7, gd: "-6", pts: 15, form: F(["L","W","L","L","D"]) },
+      { team: "หงส์เหนือ", abbr: "HN", logo: "#5B21B6", p: 14, w: 3, d: 4, l: 7, gd: "-9", pts: 13, form: F(["L","D","L","W","L"]) },
+      { team: "นาคราช", abbr: "NR", logo: "#0F766E", p: 14, w: 2, d: 4, l: 8, gd: "-14", pts: 10, form: F(["L","L","D","L","D"]) },
+      { team: "จ้าวสมุทร", abbr: "JS", logo: "#1D4ED8", p: 14, w: 1, d: 3, l: 10, gd: "-27", pts: 6, form: F(["L","L","L","D","L"]) },
+    ];
+    return rows.map((r, i) => ({
+      ...r, pos: i + 1,
+      posColor: i < 2 ? "#D4FF3A" : i >= 10 ? "#E5484D" : "rgba(255,255,255,.7)",
+      accent: i < 2 ? "#D4FF3A" : i >= 10 ? "#E5484D" : "transparent",
+      bg: i === 0 ? "rgba(212,255,58,.04)" : "transparent",
+    }));
+  }
+}
+</script>
+</body>
+</html>
