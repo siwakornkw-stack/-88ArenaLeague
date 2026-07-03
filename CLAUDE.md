@@ -1,8 +1,8 @@
 @AGENTS.md
 
-# League Manager (ระบบจัดการลีกฟุตบอล)
+# 88ArenaLeague (ระบบจัดการลีกฟุตบอล)
 
-Thai-language football league management app. Round-robin scheduling only, standings computed on the fly (no stored table).
+Thai-language football league management app, branded **88ArenaLeague**. Round-robin scheduling only, standings computed on the fly (no stored table).
 
 ## Stack
 
@@ -18,6 +18,15 @@ Thai-language football league management app. Round-robin scheduling only, stand
 - Every TEAM_MANAGER action re-checks ownership server-side (team/player/match belongs to `session.userId`) before mutating — see `src/app/(app)/teams/mine/actions.ts` for the pattern.
 - Roles: `SUPER_ADMIN` (manage all leagues) vs `TEAM_MANAGER` (own team only, redirected to `/teams/mine`).
 - UI copy is Thai. Code, comments, commit messages stay English.
+
+## Routing
+
+Two route groups share the root layout — same URL space, so paths must never collide between them:
+
+- `(public)` — no auth, no auth check in code. Serves `/`, `/leagues/[id]` (standings/fixtures/top scorers), `/matches/[id]` (read-only scoreboard/stats/timeline/lineups). Entry point for anonymous visitors.
+- `(app)` — gated by `src/proxy.ts` (redirects to `/login` if no session). Admin/management pages live under `/admin/leagues/[id]` (schedule generation, standings) and `/admin/matches/[id]` (kickoff/goals/cards/stats entry), plus `/dashboard` (SUPER_ADMIN) and `/teams/mine` (TEAM_MANAGER).
+
+`src/proxy.ts` matcher: `/dashboard/:path*`, `/admin/:path*`, `/teams/:path*`, `/login`. Anything not matched (including `/leagues/*` and `/matches/*`) is public by default.
 
 ## Commands
 
@@ -35,6 +44,8 @@ npx tsc --noEmit
 - `AUTH_SECRET` — JWT signing secret
 
 ## Deploy
+
+Git: `https://github.com/siwakornkw-stack/-88ArenaLeague.git`, branch `main`.
 
 Vercel project `league-manager-app`, scope `siwakornkw-stacks-projects`, aliased at `league-manager-app.vercel.app`. DB is Neon, provisioned via Vercel Marketplace — env vars already synced to all three Vercel environments.
 
