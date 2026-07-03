@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { computeLiveMinute } from "@/lib/matchClock";
 
 function getSide(formData: FormData) {
   const side = String(formData.get("side"));
@@ -80,11 +81,15 @@ export async function updateStats(matchId: string, formData: FormData) {
 }
 
 export async function endMatch(matchId: string) {
-  const match = await prisma.match.findUniqueOrThrow({ where: { id: matchId } });
+  const kickoffEvent = await prisma.matchEvent.findFirst({
+    where: { matchId, type: "KICK_OFF" },
+  });
+  const finalMinute = kickoffEvent ? computeLiveMinute(kickoffEvent.createdAt) : 0;
+
   await prisma.$transaction([
-    prisma.match.update({ where: { id: matchId }, data: { status: "FINISHED" } }),
+    prisma.match.update({ where: { id: matchId }, data: { status: "FINISHED", minute: finalMinute } }),
     prisma.matchEvent.create({
-      data: { matchId, minute: match.minute, label: "จบการแข่งขัน", type: "FULL_TIME", side: "NEUTRAL" },
+      data: { matchId, minute: finalMinute, label: "จบการแข่งขัน", type: "FULL_TIME", side: "NEUTRAL" },
     }),
   ]);
   revalidatePath(`/admin/matches/${matchId}`);

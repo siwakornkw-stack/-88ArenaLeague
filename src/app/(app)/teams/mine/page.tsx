@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { computeStandings } from "@/lib/standings";
 import { addPlayer, updatePlayerStatus, deletePlayer, setLineup } from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -9,11 +11,30 @@ const STATUS_LABEL: Record<string, string> = {
   BANNED: "โดนแบน",
 };
 
+const FORM_LABEL: Record<"W" | "D" | "L", { t: string; className: string }> = {
+  W: { t: "ช", className: "bg-accent text-black" },
+  D: { t: "ส", className: "bg-white/15 text-foreground" },
+  L: { t: "พ", className: "bg-red-500 text-white" },
+};
+
+const STATUS_FILTERS = [
+  { value: "all", label: "ทั้งหมด" },
+  { value: "ACTIVE", label: "พร้อมลงเล่น" },
+  { value: "OUT", label: "ไม่พร้อม" },
+] as const;
+
 const LINEUP_SIZE = 12;
 
-export default async function MyTeamPage() {
+export default async function MyTeamPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
   const session = await getSession();
   if (session?.role !== "TEAM_MANAGER") redirect("/dashboard");
+
+  const { status } = await searchParams;
+  const statusFilter = status ?? "all";
 
   const team = await prisma.team.findFirst({
     where: { managers: { some: { id: session.userId } } },
@@ -29,17 +50,55 @@ export default async function MyTeamPage() {
     );
   }
 
-  const nextMatch = await prisma.match.findFirst({
-    where: {
-      status: "SCHEDULED",
-      OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
-    },
-    orderBy: { kickoffAt: "asc" },
-    include: {
-      homeTeam: true,
-      awayTeam: true,
-      lineups: { where: { player: { teamId: team.id } } },
-    },
+  const [nextMatch, standings, cleanSheets, appsGrouped, eventsGrouped] = await Promise.all([
+    prisma.match.findFirst({
+      where: {
+        status: "SCHEDULED",
+        OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
+      },
+      orderBy: { kickoffAt: "asc" },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+        lineups: { where: { player: { teamId: team.id } } },
+      },
+    }),
+    computeStandings(team.leagueId),
+    prisma.match.count({
+      where: {
+        status: "FINISHED",
+        OR: [
+          { homeTeamId: team.id, awayScore: 0 },
+          { awayTeamId: team.id, homeScore: 0 },
+        ],
+      },
+    }),
+    prisma.matchLineup.groupBy({
+      by: ["playerId"],
+      where: { player: { teamId: team.id }, match: { status: { in: ["LIVE", "FINISHED"] } } },
+      _count: { playerId: true },
+    }),
+    prisma.matchEvent.groupBy({
+      by: ["playerId", "type"],
+      where: { playerId: { not: null }, type: { in: ["GOAL", "YELLOW_CARD"] }, player: { teamId: team.id } },
+      _count: { playerId: true },
+    }),
+  ]);
+
+  const teamStanding = standings.find((row) => row.teamId === team.id) ?? null;
+  const appsByPlayer = new Map(appsGrouped.map((g) => [g.playerId, g._count.playerId]));
+  const goalsByPlayer = new Map<string, number>();
+  const yellowsByPlayer = new Map<string, number>();
+  for (const g of eventsGrouped) {
+    if (!g.playerId) continue;
+    if (g.type === "GOAL") goalsByPlayer.set(g.playerId, g._count.playerId);
+    if (g.type === "YELLOW_CARD") yellowsByPlayer.set(g.playerId, g._count.playerId);
+  }
+
+  const filteredPlayers = team.players.filter((p) => {
+    if (statusFilter === "all") return true;
+    if (statusFilter === "OUT") return p.status !== "ACTIVE";
+    return p.status === statusFilter;
   });
 
   const selectedPlayerIds = new Set(nextMatch?.lineups.map((l) => l.playerId) ?? []);
@@ -53,6 +112,46 @@ export default async function MyTeamPage() {
         <h1 className="font-display font-bold text-3xl">{team.name}</h1>
         <p className="text-foreground/60 mt-1">จัดการนักเตะและตัวจริงของทีมคุณ</p>
       </div>
+
+      {teamStanding && (
+        <div className="rounded-lg bg-card border border-white/10 p-5">
+          <h2 className="font-semibold mb-3">ฟอร์มทีม</h2>
+          <div className="flex flex-wrap gap-6 text-sm mb-3">
+            <div>
+              <div className="font-display font-extrabold text-xl text-accent">
+                {teamStanding.played}
+              </div>
+              <div className="text-xs text-foreground/55">ลงแข่ง</div>
+            </div>
+            <div>
+              <div className="font-display font-extrabold text-xl text-accent">
+                {teamStanding.goalsFor}-{teamStanding.goalsAgainst}
+              </div>
+              <div className="text-xs text-foreground/55">ได้-เสีย</div>
+            </div>
+            <div>
+              <div className="font-display font-extrabold text-xl text-accent">{cleanSheets}</div>
+              <div className="text-xs text-foreground/55">คลีนชีต</div>
+            </div>
+            <div>
+              <div className="font-display font-extrabold text-xl text-accent">
+                {teamStanding.points}
+              </div>
+              <div className="text-xs text-foreground/55">แต้ม</div>
+            </div>
+          </div>
+          <div className="flex gap-1">
+            {teamStanding.form.map((f, i) => (
+              <span
+                key={i}
+                className={`w-6 h-6 rounded text-xs font-bold grid place-items-center ${FORM_LABEL[f].className}`}
+              >
+                {FORM_LABEL[f].t}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {nextMatch && setLineupWithId && (
         <div className="rounded-lg bg-card border border-white/10 p-5">
@@ -89,16 +188,44 @@ export default async function MyTeamPage() {
       )}
 
       <div>
-        <h2 className="font-semibold mb-3">รายชื่อนักเตะ</h2>
-        <div className="space-y-2">
-          {team.players.map((p) => (
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold">รายชื่อนักเตะ</h2>
+          <div className="flex gap-2">
+            {STATUS_FILTERS.map((f) => (
+              <Link
+                key={f.value}
+                href={`/teams/mine?status=${f.value}`}
+                className={`rounded-full px-3 py-1 text-xs ${
+                  statusFilter === f.value ? "bg-accent text-black" : "bg-white/5 text-foreground/60"
+                }`}
+              >
+                {f.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 px-4 text-xs text-foreground/40">
+          <span className="w-8">#</span>
+          <span className="flex-1">ชื่อ</span>
+          <span className="w-16">ตำแหน่ง</span>
+          <span className="w-10 text-center">ลงสนาม</span>
+          <span className="w-10 text-center">ประตู</span>
+          <span className="w-10 text-center">เหลือง</span>
+        </div>
+
+        <div className="space-y-2 mt-1">
+          {filteredPlayers.map((p) => (
             <div
               key={p.id}
               className="flex items-center gap-3 rounded-md bg-card border border-white/10 px-4 py-3 text-sm"
             >
               <span className="w-8 text-foreground/50">#{p.number}</span>
               <span className="flex-1">{p.name}</span>
-              <span className="text-foreground/50">{p.position}</span>
+              <span className="w-16 text-foreground/50">{p.position}</span>
+              <span className="w-10 text-center text-foreground/70">{appsByPlayer.get(p.id) ?? 0}</span>
+              <span className="w-10 text-center text-accent">{goalsByPlayer.get(p.id) ?? 0}</span>
+              <span className="w-10 text-center text-yellow-400">{yellowsByPlayer.get(p.id) ?? 0}</span>
               <form action={updatePlayerStatus.bind(null, p.id)} className="flex items-center gap-1">
                 <select
                   name="status"
@@ -122,8 +249,8 @@ export default async function MyTeamPage() {
               </form>
             </div>
           ))}
-          {team.players.length === 0 && (
-            <p className="text-foreground/50 text-sm">ยังไม่มีนักเตะในทีม</p>
+          {filteredPlayers.length === 0 && (
+            <p className="text-foreground/50 text-sm">ไม่มีนักเตะในหมวดนี้</p>
           )}
         </div>
       </div>

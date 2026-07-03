@@ -31,3 +31,12 @@ export function roundRobin(teamIds: string[], legs: number): ScheduleMatch[] {
 
   return matches;
 }
+
+export function buildKickoffDates(totalRounds: number, dayOfWeek: number): Date[] {
+  const first = new Date();
+  const diff = (dayOfWeek - first.getDay() + 7) % 7 || 7;
+  first.setDate(first.getDate() + diff);
+  first.setHours(9, 30, 0, 0);
+
+  return Array.from({ length: totalRounds }, (_, i) => new Date(first.getTime() + i * 7 * 86400000));
+}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getFeaturedLeagues } from "@/lib/featuredLeagues";
+import { computeLiveMinute } from "@/lib/matchClock";
 import { MobileNav } from "@/components/mobile-nav";
 
 const FEATURES = [
@@ -20,7 +21,12 @@ export default async function Home() {
       prisma.match.count({ where: { status: { in: ["LIVE", "FINISHED"] } } }),
       prisma.match.findMany({
         where: { status: "LIVE" },
-        include: { homeTeam: true, awayTeam: true, league: true },
+        include: {
+          homeTeam: true,
+          awayTeam: true,
+          league: true,
+          events: { where: { type: "KICK_OFF" } },
+        },
         take: 5,
       }),
     ]);
@@ -39,7 +45,8 @@ export default async function Home() {
           <div className="flex gap-10 whitespace-nowrap px-6 py-2 font-display font-semibold text-sm text-black">
             {liveMatches.map((m) => (
               <span key={m.id}>
-                ● LIVE — {m.homeTeam.name} {m.homeScore}-{m.awayScore} {m.awayTeam.name} ({m.minute}
+                ● LIVE — {m.homeTeam.name} {m.homeScore}-{m.awayScore} {m.awayTeam.name} (
+                {m.events[0] ? computeLiveMinute(m.events[0].createdAt) : m.minute}
                 &apos;)
               </span>
             ))}
@@ -86,7 +93,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="px-6 md:px-16 py-14">
+      <section id="leagues" className="px-6 md:px-16 py-14 scroll-mt-20">
         <div className="flex items-baseline justify-between mb-8">
           <h2 className="font-display italic font-extrabold text-2xl md:text-3xl text-foreground">
             ลีกเด่น<span className="text-accent">ประจำสัปดาห์</span>

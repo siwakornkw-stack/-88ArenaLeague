@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { EVENT_ICON } from "@/lib/matchEvents";
+import { computeLiveMinute } from "@/lib/matchClock";
 import { MobileNav } from "@/components/mobile-nav";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -43,6 +44,10 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
   const homePlayers = homeLineupPlayers.length > 0 ? homeLineupPlayers : match.homeTeam.players;
   const awayPlayers = awayLineupPlayers.length > 0 ? awayLineupPlayers : match.awayTeam.players;
 
+  const kickOffEvent = match.events.find((e) => e.type === "KICK_OFF");
+  const liveMinute =
+    match.status === "LIVE" && kickOffEvent ? computeLiveMinute(kickOffEvent.createdAt) : match.minute;
+
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
     { icon: "🏆", label: "ตาราง", href: `/leagues/${match.leagueId}?tab=standings` },
@@ -60,7 +65,7 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
         <div className="flex items-center justify-center gap-3 text-xs font-display font-semibold mb-4">
           {match.status === "LIVE" ? (
             <span className="flex items-center gap-1 text-accent">
-              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" /> LIVE {match.minute}&apos;
+              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" /> LIVE {liveMinute}&apos;
             </span>
           ) : (
             <span className="text-foreground/50">{STATUS_LABEL[match.status]}</span>

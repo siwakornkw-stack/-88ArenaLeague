@@ -28,7 +28,10 @@ export default async function PublicLeaguePage({
   const { id } = await params;
   const { tab = "standings" } = await searchParams;
 
-  const league = await prisma.league.findUnique({ where: { id }, include: { teams: true } });
+  const league = await prisma.league.findUnique({
+    where: { id },
+    include: { teams: { include: { _count: { select: { players: true } } } } },
+  });
   if (!league) notFound();
 
   const matches = await prisma.match.findMany({
@@ -53,6 +56,7 @@ export default async function PublicLeaguePage({
     { icon: "🏠", label: "หน้าแรก", href: "/" },
     { icon: "🏆", label: "ตาราง", href: `/leagues/${id}?tab=standings`, active: tab === "standings" },
     { icon: "📅", label: "โปรแกรม", href: `/leagues/${id}?tab=fixtures`, active: tab === "fixtures" },
+    { icon: "👥", label: "ทีม", href: `/leagues/${id}?tab=teams`, active: tab === "teams" },
   ];
 
   return (
@@ -85,9 +89,40 @@ export default async function PublicLeaguePage({
           >
             โปรแกรมแข่ง
           </Link>
+          <Link
+            href={`/leagues/${id}?tab=teams`}
+            className={`px-4 py-2 text-sm font-display font-semibold ${
+              tab === "teams" ? "border-b-2 border-accent text-accent" : "text-foreground/60"
+            }`}
+          >
+            ทีม
+          </Link>
         </div>
 
-        {matches.length === 0 ? (
+        {tab === "teams" ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {league.teams.map((team) => (
+              <div
+                key={team.id}
+                className="rounded-xl border border-white/10 bg-card p-4 flex items-center gap-3"
+              >
+                <span
+                  className="w-10 h-10 rounded-full shrink-0 grid place-items-center font-display font-bold text-xs"
+                  style={{ backgroundColor: team.color }}
+                >
+                  {team.abbr}
+                </span>
+                <div>
+                  <div className="font-display font-semibold">{team.name}</div>
+                  <div className="text-xs text-foreground/45">{team._count.players} นักเตะ</div>
+                </div>
+              </div>
+            ))}
+            {league.teams.length === 0 && (
+              <p className="text-foreground/50 text-sm">ยังไม่มีทีมในลีกนี้</p>
+            )}
+          </div>
+        ) : matches.length === 0 ? (
           <p className="text-foreground/50 text-sm">ยังไม่มีตารางแข่งสำหรับลีกนี้</p>
         ) : tab === "standings" ? (
           <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-6">

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { EVENT_ICON } from "@/lib/matchEvents";
+import { computeLiveMinute } from "@/lib/matchClock";
 import { kickOff, addGoal, addCard, endMatch, updateStats } from "./actions";
 
 const STAT_FIELDS = [
@@ -35,6 +36,10 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
   const homePlayers = homeLineupPlayers.length > 0 ? homeLineupPlayers : match.homeTeam.players;
   const awayPlayers = awayLineupPlayers.length > 0 ? awayLineupPlayers : match.awayTeam.players;
 
+  const kickOffEvent = match.events.find((e) => e.type === "KICK_OFF");
+  const liveMinute =
+    match.status === "LIVE" && kickOffEvent ? computeLiveMinute(kickOffEvent.createdAt) : match.minute;
+
   const kickOffWithId = kickOff.bind(null, id);
   const addGoalWithId = addGoal.bind(null, id);
   const addCardWithId = addCard.bind(null, id);
@@ -43,12 +48,17 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="max-w-3xl space-y-8">
-      <div className="rounded-lg bg-card border border-white/10 p-6 flex items-center justify-between">
-        <span className="font-semibold flex-1 text-right">{match.homeTeam.name}</span>
-        <span className="font-display font-bold text-4xl px-6">
-          {match.homeScore} - {match.awayScore}
-        </span>
-        <span className="font-semibold flex-1">{match.awayTeam.name}</span>
+      <div className="rounded-lg bg-card border border-white/10 p-6 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold flex-1 text-right">{match.homeTeam.name}</span>
+          <span className="font-display font-bold text-4xl px-6">
+            {match.homeScore} - {match.awayScore}
+          </span>
+          <span className="font-semibold flex-1">{match.awayTeam.name}</span>
+        </div>
+        {match.status === "LIVE" && (
+          <p className="text-center text-xs text-accent">LIVE {liveMinute}&apos;</p>
+        )}
       </div>
 
       {match.status === "SCHEDULED" && (
@@ -70,6 +80,7 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             players={homePlayers}
             addGoal={addGoalWithId}
             addCard={addCardWithId}
+            defaultMinute={liveMinute}
           />
           <MatchActionForms
             side="AWAY"
@@ -77,6 +88,7 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             players={awayPlayers}
             addGoal={addGoalWithId}
             addCard={addCardWithId}
+            defaultMinute={liveMinute}
           />
         </div>
       )}
@@ -145,12 +157,14 @@ function MatchActionForms({
   players,
   addGoal,
   addCard,
+  defaultMinute,
 }: {
   side: "HOME" | "AWAY";
   teamName: string;
   players: { id: string; name: string; number: number }[];
   addGoal: (formData: FormData) => Promise<void>;
   addCard: (formData: FormData) => Promise<void>;
+  defaultMinute: number;
 }) {
   return (
     <div className="rounded-lg bg-card border border-white/10 p-4 space-y-3">
@@ -158,7 +172,7 @@ function MatchActionForms({
 
       <form action={addGoal} className="flex gap-2 items-end">
         <input type="hidden" name="side" value={side} />
-        <PlayerAndMinuteFields players={players} />
+        <PlayerAndMinuteFields players={players} defaultMinute={defaultMinute} />
         <button type="submit" className="rounded-md bg-accent text-black text-xs px-3 py-2">
           ประตู
         </button>
@@ -166,7 +180,7 @@ function MatchActionForms({
 
       <form action={addCard} className="flex gap-2 items-end">
         <input type="hidden" name="side" value={side} />
-        <PlayerAndMinuteFields players={players} />
+        <PlayerAndMinuteFields players={players} defaultMinute={defaultMinute} />
         <select name="cardType" className="rounded-md bg-black/30 border border-white/10 px-2 py-2 text-xs">
           <option value="YELLOW">ใบเหลือง</option>
           <option value="RED">ใบแดง</option>
@@ -181,8 +195,10 @@ function MatchActionForms({
 
 function PlayerAndMinuteFields({
   players,
+  defaultMinute,
 }: {
   players: { id: string; name: string; number: number }[];
+  defaultMinute: number;
 }) {
   return (
     <>
@@ -197,7 +213,7 @@ function PlayerAndMinuteFields({
       <input
         type="number"
         name="minute"
-        placeholder="นาที"
+        defaultValue={defaultMinute}
         className="w-16 rounded-md bg-black/30 border border-white/10 px-2 py-2 text-xs"
       />
     </>

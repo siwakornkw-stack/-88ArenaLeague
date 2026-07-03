@@ -18,13 +18,14 @@ Thai-language football league management app, branded **88ArenaLeague**. Round-r
 - Every TEAM_MANAGER action re-checks ownership server-side (team/player/match belongs to `session.userId`) before mutating — see `src/app/(app)/teams/mine/actions.ts` for the pattern.
 - Roles: `SUPER_ADMIN` (manage all leagues) vs `TEAM_MANAGER` (own team only, redirected to `/teams/mine`).
 - UI copy is Thai. Code, comments, commit messages stay English.
+- Same "computed on the fly" rule applies to the live match clock: `Match.minute` is only written once, at `endMatch` (final length). While `status === "LIVE"`, the displayed minute is derived from the `KICK_OFF` event's `createdAt` via `computeLiveMinute()` in `src/lib/matchClock.ts` — never read `match.minute` directly for a live match.
 
 ## Routing
 
 Two route groups share the root layout — same URL space, so paths must never collide between them:
 
 - `(public)` — no auth, no auth check in code. Serves `/`, `/leagues/[id]` (standings/fixtures/top scorers), `/matches/[id]` (read-only scoreboard/stats/timeline/lineups). Entry point for anonymous visitors.
-- `(app)` — gated by `src/proxy.ts` (redirects to `/login` if no session). Admin/management pages live under `/admin/leagues/[id]` (schedule generation, standings) and `/admin/matches/[id]` (kickoff/goals/cards/stats entry), plus `/dashboard` (SUPER_ADMIN) and `/teams/mine` (TEAM_MANAGER).
+- `(app)` — gated by `src/proxy.ts` (redirects to `/login` if no session). Admin/management pages live under `/admin/leagues/[id]` (schedule generation, standings), `/admin/leagues/[id]/teams` (team/manager CRUD), and `/admin/matches/[id]` (kickoff/goals/cards/stats entry), plus `/dashboard` (SUPER_ADMIN) and `/teams/mine` (TEAM_MANAGER).
 
 `src/proxy.ts` matcher: `/dashboard/:path*`, `/admin/:path*`, `/teams/:path*`, `/login`. Anything not matched (including `/leagues/*` and `/matches/*`) is public by default.
 

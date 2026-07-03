@@ -2,9 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { roundRobin } from "@/lib/schedule";
+import { roundRobin, buildKickoffDates } from "@/lib/schedule";
+import { getSession } from "@/lib/session";
 
-export async function generateSchedule(leagueId: string) {
+export async function generateSchedule(leagueId: string, dayOfWeek: number) {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
+
   const league = await prisma.league.findUniqueOrThrow({
     where: { id: leagueId },
     include: { teams: true },
@@ -14,10 +18,8 @@ export async function generateSchedule(leagueId: string) {
     league.teams.map((t) => t.id),
     league.legs
   );
-
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() + ((7 - startDate.getDay()) % 7 || 7));
-  startDate.setHours(9, 30, 0, 0);
+  const totalRounds = Math.max(...fixtures.map((f) => f.round));
+  const kickoffDates = buildKickoffDates(totalRounds, dayOfWeek);
 
   await prisma.$transaction([
     prisma.match.createMany({
@@ -26,7 +28,7 @@ export async function generateSchedule(leagueId: string) {
         round: f.round,
         homeTeamId: f.homeTeamId,
         awayTeamId: f.awayTeamId,
-        kickoffAt: new Date(startDate.getTime() + (f.round - 1) * 7 * 86400000),
+        kickoffAt: kickoffDates[f.round - 1],
       })),
     }),
     prisma.league.update({ where: { id: leagueId }, data: { status: "SCHEDULED" } }),

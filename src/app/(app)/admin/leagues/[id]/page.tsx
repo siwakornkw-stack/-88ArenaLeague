@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
+import { roundRobin, buildKickoffDates } from "@/lib/schedule";
 import { generateSchedule } from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -11,15 +12,18 @@ const STATUS_LABEL: Record<string, string> = {
   FINISHED: "จบฤดูกาล",
 };
 
+const DAY_LABELS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+
 export default async function LeagueDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; day?: string }>;
 }) {
   const { id } = await params;
-  const { tab = "fixtures" } = await searchParams;
+  const { tab = "fixtures", day } = await searchParams;
+  const dayOfWeek = day !== undefined ? Number(day) || 0 : null;
 
   const league = await prisma.league.findUnique({
     where: { id },
@@ -40,31 +44,117 @@ export default async function LeagueDetailPage({
   }
 
   const standings = tab === "standings" ? await computeStandings(id) : [];
-  const generateWithId = generateSchedule.bind(null, id);
+  const generateWithId = generateSchedule.bind(null, id, dayOfWeek ?? 0);
+
+  let previewByRound: Map<number, { homeName: string; awayName: string }[]> | null = null;
+  let previewDates: Date[] = [];
+  if (matches.length === 0 && dayOfWeek !== null && league.teams.length >= 2) {
+    const teamNameById = new Map(league.teams.map((t) => [t.id, t.name]));
+    const fixtures = roundRobin(league.teams.map((t) => t.id), league.legs);
+    const totalRounds = Math.max(...fixtures.map((f) => f.round));
+    previewDates = buildKickoffDates(totalRounds, dayOfWeek);
+    previewByRound = new Map();
+    for (const f of fixtures) {
+      if (!previewByRound.has(f.round)) previewByRound.set(f.round, []);
+      previewByRound.get(f.round)!.push({
+        homeName: teamNameById.get(f.homeTeamId) ?? "-",
+        awayName: teamNameById.get(f.awayTeamId) ?? "-",
+      });
+    }
+  }
 
   return (
     <div className="max-w-4xl space-y-6">
-      <div>
-        <h1 className="font-display font-bold text-3xl">{league.name}</h1>
-        <p className="text-foreground/60 mt-1">
-          ฤดูกาล {league.seasonYear} · {league.teams.length} ทีม ·{" "}
-          {STATUS_LABEL[league.status]}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display font-bold text-3xl">{league.name}</h1>
+          <p className="text-foreground/60 mt-1">
+            ฤดูกาล {league.seasonYear} · {league.teams.length} ทีม ·{" "}
+            {STATUS_LABEL[league.status]}
+          </p>
+        </div>
+        <Link
+          href={`/admin/leagues/${id}/teams`}
+          className="rounded-md border border-white/15 px-4 py-2 text-sm text-foreground/80 hover:border-accent/50 hover:text-accent"
+        >
+          จัดการทีม
+        </Link>
       </div>
 
       {matches.length === 0 ? (
-        <div className="rounded-lg bg-card border border-white/10 p-6 max-w-sm">
-          <p className="text-sm text-foreground/70 mb-4">
-            ยังไม่มีตารางแข่ง สร้างตารางแบบพบกันหมดจากทีมทั้งหมด {league.teams.length} ทีม
-          </p>
-          <form action={generateWithId}>
-            <button
-              type="submit"
-              className="w-full rounded-md bg-accent text-black font-semibold py-2 text-sm"
-            >
-              สร้างตารางแข่งขัน
-            </button>
-          </form>
+        <div className="rounded-lg bg-card border border-white/10 p-6 max-w-md space-y-5">
+          {league.teams.length < 2 ? (
+            <p className="text-sm text-foreground/70">
+              ต้องมีอย่างน้อย 2 ทีมก่อนสร้างตารางแข่งขัน{" "}
+              <Link href={`/admin/leagues/${id}/teams`} className="text-accent hover:underline">
+                เพิ่มทีม
+              </Link>
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-foreground/70">
+                สร้างตารางแบบพบกันหมดจากทีมทั้งหมด {league.teams.length} ทีม
+              </p>
+
+              <form method="get" className="flex items-end gap-2">
+                <div className="flex-1 space-y-1">
+                  <label className="text-sm text-foreground/70" htmlFor="day">
+                    วันแข่งขันประจำสัปดาห์
+                  </label>
+                  <select
+                    id="day"
+                    name="day"
+                    defaultValue={dayOfWeek ?? 0}
+                    className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+                  >
+                    {DAY_LABELS.map((label, value) => (
+                      <option key={value} value={value}>
+                        วัน{label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
+                  แสดงตัวอย่าง
+                </button>
+              </form>
+
+              {previewByRound && (
+                <div className="space-y-4">
+                  <div className="max-h-80 overflow-y-auto space-y-4 pr-1">
+                    {Array.from(previewByRound.entries()).map(([round, roundFixtures]) => (
+                      <div key={round}>
+                        <h3 className="text-sm text-foreground/50 mb-2">
+                          นัดที่ {round} · {previewDates[round - 1]?.toLocaleDateString("th-TH")}
+                        </h3>
+                        <div className="space-y-1">
+                          {roundFixtures.map((f, i) => (
+                            <div
+                              key={i}
+                              className="flex items-center justify-between rounded-md bg-white/5 px-3 py-2 text-sm"
+                            >
+                              <span>{f.homeName}</span>
+                              <span className="text-foreground/40">vs</span>
+                              <span>{f.awayName}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <form action={generateWithId}>
+                    <button
+                      type="submit"
+                      className="w-full rounded-md bg-accent text-black font-semibold py-2 text-sm"
+                    >
+                      ยืนยันและเผยแพร่ตาราง
+                    </button>
+                  </form>
+                </div>
+              )}
+            </>
+          )}
         </div>
       ) : (
         <>
