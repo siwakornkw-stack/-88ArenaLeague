@@ -11,6 +11,7 @@ export type FeaturedLeague = {
   live: number;
   leaderName: string | null;
   leaderPoints: number;
+  top3: { name: string; points: number }[];
 };
 
 export async function getFeaturedLeagues(limit = 3): Promise<FeaturedLeague[]> {
@@ -45,6 +46,7 @@ export async function getFeaturedLeagues(limit = 3): Promise<FeaturedLeague[]> {
         live: liveCount,
         leaderName: leader?.teamName ?? null,
         leaderPoints: leader?.points ?? 0,
+        top3: standings.slice(0, 3).map((r) => ({ name: r.teamName, points: r.points })),
       };
     })
   );

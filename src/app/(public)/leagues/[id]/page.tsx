@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { computeStandings } from "@/lib/standings";
+import { computeStandings, computeStandingsUpTo } from "@/lib/standings";
 import { getTopScorers, getTopAssists, getTopMvps } from "@/lib/topScorers";
 import { TeamBadge } from "@/components/team-badge";
 import { getDiscipline } from "@/lib/discipline";
@@ -134,6 +134,24 @@ export default async function PublicLeaguePage({
     }
   }
 
+  const movement = new Map<string, number>();
+  if (tab === "standings" && finishedLeagueMatches.length > 0) {
+    const lastRound = finishedLeagueMatches.reduce((max, m) => Math.max(max, m.round), 0);
+    if (lastRound >= 2) {
+      const prev = await computeStandingsUpTo(id, lastRound);
+      const prevPos = new Map(prev.map((r, i) => [r.teamId, i]));
+      standings.forEach((r, i) => {
+        const p = prevPos.get(r.teamId);
+        if (p !== undefined) movement.set(r.teamId, p - i);
+      });
+    }
+  }
+
+  const nextFixture = matches.find((m) => m.status === "SCHEDULED") ?? null;
+  const daysToNext = nextFixture
+    ? Math.max(0, Math.ceil((nextFixture.kickoffAt.getTime() - Date.now()) / 86400000))
+    : null;
+
   const finalMatch = matches.find((m) => m.stage === "FINAL" && m.status === "FINISHED") ?? null;
   let championName: string | null = null;
   let championNote: string | null = null;
@@ -171,6 +189,12 @@ export default async function PublicLeaguePage({
           {league.description && (
             <p className="mt-2 text-sm text-foreground/60 max-w-xl whitespace-pre-line">
               {league.description}
+            </p>
+          )}
+          {nextFixture && (
+            <p className="mt-2 text-xs text-accent">
+              นัดถัดไป: {nextFixture.homeTeam.name} vs {nextFixture.awayTeam.name} ·{" "}
+              {daysToNext === 0 ? "วันนี้" : `อีก ${daysToNext} วัน`}
             </p>
           )}
         </div>
@@ -513,7 +537,17 @@ export default async function PublicLeaguePage({
                             : ""
                       }`}
                     >
-                      <td className="py-3 px-4 font-display font-bold">{i + 1}</td>
+                      <td className="py-3 px-4 font-display font-bold">
+                        {i + 1}
+                        {(() => {
+                          const d = movement.get(row.teamId) ?? 0;
+                          if (d > 0)
+                            return <span className="ml-1 text-[10px] text-accent">▲{d}</span>;
+                          if (d < 0)
+                            return <span className="ml-1 text-[10px] text-red-400">▼{-d}</span>;
+                          return null;
+                        })()}
+                      </td>
                       <td className="font-display font-semibold">{row.teamName}</td>
                       <td className="text-center text-foreground/70">{row.played}</td>
                       <td className="text-center text-foreground/70">{row.won}</td>

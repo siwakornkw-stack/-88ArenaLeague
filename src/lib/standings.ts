@@ -15,15 +15,11 @@ export type StandingRow = {
   form: ("W" | "D" | "L")[];
 };
 
-export async function computeStandings(leagueId: string): Promise<StandingRow[]> {
-  const teams = await prisma.team.findMany({ where: { leagueId } });
+type TeamLite = { id: string; name: string; abbr: string };
+type MatchLite = { homeTeamId: string; awayTeamId: string; homeScore: number; awayScore: number };
 
-  // playoff matches (SEMI_FINAL/FINAL) never count toward the league table
-  const finishedMatches = await prisma.match.findMany({
-    where: { leagueId, status: "FINISHED", stage: "LEAGUE" },
-    orderBy: { kickoffAt: "desc" },
-  });
-
+// matches must be FINISHED league-stage matches ordered by kickoffAt desc (drives form)
+function buildTable(teams: TeamLite[], finishedMatches: MatchLite[]): StandingRow[] {
   const rows = new Map<string, StandingRow>(
     teams.map((t) => [
       t.id,
@@ -86,4 +82,31 @@ export async function computeStandings(leagueId: string): Promise<StandingRow[]>
   standings.sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor);
 
   return standings;
+}
+
+export async function computeStandings(leagueId: string): Promise<StandingRow[]> {
+  const teams = await prisma.team.findMany({ where: { leagueId } });
+
+  // playoff matches (SEMI_FINAL/FINAL) never count toward the league table
+  const finishedMatches = await prisma.match.findMany({
+    where: { leagueId, status: "FINISHED", stage: "LEAGUE" },
+    orderBy: { kickoffAt: "desc" },
+  });
+
+  return buildTable(teams, finishedMatches);
+}
+
+// table as it stood before the given round (for position-movement arrows)
+export async function computeStandingsUpTo(
+  leagueId: string,
+  beforeRound: number
+): Promise<StandingRow[]> {
+  const teams = await prisma.team.findMany({ where: { leagueId } });
+
+  const finishedMatches = await prisma.match.findMany({
+    where: { leagueId, status: "FINISHED", stage: "LEAGUE", round: { lt: beforeRound } },
+    orderBy: { kickoffAt: "desc" },
+  });
+
+  return buildTable(teams, finishedMatches);
 }

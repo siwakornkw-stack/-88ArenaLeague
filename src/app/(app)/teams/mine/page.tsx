@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
 import {
   addPlayer,
+  updatePlayerInfo,
   updatePlayerStatus,
   deletePlayer,
   setLineup,
@@ -287,9 +288,33 @@ export default async function MyTeamPage({
               key={p.id}
               className="flex items-center gap-3 rounded-md bg-card border border-white/10 px-4 py-3 text-sm"
             >
-              <span className="w-8 text-foreground/50">#{p.number}</span>
-              <span className="flex-1">{p.name}</span>
-              <span className="w-16 text-foreground/50">{p.position}</span>
+              <form
+                action={updatePlayerInfo.bind(null, p.id)}
+                className="flex items-center gap-2 flex-1 min-w-0"
+              >
+                <input
+                  name="number"
+                  type="number"
+                  min={1}
+                  defaultValue={p.number}
+                  className="w-14 rounded-md bg-black/30 border border-white/10 px-2 py-1 text-xs"
+                />
+                <input
+                  name="name"
+                  defaultValue={p.name}
+                  required
+                  className="flex-1 min-w-20 rounded-md bg-black/30 border border-white/10 px-2 py-1 text-xs"
+                />
+                <input
+                  name="position"
+                  defaultValue={p.position}
+                  required
+                  className="w-14 rounded-md bg-black/30 border border-white/10 px-2 py-1 text-xs"
+                />
+                <button type="submit" className="text-xs text-foreground/50 hover:text-accent">
+                  บันทึก
+                </button>
+              </form>
               <span className="w-10 text-center text-foreground/70">{appsByPlayer.get(p.id) ?? 0}</span>
               <span className="w-10 text-center text-accent">{goalsByPlayer.get(p.id) ?? 0}</span>
               <span className="w-10 text-center text-yellow-400">{yellowsByPlayer.get(p.id) ?? 0}</span>

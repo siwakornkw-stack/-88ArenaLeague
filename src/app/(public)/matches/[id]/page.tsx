@@ -110,6 +110,7 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
 
   return (
     <div className="flex flex-1 flex-col">
+      {match.status === "LIVE" && <meta httpEquiv="refresh" content="60" />}
       <div className="px-6 md:px-16 py-4 text-sm flex items-center justify-between gap-3 flex-wrap">
         <Link href={`/leagues/${match.leagueId}`} className="text-foreground/60 hover:text-accent">
           ← {match.league.name}

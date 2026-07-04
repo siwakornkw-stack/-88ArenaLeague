@@ -54,6 +54,7 @@ export default async function Home() {
 
   return (
     <div className="flex flex-1 flex-col">
+      {liveMatches.length > 0 && <meta httpEquiv="refresh" content="60" />}
       {liveMatches.length > 0 && (
         <div className="bg-accent overflow-x-auto">
           <div className="flex gap-10 whitespace-nowrap px-6 py-2 font-display font-semibold text-sm text-black">

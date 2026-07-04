@@ -45,12 +45,19 @@ export default async function LeaguesIndexPage() {
                   )}
                   {lg.live > 0 && <span className="text-accent">● {lg.live} แมตช์สด</span>}
                 </div>
-                {lg.leaderName && (
-                  <div className="mt-4 flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm">
-                    <span className="font-display font-semibold text-foreground">
-                      {lg.leaderName}
-                    </span>
-                    <span className="text-foreground/50 text-xs">จ่าฝูง · {lg.leaderPoints} แต้ม</span>
+                {lg.top3.length > 0 && (
+                  <div className="mt-4 rounded-lg bg-white/5 px-3 py-2 text-sm space-y-1">
+                    {lg.top3.map((t, i) => (
+                      <div key={t.name} className="flex items-center justify-between">
+                        <span className="text-foreground/80">
+                          <span className="font-display font-bold text-foreground/40 mr-2">
+                            {i + 1}
+                          </span>
+                          {t.name}
+                        </span>
+                        <span className="text-foreground/50 text-xs">{t.points} แต้ม</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </Link>

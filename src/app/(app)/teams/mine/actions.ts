@@ -129,6 +129,27 @@ export async function addPlayer(teamId: string, formData: FormData) {
   revalidatePath("/teams/mine");
 }
 
+export async function updatePlayerInfo(playerId: string, formData: FormData) {
+  const player = await assertManagesPlayer(playerId);
+
+  const name = String(formData.get("name") ?? "").trim();
+  const number = Number(formData.get("number"));
+  const position = String(formData.get("position") ?? "").trim();
+  if (!name || !position || !Number.isInteger(number) || number <= 0) {
+    throw new Error("Invalid player data");
+  }
+
+  if (number !== player.number) {
+    const duplicate = await prisma.player.findFirst({
+      where: { teamId: player.teamId, number, id: { not: playerId } },
+    });
+    if (duplicate) throw new Error("มีนักเตะเบอร์นี้อยู่แล้ว");
+  }
+
+  await prisma.player.update({ where: { id: playerId }, data: { name, number, position } });
+  revalidatePath("/teams/mine");
+}
+
 export async function updatePlayerStatus(playerId: string, formData: FormData) {
   await assertManagesPlayer(playerId);
 
