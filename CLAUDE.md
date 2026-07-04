@@ -19,6 +19,7 @@ Thai-language football league management app, branded **88ArenaLeague**. Round-r
 - Roles: `SUPER_ADMIN` (manage all leagues) vs `TEAM_MANAGER` (own team only, redirected to `/teams/mine`).
 - UI copy is Thai. Code, comments, commit messages stay English.
 - Same "computed on the fly" rule applies to the live match clock: `Match.minute` is only written once, at `endMatch` (final length). While `status === "LIVE"`, the displayed minute is derived from the `KICK_OFF` event's `createdAt` via `computeLiveMinute()` in `src/lib/matchClock.ts` — never read `match.minute` directly for a live match.
+- Both `/matches/[id]` and `/admin/matches/[id]` render the event timeline via the shared `src/components/match-timeline.tsx`, which splits events by `MatchEvent.side` (HOME left / AWAY right / NEUTRAL centered) — KICK_OFF/HALF_TIME/FULL_TIME are NEUTRAL.
 
 ## Routing
 
@@ -49,5 +50,7 @@ npx tsc --noEmit
 Git: `https://github.com/siwakornkw-stack/-88ArenaLeague.git`, branch `main`.
 
 Vercel project `league-manager-app`, scope `siwakornkw-stacks-projects`, aliased at `league-manager-app.vercel.app`. DB is Neon, provisioned via Vercel Marketplace — env vars already synced to all three Vercel environments.
+
+`npx prisma db seed` (`prisma/seed.ts`) is destructive: it wipes all league/team/player/match/event/lineup rows (users are kept, upserted) then rebuilds a deterministic demo dataset via a seeded PRNG — 4 leagues, played + live + scheduled rounds, goal/card events, lineups, injured/banned player statuses, and venues. `DATABASE_URL` is the same Neon DB used by prod, so seeding overwrites production league data.
 
 Seed accounts: `admin@leaguehub.dev` / `admin1234` (SUPER_ADMIN), `manager@leaguehub.dev` / `manager1234` (TEAM_MANAGER).
