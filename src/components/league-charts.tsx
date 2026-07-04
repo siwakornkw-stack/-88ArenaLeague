@@ -2,7 +2,13 @@ const W = 640;
 const H = 220;
 const PAD = { top: 16, right: 16, bottom: 28, left: 32 };
 
-export function GoalsBarChart({ rounds, values }: { rounds: number[]; values: number[] }) {
+export function GoalsBarChart({
+  rounds,
+  values,
+}: {
+  rounds: (number | string)[];
+  values: number[];
+}) {
   const max = Math.max(...values, 1);
   const innerW = W - PAD.left - PAD.right;
   const innerH = H - PAD.top - PAD.bottom;

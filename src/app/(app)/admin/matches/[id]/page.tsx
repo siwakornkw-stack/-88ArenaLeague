@@ -16,6 +16,7 @@ import {
   halfTime,
   reopenMatch,
   deleteEvent,
+  quickStat,
 } from "./actions";
 
 const STAT_FIELDS = [
@@ -78,7 +79,12 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
   const updateMatchInfoWithId = updateMatchInfo.bind(null, id);
   const halfTimeWithId = halfTime.bind(null, id);
   const deleteEventWithId = deleteEvent.bind(null, id);
+  const quickStatWithId = quickStat.bind(null, id);
   const hasHalfTime = match.events.some((e) => e.type === "HALF_TIME");
+  const homeLineupCount = match.lineups.filter((l) =>
+    match.homeTeam.players.some((p) => p.id === l.playerId)
+  ).length;
+  const awayLineupCount = match.lineups.length - homeLineupCount;
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -118,7 +124,39 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             LIVE · {hasHalfTime ? "ครึ่งหลัง" : "ครึ่งแรก"} {liveMinute}&apos;
           </p>
         )}
+        <p className="text-center text-xs text-foreground/40">
+          รายชื่อส่งแล้ว: {match.homeTeam.name} {homeLineupCount} คน · {match.awayTeam.name}{" "}
+          {awayLineupCount} คน
+        </p>
       </div>
+
+      {match.status === "LIVE" && (
+        <div className="rounded-lg bg-card border border-white/10 p-4">
+          <h3 className="text-sm font-semibold mb-2">สถิติด่วน (+1)</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {(["HOME", "AWAY"] as const).map((side) => (
+              <div key={side} className="flex flex-wrap gap-2">
+                <span className="text-xs text-foreground/50 w-full">
+                  {side === "HOME" ? match.homeTeam.name : match.awayTeam.name}
+                </span>
+                {[
+                  { stat: "Shots", label: "ยิง" },
+                  { stat: "Corners", label: "เตะมุม" },
+                  { stat: "Fouls", label: "ฟาวล์" },
+                ].map(({ stat, label }) => (
+                  <form key={stat} action={quickStatWithId}>
+                    <input type="hidden" name="side" value={side} />
+                    <input type="hidden" name="stat" value={stat} />
+                    <button type="submit" className="rounded-md bg-white/10 px-3 py-1.5 text-xs">
+                      +{label}
+                    </button>
+                  </form>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <form action={updateMatchInfoWithId} className="flex flex-wrap items-end gap-2">
         <div className="flex-1 min-w-40 space-y-1">

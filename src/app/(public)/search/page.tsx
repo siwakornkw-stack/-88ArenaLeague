@@ -10,7 +10,7 @@ export default async function SearchPage({
   const { q = "" } = await searchParams;
   const query = q.trim();
 
-  const [teams, players] =
+  const [teams, players, leagues] =
     query.length >= 2
       ? await Promise.all([
           prisma.team.findMany({
@@ -23,8 +23,13 @@ export default async function SearchPage({
             include: { team: { include: { league: true } } },
             take: 20,
           }),
+          prisma.league.findMany({
+            where: { name: { contains: query, mode: "insensitive" }, status: { not: "DRAFT" } },
+            include: { teams: { select: { id: true } } },
+            take: 10,
+          }),
         ])
-      : [[], []];
+      : [[], [], []];
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -51,8 +56,28 @@ export default async function SearchPage({
       </div>
 
       <div className="px-6 md:px-16 py-8 flex-1 space-y-8">
-        {query.length >= 2 && teams.length === 0 && players.length === 0 && (
+        {query.length >= 2 && teams.length === 0 && players.length === 0 && leagues.length === 0 && (
           <p className="text-foreground/50 text-sm">ไม่พบผลลัพธ์สำหรับ &quot;{query}&quot;</p>
+        )}
+
+        {leagues.length > 0 && (
+          <div>
+            <h2 className="font-display font-bold mb-3">ลีก ({leagues.length})</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {leagues.map((lg) => (
+                <Link
+                  key={lg.id}
+                  href={`/leagues/${lg.id}`}
+                  className="rounded-xl border border-white/10 bg-card p-4 hover:border-accent/50"
+                >
+                  <div className="font-display font-semibold">{lg.name}</div>
+                  <div className="text-xs text-foreground/45">
+                    ฤดูกาล {lg.seasonYear} · {lg.teams.length} ทีม
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
         )}
 
         {teams.length > 0 && (

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
-import { computeStandings } from "@/lib/standings";
+import { computeStandings, computeStandingsUpTo } from "@/lib/standings";
 import {
   addPlayer,
   updatePlayerInfo,
@@ -98,6 +98,16 @@ export default async function MyTeamPage({
   ]);
 
   const teamStanding = standings.find((row) => row.teamId === team.id) ?? null;
+  const teamRank = standings.findIndex((row) => row.teamId === team.id) + 1;
+  let rankDelta = 0;
+  const lastFinRound = teamMatches
+    .filter((m) => m.status === "FINISHED" && m.stage === "LEAGUE")
+    .reduce((max, m) => Math.max(max, m.round), 0);
+  if (lastFinRound >= 2) {
+    const prev = await computeStandingsUpTo(team.leagueId, lastFinRound);
+    const prevIdx = prev.findIndex((r) => r.teamId === team.id);
+    if (prevIdx >= 0 && teamRank > 0) rankDelta = prevIdx - (teamRank - 1);
+  }
   const appsByPlayer = new Map(appsGrouped.map((g) => [g.playerId, g._count.playerId]));
   const goalsByPlayer = new Map<string, number>();
   const yellowsByPlayer = new Map<string, number>();
@@ -167,7 +177,16 @@ export default async function MyTeamPage({
 
       {teamStanding && (
         <div className="rounded-lg bg-card border border-white/10 p-5">
-          <h2 className="font-semibold mb-3">ฟอร์มทีม</h2>
+          <h2 className="font-semibold mb-3">
+            ฟอร์มทีม
+            {teamRank > 0 && (
+              <span className="ml-2 text-sm text-foreground/60">
+                · อันดับ {teamRank}
+                {rankDelta > 0 && <span className="text-accent ml-1">▲{rankDelta}</span>}
+                {rankDelta < 0 && <span className="text-red-400 ml-1">▼{-rankDelta}</span>}
+              </span>
+            )}
+          </h2>
           <div className="flex flex-wrap gap-6 text-sm mb-3">
             <div>
               <div className="font-display font-extrabold text-xl text-accent">
@@ -207,7 +226,15 @@ export default async function MyTeamPage({
 
       {teamMatches.length > 0 && (
         <div className="rounded-lg bg-card border border-white/10 p-5">
-          <h2 className="font-semibold mb-3">โปรแกรมและผลของทีม</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold">โปรแกรมและผลของทีม</h2>
+            <a
+              href={`/leagues/${team.leagueId}/calendar?team=${team.id}`}
+              className="text-xs text-foreground/60 hover:text-accent"
+            >
+              📅 โหลดปฏิทินทีม (.ics)
+            </a>
+          </div>
           <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
             {teamMatches.map((m) => {
               const finished = m.status === "FINISHED";

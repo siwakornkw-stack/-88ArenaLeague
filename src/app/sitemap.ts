@@ -6,7 +6,7 @@ const BASE = "https://league-manager-app.vercel.app";
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [leagues, teams, matches] = await Promise.all([
+  const [leagues, teams, matches, players] = await Promise.all([
     prisma.league.findMany({ where: { status: { not: "DRAFT" } }, select: { id: true } }),
     prisma.team.findMany({
       where: { league: { status: { not: "DRAFT" } } },
@@ -15,6 +15,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     prisma.match.findMany({
       where: { league: { status: { not: "DRAFT" } } },
       select: { id: true },
+    }),
+    prisma.player.findMany({
+      where: { team: { league: { status: { not: "DRAFT" } } } },
+      select: { id: true, team: { select: { leagueId: true } } },
     }),
   ]);
 
@@ -36,6 +40,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${BASE}/matches/${m.id}`,
       changeFrequency: "hourly" as const,
       priority: 0.7,
+    })),
+    ...players.map((p) => ({
+      url: `${BASE}/leagues/${p.team.leagueId}/players/${p.id}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.4,
     })),
   ];
 }

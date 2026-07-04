@@ -169,6 +169,24 @@ export default async function PublicLeaguePage({
       const [atkTeam, atkGoals] = [...goalsFor.entries()].sort((a, b) => b[1] - a[1])[0];
       records.push({ label: "เกมรุกดีสุด", value: teamName.get(atkTeam) ?? "-", sub: `${atkGoals} ประตู` });
     }
+    const goalsAgainst = new Map<string, number>();
+    const draws = new Map<string, number>();
+    for (const m of finishedLeagueMatches) {
+      goalsAgainst.set(m.homeTeamId, (goalsAgainst.get(m.homeTeamId) ?? 0) + m.awayScore);
+      goalsAgainst.set(m.awayTeamId, (goalsAgainst.get(m.awayTeamId) ?? 0) + m.homeScore);
+      if (m.homeScore === m.awayScore) {
+        draws.set(m.homeTeamId, (draws.get(m.homeTeamId) ?? 0) + 1);
+        draws.set(m.awayTeamId, (draws.get(m.awayTeamId) ?? 0) + 1);
+      }
+    }
+    if (goalsAgainst.size > 0) {
+      const [defTeam, defGoals] = [...goalsAgainst.entries()].sort((a, b) => a[1] - b[1])[0];
+      records.push({ label: "เกมรับดีสุด", value: teamName.get(defTeam) ?? "-", sub: `เสีย ${defGoals} ประตู` });
+    }
+    if (draws.size > 0) {
+      const [drawTeam, drawCount] = [...draws.entries()].sort((a, b) => b[1] - a[1])[0];
+      records.push({ label: "เสมอมากสุด", value: teamName.get(drawTeam) ?? "-", sub: `${drawCount} นัด` });
+    }
   }
 
   const zonesOn = !sideView && !asofRound;
@@ -414,6 +432,7 @@ export default async function PublicLeaguePage({
                     <th className="text-left py-3 px-4">ทีม</th>
                     <th className="text-center">🟨 เหลือง</th>
                     <th className="text-center">🟥 แดง</th>
+                    <th className="text-center">คะแนนแฟร์เพลย์</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -422,6 +441,9 @@ export default async function PublicLeaguePage({
                       <td className="py-3 px-4 font-display font-semibold">{row.teamName}</td>
                       <td className="text-center text-yellow-400">{row.yellow}</td>
                       <td className="text-center text-red-400">{row.red}</td>
+                      <td className="text-center text-foreground/70">
+                        {row.yellow + row.red * 3}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -507,6 +529,13 @@ export default async function PublicLeaguePage({
                 <div className="rounded-xl border border-white/10 bg-card p-5">
                   <h3 className="font-display font-bold mb-3">แต้มสะสม Top 5</h3>
                   <PointsLineChart rounds={charts.rounds} series={charts.topTeams} />
+                </div>
+                <div className="rounded-xl border border-white/10 bg-card p-5 lg:col-span-2">
+                  <h3 className="font-display font-bold mb-3">ประตูรวมต่อทีม</h3>
+                  <GoalsBarChart
+                    rounds={charts.teamGoals.map((t) => t.abbr)}
+                    values={charts.teamGoals.map((t) => t.goals)}
+                  />
                 </div>
               </div>
               {records.length > 0 && (
@@ -844,21 +873,31 @@ export default async function PublicLeaguePage({
                   {STAGE_LABEL[roundMatches[0].stage] ?? `นัดที่ ${round}`}
                 </h3>
                 <div className="space-y-2">
-                  {shown.map((m) => (
+                  {shown.map((m) => {
+                    const isToday = m.kickoffAt.toDateString() === new Date().toDateString();
+                    return (
                     <Link
                       key={m.id}
                       href={`/matches/${m.id}`}
-                      className="flex items-center justify-between rounded-md bg-card border border-white/10 px-4 py-3 hover:border-accent/50"
+                      className={`flex items-center justify-between rounded-md bg-card border px-4 py-3 hover:border-accent/50 ${
+                        isToday ? "border-accent/50" : "border-white/10"
+                      }`}
                     >
                       <span>{m.homeTeam.name}</span>
-                      <span className="text-foreground/50 text-sm">
+                      <span className="text-foreground/50 text-sm flex items-center gap-2">
+                        {isToday && m.status === "SCHEDULED" && (
+                          <span className="text-[10px] rounded-full bg-accent/15 text-accent px-2 py-0.5">
+                            วันนี้
+                          </span>
+                        )}
                         {m.status === "SCHEDULED"
                           ? m.kickoffAt.toLocaleDateString("th-TH")
                           : `${m.homeScore} - ${m.awayScore}`}
                       </span>
                       <span>{m.awayTeam.name}</span>
                     </Link>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
                 );

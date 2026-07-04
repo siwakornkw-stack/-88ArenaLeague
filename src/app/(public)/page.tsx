@@ -30,7 +30,7 @@ const FEATURES = [
 ];
 
 export default async function Home() {
-  const [{ featuredLeagues, leagueCount, teamCount, playerCount, matchCount }, liveMatches, recentResults] =
+  const [{ featuredLeagues, leagueCount, teamCount, playerCount, matchCount }, liveMatches, recentResults, nextUp] =
     await Promise.all([
       getCachedLandingStats(),
       prisma.match.findMany({
@@ -48,6 +48,11 @@ export default async function Home() {
         include: { homeTeam: true, awayTeam: true, league: true },
         orderBy: { kickoffAt: "desc" },
         take: 5,
+      }),
+      prisma.match.findFirst({
+        where: { status: "SCHEDULED", kickoffAt: { gte: new Date() } },
+        include: { homeTeam: true, awayTeam: true, league: true },
+        orderBy: { kickoffAt: "asc" },
       }),
     ]);
 
@@ -110,7 +115,23 @@ export default async function Home() {
             <Stat value={teamCount} label="ทีมทั้งหมด" />
             <Stat value={playerCount} label="นักเตะลงทะเบียน" />
             <Stat value={matchCount} label="แมตช์ที่บันทึกผล" />
+            <Stat value={liveMatches.length} label="กำลังแข่งสด" />
           </div>
+
+          {nextUp && (
+            <Link
+              href={`/matches/${nextUp.id}`}
+              className="mt-8 inline-flex items-center gap-3 rounded-xl border border-white/15 bg-card/60 px-4 py-3 text-sm hover:border-accent/50"
+            >
+              <span className="text-xs text-foreground/45">นัดถัดไป</span>
+              <span className="font-display font-semibold">
+                {nextUp.homeTeam.name} vs {nextUp.awayTeam.name}
+              </span>
+              <span className="text-xs text-accent">
+                {nextUp.kickoffAt.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
+              </span>
+            </Link>
+          )}
         </div>
       </section>
 
@@ -195,10 +216,24 @@ export default async function Home() {
         </div>
       </section>
 
-      <footer className="px-6 md:px-16 py-8 flex items-center justify-between border-t border-white/10 text-sm">
+      <footer className="px-6 md:px-16 py-8 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 text-sm">
         <span className="font-display italic font-bold text-foreground">
           88ARENA<span className="text-accent">LEAGUE</span>
         </span>
+        <nav className="flex gap-5 text-xs text-foreground/55">
+          <Link href="/leagues" className="hover:text-accent">
+            ลีกทั้งหมด
+          </Link>
+          <Link href="/search" className="hover:text-accent">
+            ค้นหา
+          </Link>
+          <Link href="/champions" className="hover:text-accent">
+            หอเกียรติยศ
+          </Link>
+          <Link href="/login" className="hover:text-accent">
+            เข้าสู่ระบบ
+          </Link>
+        </nav>
         <span className="text-foreground/40 text-xs">© 2026 88ArenaLeague — แพลตฟอร์มจัดการลีกฟุตบอล</span>
       </footer>
 

@@ -17,7 +17,7 @@ export default async function PublicPlayerPage({
   });
   if (!player) notFound();
 
-  const [apps, events] = await Promise.all([
+  const [apps, events, mvpCount] = await Promise.all([
     prisma.matchLineup.count({
       where: { playerId, match: { status: { in: ["LIVE", "FINISHED"] } } },
     }),
@@ -26,6 +26,7 @@ export default async function PublicPlayerPage({
       include: { match: { include: { homeTeam: true, awayTeam: true } } },
       orderBy: [{ match: { kickoffAt: "desc" } }, { minute: "asc" }],
     }),
+    prisma.match.count({ where: { mvpPlayerId: playerId } }),
   ]);
 
   const goals = events.filter((e) => e.type === "GOAL").length;
@@ -81,6 +82,8 @@ export default async function PublicPlayerPage({
           <Stat value={goals} label="ประตู" />
           <Stat value={yellows} label="ใบเหลือง" />
           <Stat value={reds} label="ใบแดง" />
+          <Stat value={mvpCount} label="MVP" />
+          <Stat value={apps > 0 ? Number((goals / apps).toFixed(2)) : 0} label="ประตู/นัด" />
         </div>
 
         <div className="rounded-xl border border-white/10 bg-card p-5">

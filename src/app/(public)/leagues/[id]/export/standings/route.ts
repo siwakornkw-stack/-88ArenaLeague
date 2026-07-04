@@ -1,18 +1,24 @@
 import { prisma } from "@/lib/db";
-import { computeStandings } from "@/lib/standings";
+import { computeStandings, computeHomeAwayStandings } from "@/lib/standings";
 
 function csvCell(value: string | number) {
   const s = String(value);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const side = new URL(req.url).searchParams.get("side");
 
   const league = await prisma.league.findUnique({ where: { id } });
   if (!league) return new Response("Not found", { status: 404 });
 
-  const standings = await computeStandings(id);
+  const standings =
+    side === "home"
+      ? await computeHomeAwayStandings(id, "HOME")
+      : side === "away"
+        ? await computeHomeAwayStandings(id, "AWAY")
+        : await computeStandings(id);
   const rows = [
     ["อันดับ", "ทีม", "แข่ง", "ชนะ", "เสมอ", "แพ้", "ได้", "เสีย", "ผลต่าง", "แต้ม"],
     ...standings.map((r, i) => [

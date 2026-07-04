@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
+import { getDiscipline } from "@/lib/discipline";
 import { TeamBadge } from "@/components/team-badge";
 import { MobileNav } from "@/components/mobile-nav";
 
@@ -32,6 +33,18 @@ export default async function ComparePage({
   const ready = teamA && teamB && teamA.id !== teamB.id;
 
   const standings = ready ? await computeStandings(id) : [];
+  const discipline = ready ? await getDiscipline(id) : null;
+  const leagueFinished = ready
+    ? await prisma.match.findMany({
+        where: { leagueId: id, status: "FINISHED", stage: "LEAGUE" },
+      })
+    : [];
+  const cleanSheetsOf = (teamId: string) =>
+    leagueFinished.filter((m) =>
+      m.homeTeamId === teamId ? m.awayScore === 0 : m.awayTeamId === teamId ? m.homeScore === 0 : false
+    ).length;
+  const discA = teamA ? discipline?.teams.find((t) => t.teamId === teamA.id) : null;
+  const discB = teamB ? discipline?.teams.find((t) => t.teamId === teamB.id) : null;
   const rowA = ready ? standings.find((r) => r.teamId === teamA.id) ?? null : null;
   const rowB = ready ? standings.find((r) => r.teamId === teamB.id) ?? null : null;
   const rankA = ready ? standings.findIndex((r) => r.teamId === teamA.id) + 1 : 0;
@@ -77,6 +90,12 @@ export default async function ComparePage({
           { label: "แต้ม", a: `${rowA.points}`, b: `${rowB.points}` },
           { label: "ชนะ/เสมอ/แพ้", a: `${rowA.won}/${rowA.drawn}/${rowA.lost}`, b: `${rowB.won}/${rowB.drawn}/${rowB.lost}` },
           { label: "ได้-เสีย", a: `${rowA.goalsFor}-${rowA.goalsAgainst}`, b: `${rowB.goalsFor}-${rowB.goalsAgainst}` },
+          { label: "คลีนชีต", a: `${cleanSheetsOf(teamA!.id)}`, b: `${cleanSheetsOf(teamB!.id)}` },
+          {
+            label: "🟨/🟥",
+            a: `${discA?.yellow ?? 0}/${discA?.red ?? 0}`,
+            b: `${discB?.yellow ?? 0}/${discB?.red ?? 0}`,
+          },
         ]
       : [];
 

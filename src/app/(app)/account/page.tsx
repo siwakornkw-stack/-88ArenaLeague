@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/db";
 import { changePassword } from "./actions";
 
 const STATUS_MESSAGE: Record<string, { text: string; ok: boolean }> = {
@@ -19,6 +20,10 @@ export default async function AccountPage({
 
   const { status } = await searchParams;
   const message = status ? STATUS_MESSAGE[status] : null;
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    include: { managedTeams: { select: { name: true } } },
+  });
 
   return (
     <div className="max-w-sm space-y-6">
@@ -26,6 +31,28 @@ export default async function AccountPage({
         <h1 className="font-display font-bold text-3xl">บัญชีของฉัน</h1>
         <p className="text-foreground/60 mt-1">{session.name}</p>
       </div>
+
+      {user && (
+        <div className="rounded-lg bg-card border border-white/10 p-5 text-sm space-y-1.5">
+          <p>
+            <span className="text-foreground/50">อีเมล:</span> {user.email}
+          </p>
+          <p>
+            <span className="text-foreground/50">บทบาท:</span>{" "}
+            {user.role === "SUPER_ADMIN" ? "แอดมิน" : "ผู้จัดการทีม"}
+          </p>
+          {user.managedTeams.length > 0 && (
+            <p>
+              <span className="text-foreground/50">ทีมที่ดูแล:</span>{" "}
+              {user.managedTeams.map((t) => t.name).join(", ")}
+            </p>
+          )}
+          <p>
+            <span className="text-foreground/50">สมาชิกตั้งแต่:</span>{" "}
+            {user.createdAt.toLocaleDateString("th-TH", { dateStyle: "long" })}
+          </p>
+        </div>
+      )}
 
       <div className="rounded-lg bg-card border border-white/10 p-5">
         <h2 className="font-semibold mb-4">เปลี่ยนรหัสผ่าน</h2>

@@ -1,11 +1,63 @@
 import Link from "next/link";
-import { getFeaturedLeagues } from "@/lib/featuredLeagues";
+import { prisma } from "@/lib/db";
+import { getFeaturedLeagues, type FeaturedLeague } from "@/lib/featuredLeagues";
 import { MobileNav } from "@/components/mobile-nav";
 
 export const dynamic = "force-dynamic";
 
-export default async function LeaguesIndexPage() {
-  const leagues = await getFeaturedLeagues(100);
+function LeagueCard({ lg }: { lg: FeaturedLeague }) {
+  return (
+    <Link
+      href={`/leagues/${lg.id}`}
+      className="rounded-2xl border border-white/10 bg-card p-5 hover:border-accent/50"
+    >
+      <div className="font-display italic font-extrabold text-xl text-foreground">{lg.name}</div>
+      <div className="mt-1 text-xs text-foreground/45">{lg.type}</div>
+      <div className="mt-3 flex flex-wrap gap-4 text-xs text-foreground/60">
+        <span>⚽ {lg.teams} ทีม</span>
+        {lg.totalRounds > 0 ? (
+          <span>📅 นัดที่ {lg.round}/{lg.totalRounds}</span>
+        ) : (
+          <span>ยังไม่เริ่มแข่ง</span>
+        )}
+        {lg.live > 0 && <span className="text-accent">● {lg.live} แมตช์สด</span>}
+      </div>
+      {lg.top3.length > 0 && (
+        <div className="mt-4 rounded-lg bg-white/5 px-3 py-2 text-sm space-y-1">
+          {lg.top3.map((t, i) => (
+            <div key={t.name} className="flex items-center justify-between">
+              <span className="text-foreground/80">
+                <span className="font-display font-bold text-foreground/40 mr-2">{i + 1}</span>
+                {t.name}
+              </span>
+              <span className="text-foreground/50 text-xs">{t.points} แต้ม</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Link>
+  );
+}
+
+export default async function LeaguesIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q = "" } = await searchParams;
+  const query = q.trim();
+
+  const [leagues, finishedIds] = await Promise.all([
+    getFeaturedLeagues(100),
+    prisma.league.findMany({ where: { status: "FINISHED" }, select: { id: true } }),
+  ]);
+  const finishedSet = new Set(finishedIds.map((l) => l.id));
+
+  const filtered = query
+    ? leagues.filter((lg) => lg.name.toLowerCase().includes(query.toLowerCase()))
+    : leagues;
+  const active = filtered.filter((lg) => !finishedSet.has(lg.id));
+  const finished = filtered.filter((lg) => finishedSet.has(lg.id));
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -18,50 +70,48 @@ export default async function LeaguesIndexPage() {
         <h1 className="font-display italic font-black text-2xl md:text-4xl text-foreground">
           ลีก<span className="text-accent">ทั้งหมด</span>
         </h1>
-        <p className="mt-1 text-sm text-foreground/55">{leagues.length} ลีกที่เปิดให้ชม</p>
+        <p className="mt-1 text-sm text-foreground/55">{filtered.length} ลีกที่เปิดให้ชม</p>
+        <form method="get" className="mt-4 flex gap-2 max-w-sm">
+          <input
+            name="q"
+            defaultValue={query}
+            placeholder="ค้นหาชื่อลีก"
+            className="flex-1 rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <button type="submit" className="rounded-md bg-accent text-black font-semibold px-5 py-2 text-sm">
+            ค้นหา
+          </button>
+        </form>
       </div>
 
-      <div className="px-6 md:px-16 py-8 flex-1">
-        {leagues.length === 0 ? (
-          <p className="text-foreground/50 text-sm">ยังไม่มีลีกที่เปิดให้ชมสาธารณะ</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {leagues.map((lg) => (
-              <Link
-                key={lg.id}
-                href={`/leagues/${lg.id}`}
-                className="rounded-2xl border border-white/10 bg-card p-5 hover:border-accent/50"
-              >
-                <div className="font-display italic font-extrabold text-xl text-foreground">
-                  {lg.name}
-                </div>
-                <div className="mt-1 text-xs text-foreground/45">{lg.type}</div>
-                <div className="mt-3 flex flex-wrap gap-4 text-xs text-foreground/60">
-                  <span>⚽ {lg.teams} ทีม</span>
-                  {lg.totalRounds > 0 ? (
-                    <span>📅 นัดที่ {lg.round}/{lg.totalRounds}</span>
-                  ) : (
-                    <span>ยังไม่เริ่มแข่ง</span>
-                  )}
-                  {lg.live > 0 && <span className="text-accent">● {lg.live} แมตช์สด</span>}
-                </div>
-                {lg.top3.length > 0 && (
-                  <div className="mt-4 rounded-lg bg-white/5 px-3 py-2 text-sm space-y-1">
-                    {lg.top3.map((t, i) => (
-                      <div key={t.name} className="flex items-center justify-between">
-                        <span className="text-foreground/80">
-                          <span className="font-display font-bold text-foreground/40 mr-2">
-                            {i + 1}
-                          </span>
-                          {t.name}
-                        </span>
-                        <span className="text-foreground/50 text-xs">{t.points} แต้ม</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Link>
-            ))}
+      <div className="px-6 md:px-16 py-8 flex-1 space-y-10">
+        {filtered.length === 0 && (
+          <p className="text-foreground/50 text-sm">
+            {query ? `ไม่พบลีกชื่อ "${query}"` : "ยังไม่มีลีกที่เปิดให้ชมสาธารณะ"}
+          </p>
+        )}
+
+        {active.length > 0 && (
+          <div>
+            <h2 className="font-display font-bold text-lg mb-4">กำลังแข่งขัน ({active.length})</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {active.map((lg) => (
+                <LeagueCard key={lg.id} lg={lg} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {finished.length > 0 && (
+          <div>
+            <h2 className="font-display font-bold text-lg mb-4 text-foreground/70">
+              จบฤดูกาลแล้ว ({finished.length})
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {finished.map((lg) => (
+                <LeagueCard key={lg.id} lg={lg} />
+              ))}
+            </div>
           </div>
         )}
       </div>

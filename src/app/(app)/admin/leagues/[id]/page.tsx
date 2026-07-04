@@ -118,7 +118,23 @@ export default async function LeagueDetailPage({
           <p className="text-foreground/60 mt-1">
             ฤดูกาล {league.seasonYear} · {league.teams.length} ทีม ·{" "}
             {STATUS_LABEL[league.status]}
+            {matches.length > 0 && (
+              <>
+                {" "}
+                · จบ {matches.filter((m) => m.status === "FINISHED").length}/{matches.length} แมตช์
+              </>
+            )}
           </p>
+          {matches.length > 0 && (
+            <div className="mt-2 h-1.5 w-64 rounded-full bg-white/5 overflow-hidden">
+              <div
+                className="h-full bg-accent rounded-full"
+                style={{
+                  width: `${Math.round((matches.filter((m) => m.status === "FINISHED").length / matches.length) * 100)}%`,
+                }}
+              />
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {league.status !== "FINISHED" &&
@@ -262,7 +278,15 @@ export default async function LeagueDetailPage({
               </thead>
               <tbody>
                 {standings.map((row, i) => (
-                  <tr key={row.teamId} className="border-t border-white/5">
+                  <tr
+                    key={row.teamId}
+                    className={`border-t border-white/5 ${
+                      i < league.promotedCount
+                        ? "border-l-2 border-l-accent"
+                        : league.relegatedCount > 0 && i >= standings.length - league.relegatedCount
+                          ? "border-l-2 border-l-red-500"
+                          : ""
+                    }`}>
                     <td className="py-2">
                       {i + 1}. {row.teamName}
                     </td>

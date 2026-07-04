@@ -55,7 +55,12 @@ export default async function DashboardPage() {
       where: {
         OR: [{ status: "LIVE" }, { status: "SCHEDULED", kickoffAt: { lt: now } }],
       },
-      include: { homeTeam: true, awayTeam: true, league: true },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+        league: true,
+        events: { where: { type: "KICK_OFF" } },
+      },
       orderBy: { kickoffAt: "asc" },
       take: 8,
     }),
@@ -85,7 +90,7 @@ export default async function DashboardPage() {
       key: `match-${m.id}`,
       label:
         m.status === "LIVE"
-          ? `บันทึกผล ${m.homeTeam.name} vs ${m.awayTeam.name}`
+          ? `บันทึกผล ${m.homeTeam.name} vs ${m.awayTeam.name} (สด ${m.events[0] ? computeLiveMinute(m.events[0].createdAt) : 0}')`
           : `เริ่มการแข่งขัน ${m.homeTeam.name} vs ${m.awayTeam.name}`,
       href: `/admin/matches/${m.id}`,
     })),
@@ -96,6 +101,35 @@ export default async function DashboardPage() {
       <div>
         <h1 className="font-display font-bold text-3xl">ภาพรวมลีก</h1>
         <p className="text-foreground/60 mt-1">จัดการลีกฟุตบอลทั้งหมดของคุณ</p>
+      </div>
+
+      <div className="flex flex-wrap gap-6 rounded-lg bg-card border border-white/10 p-5 text-sm">
+        <div>
+          <div className="font-display font-extrabold text-2xl text-accent">{leagues.length}</div>
+          <div className="text-xs text-foreground/55">ลีกทั้งหมด</div>
+        </div>
+        <div>
+          <div className="font-display font-extrabold text-2xl text-accent">
+            {leagues.reduce((sum, lg) => sum + lg.teams.length, 0)}
+          </div>
+          <div className="text-xs text-foreground/55">ทีม</div>
+        </div>
+        <div>
+          <div className="font-display font-extrabold text-2xl text-accent">
+            {todayMatches.length}
+          </div>
+          <div className="text-xs text-foreground/55">แมตช์วันนี้</div>
+        </div>
+        <div>
+          <div className="font-display font-extrabold text-2xl text-accent">
+            {attentionMatches.filter((m) => m.status === "LIVE").length}
+          </div>
+          <div className="text-xs text-foreground/55">กำลังแข่งสด</div>
+        </div>
+        <div>
+          <div className="font-display font-extrabold text-2xl text-accent">{users.length}</div>
+          <div className="text-xs text-foreground/55">ผู้ใช้ระบบ</div>
+        </div>
       </div>
 
       {tasks.length > 0 && (

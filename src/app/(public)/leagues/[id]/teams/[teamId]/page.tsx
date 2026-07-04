@@ -75,8 +75,28 @@ export default async function PublicTeamPage({
     if (g.type === "YELLOW_CARD") yellowsByPlayer.set(g.playerId, g._count.playerId);
   }
 
-  const finished = matches.filter((m) => m.status === "FINISHED").slice(-10).reverse();
+  const allFinished = matches.filter((m) => m.status === "FINISHED");
+  const finished = allFinished.slice(-10).reverse();
   const upcoming = matches.filter((m) => m.status !== "FINISHED").slice(0, 5);
+
+  const cleanSheets = allFinished.filter((m) =>
+    m.homeTeamId === teamId ? m.awayScore === 0 : m.homeScore === 0
+  ).length;
+
+  const oppCount = new Map<string, { wins: number; draws: number; losses: number; games: number; name: string }>();
+  for (const m of allFinished) {
+    const oppId = m.homeTeamId === teamId ? m.awayTeamId : m.homeTeamId;
+    const oppName = m.homeTeamId === teamId ? m.awayTeam.name : m.homeTeam.name;
+    const gf = m.homeTeamId === teamId ? m.homeScore : m.awayScore;
+    const ga = m.homeTeamId === teamId ? m.awayScore : m.homeScore;
+    const rec = oppCount.get(oppId) ?? { wins: 0, draws: 0, losses: 0, games: 0, name: oppName };
+    rec.games++;
+    if (gf > ga) rec.wins++;
+    else if (gf < ga) rec.losses++;
+    else rec.draws++;
+    oppCount.set(oppId, rec);
+  }
+  const rival = [...oppCount.values()].sort((a, b) => b.games - a.games)[0] ?? null;
 
   const resultFor = (m: (typeof matches)[number]): "W" | "D" | "L" => {
     const isHome = m.homeTeamId === teamId;
@@ -138,6 +158,21 @@ export default async function PublicTeamPage({
             <Stat value={row.lost} label="แพ้" />
             <Stat value={`${row.goalsFor}-${row.goalsAgainst}`} label="ได้-เสีย" />
             <Stat value={row.points} label="แต้ม" />
+            <Stat value={cleanSheets} label="คลีนชีต" />
+            <Stat
+              value={row.played > 0 ? (row.goalsFor / row.played).toFixed(1) : "-"}
+              label="ประตูเฉลี่ย/นัด"
+            />
+          </div>
+        )}
+
+        {rival && rival.games >= 2 && (
+          <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">
+            ⚔ คู่ปรับที่เจอบ่อยสุด:{" "}
+            <span className="font-display font-bold">{rival.name}</span>{" "}
+            <span className="text-foreground/50 text-xs">
+              เจอกัน {rival.games} นัด · ชนะ {rival.wins} เสมอ {rival.draws} แพ้ {rival.losses}
+            </span>
           </div>
         )}
 

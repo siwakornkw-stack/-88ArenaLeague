@@ -4,6 +4,7 @@ export type LeagueCharts = {
   rounds: number[];
   goalsPerRound: number[];
   topTeams: { name: string; color: string; points: number[] }[];
+  teamGoals: { abbr: string; goals: number }[];
 };
 
 export async function getLeagueCharts(leagueId: string): Promise<LeagueCharts | null> {
@@ -44,5 +45,14 @@ export async function getLeagueCharts(leagueId: string): Promise<LeagueCharts | 
     .slice(0, 5)
     .map((t) => ({ name: t.name, color: t.color, points: progression.get(t.id)! }));
 
-  return { rounds, goalsPerRound, topTeams };
+  const gf = new Map<string, number>();
+  for (const m of matches) {
+    gf.set(m.homeTeamId, (gf.get(m.homeTeamId) ?? 0) + m.homeScore);
+    gf.set(m.awayTeamId, (gf.get(m.awayTeamId) ?? 0) + m.awayScore);
+  }
+  const teamGoals = [...teams]
+    .map((t) => ({ abbr: t.abbr, goals: gf.get(t.id) ?? 0 }))
+    .sort((a, b) => b.goals - a.goals);
+
+  return { rounds, goalsPerRound, topTeams, teamGoals };
 }

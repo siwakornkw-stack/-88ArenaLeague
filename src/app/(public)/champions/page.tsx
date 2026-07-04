@@ -50,7 +50,24 @@ export default async function ChampionsPage() {
         <p className="mt-1 text-sm text-foreground/55">แชมป์และดาวซัลโวของทุกฤดูกาลที่จบแล้ว</p>
       </div>
 
-      <div className="px-6 md:px-16 py-8 flex-1">
+      <div className="px-6 md:px-16 py-8 flex-1 space-y-8">
+        {entries.length > 1 &&
+          (() => {
+            const titleCount = new Map<string, number>();
+            for (const e of entries) {
+              if (e.championName)
+                titleCount.set(e.championName, (titleCount.get(e.championName) ?? 0) + 1);
+            }
+            const top = [...titleCount.entries()].sort((a, b) => b[1] - a[1])[0];
+            return top && top[1] > 1 ? (
+              <div className="rounded-xl border border-accent/30 bg-card p-4 max-w-md text-sm">
+                👑 คว้าแชมป์มากสุด:{" "}
+                <span className="font-display font-bold text-accent">{top[0]}</span> ({top[1]}{" "}
+                สมัย)
+              </div>
+            ) : null;
+          })()}
+
         {entries.length === 0 ? (
           <p className="text-foreground/50 text-sm">ยังไม่มีฤดูกาลที่จบการแข่งขัน</p>
         ) : (

@@ -8,14 +8,18 @@ function esc(s: string) {
   return s.replace(/([,;\\])/g, "\\$1");
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const teamId = new URL(req.url).searchParams.get("team");
 
   const league = await prisma.league.findUnique({ where: { id } });
   if (!league) return new Response("Not found", { status: 404 });
 
   const matches = await prisma.match.findMany({
-    where: { leagueId: id },
+    where: {
+      leagueId: id,
+      ...(teamId ? { OR: [{ homeTeamId: teamId }, { awayTeamId: teamId }] } : {}),
+    },
     include: { homeTeam: true, awayTeam: true },
     orderBy: { kickoffAt: "asc" },
   });

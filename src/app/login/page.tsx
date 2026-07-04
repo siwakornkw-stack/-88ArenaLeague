@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { login, type LoginState } from "./actions";
 
@@ -52,6 +53,10 @@ export default function LoginPage() {
         >
           {pending ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
         </button>
+
+        <Link href="/" className="block text-center text-xs text-foreground/50 hover:text-accent">
+          ← กลับหน้าแรก
+        </Link>
       </form>
     </div>
   );

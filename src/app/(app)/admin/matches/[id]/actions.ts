@@ -149,6 +149,28 @@ export async function addCard(matchId: string, formData: FormData) {
   revalidatePath(`/admin/matches/${matchId}`);
 }
 
+const QUICK_STAT_DATA: Record<string, Record<string, { increment: number }>> = {
+  "HOME:Shots": { homeShots: { increment: 1 } },
+  "AWAY:Shots": { awayShots: { increment: 1 } },
+  "HOME:Corners": { homeCorners: { increment: 1 } },
+  "AWAY:Corners": { awayCorners: { increment: 1 } },
+  "HOME:Fouls": { homeFouls: { increment: 1 } },
+  "AWAY:Fouls": { awayFouls: { increment: 1 } },
+};
+
+export async function quickStat(matchId: string, formData: FormData) {
+  await assertSuperAdmin();
+  if ((await getMatchStatus(matchId)) !== "LIVE") throw new Error("Match is not live");
+
+  const side = getSide(formData);
+  const stat = String(formData.get("stat"));
+  const data = QUICK_STAT_DATA[`${side}:${stat}`];
+  if (!data) throw new Error("Invalid stat");
+
+  await prisma.match.update({ where: { id: matchId }, data });
+  revalidatePath(`/admin/matches/${matchId}`);
+}
+
 export async function updateStats(matchId: string, formData: FormData) {
   await assertSuperAdmin();
   if ((await getMatchStatus(matchId)) === "SCHEDULED") throw new Error("Match has not started");
