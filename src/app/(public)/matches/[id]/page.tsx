@@ -5,6 +5,7 @@ import { computeLiveMinute } from "@/lib/matchClock";
 import { computeStandings } from "@/lib/standings";
 import { buildMatchSummary } from "@/lib/matchSummary";
 import { MatchTimeline } from "@/components/match-timeline";
+import { PitchView } from "@/components/pitch-view";
 import { MobileNav } from "@/components/mobile-nav";
 import { unstable_cache } from "next/cache";
 
@@ -233,6 +234,24 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
             <MatchTimeline events={match.events} />
           </div>
         </div>
+
+        {(homePlayers.length > 0 || awayPlayers.length > 0) && (
+          <div>
+            <h2 className="font-display font-bold mb-4">แผนผังตัวจริง</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <PitchView
+                teamName={match.homeTeam.name}
+                color={match.homeTeam.color}
+                players={homePlayers}
+              />
+              <PitchView
+                teamName={match.awayTeam.name}
+                color={match.awayTeam.color}
+                players={awayPlayers}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <LineupCard teamName={match.homeTeam.name} players={homePlayers} />

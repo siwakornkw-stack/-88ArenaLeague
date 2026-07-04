@@ -28,6 +28,12 @@ enum MatchStatus {
   FINISHED
 }
 
+enum MatchStage {
+  LEAGUE
+  SEMI_FINAL
+  FINAL
+}
+
 enum PlayerStatus {
   ACTIVE
   INJURED
@@ -129,6 +135,7 @@ model Match {
   kickoffAt  DateTime
   venue      String?
   status     MatchStatus   @default(SCHEDULED)
+  stage      MatchStage    @default(LEAGUE)
   homeScore  Int           @default(0)
   awayScore  Int           @default(0)
   minute     Int           @default(0)

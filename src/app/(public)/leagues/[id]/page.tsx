@@ -4,7 +4,14 @@ import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
 import { getTopScorers, getTopAssists } from "@/lib/topScorers";
 import { getDiscipline } from "@/lib/discipline";
+import { getLeagueCharts } from "@/lib/leagueStats";
+import { GoalsBarChart, PointsLineChart } from "@/components/league-charts";
 import { MobileNav } from "@/components/mobile-nav";
+
+const STAGE_LABEL: Record<string, string> = {
+  SEMI_FINAL: "รอบรองชนะเลิศ",
+  FINAL: "นัดชิงชนะเลิศ",
+};
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "ฉบับร่าง",
@@ -60,8 +67,23 @@ export default async function PublicLeaguePage({
     tab === "news"
       ? await prisma.leagueNews.findMany({ where: { leagueId: id }, orderBy: { createdAt: "desc" } })
       : [];
-  const champion = isFinished ? (standings[0] ?? null) : null;
-  const seasonTopScorer = isFinished ? (topScorers[0] ?? null) : null;
+  const charts = tab === "stats" ? await getLeagueCharts(id) : null;
+
+  const finalMatch = matches.find((m) => m.stage === "FINAL" && m.status === "FINISHED") ?? null;
+  let championName: string | null = null;
+  let championNote: string | null = null;
+  if (finalMatch) {
+    const finalDraw = finalMatch.homeScore === finalMatch.awayScore;
+    const finalWinner = finalMatch.homeScore >= finalMatch.awayScore ? finalMatch.homeTeam : finalMatch.awayTeam;
+    championName = finalDraw
+      ? (standings.find((r) => r.teamId === finalMatch.homeTeamId || r.teamId === finalMatch.awayTeamId)?.teamName ?? finalWinner.name)
+      : finalWinner.name;
+    championNote = `ชนะนัดชิง ${finalMatch.homeScore}-${finalMatch.awayScore}`;
+  } else if (isFinished && standings[0]) {
+    championName = standings[0].teamName;
+    championNote = `${standings[0].points} แต้ม · ชนะ ${standings[0].won} จาก ${standings[0].played} นัด`;
+  }
+  const seasonTopScorer = isFinished || finalMatch ? (topScorers[0] ?? null) : null;
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -97,17 +119,15 @@ export default async function PublicLeaguePage({
         )}
       </div>
 
-      {champion && (
+      {championName && (
         <div className="mx-6 md:mx-16 mt-6 rounded-2xl border border-accent/40 bg-gradient-to-r from-[#1a2e12] to-card p-5 flex flex-wrap items-center gap-6">
           <span className="text-4xl">🏆</span>
           <div>
             <div className="text-xs text-foreground/50">แชมป์ฤดูกาล {league.seasonYear}</div>
             <div className="font-display italic font-extrabold text-2xl text-accent">
-              {champion.teamName}
+              {championName}
             </div>
-            <div className="text-xs text-foreground/60">
-              {champion.points} แต้ม · ชนะ {champion.won} จาก {champion.played} นัด
-            </div>
+            {championNote && <div className="text-xs text-foreground/60">{championNote}</div>}
           </div>
           {seasonTopScorer && (
             <div className="ml-auto text-right">
@@ -161,9 +181,24 @@ export default async function PublicLeaguePage({
           >
             ข่าวสาร
           </Link>
+          <Link
+            href={`/leagues/${id}?tab=stats`}
+            className={`px-4 py-2 text-sm font-display font-semibold ${
+              tab === "stats" ? "border-b-2 border-accent text-accent" : "text-foreground/60"
+            }`}
+          >
+            กราฟ
+          </Link>
         </div>
 
         {tab === "teams" ? (
+          <div className="space-y-4">
+          <Link
+            href={`/leagues/${id}/compare`}
+            className="inline-block rounded-md border border-white/20 px-4 py-2 text-sm text-foreground/75 hover:border-accent/50 hover:text-accent"
+          >
+            ⚖ เปรียบเทียบทีม
+          </Link>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {league.teams.map((team) => (
               <Link
@@ -186,6 +221,7 @@ export default async function PublicLeaguePage({
             {league.teams.length === 0 && (
               <p className="text-foreground/50 text-sm">ยังไม่มีทีมในลีกนี้</p>
             )}
+          </div>
           </div>
         ) : tab === "discipline" && discipline ? (
           <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
@@ -232,6 +268,21 @@ export default async function PublicLeaguePage({
               </div>
             </div>
           </div>
+        ) : tab === "stats" ? (
+          charts ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              <div className="rounded-xl border border-white/10 bg-card p-5">
+                <h3 className="font-display font-bold mb-3">ประตูรวมต่อนัด</h3>
+                <GoalsBarChart rounds={charts.rounds} values={charts.goalsPerRound} />
+              </div>
+              <div className="rounded-xl border border-white/10 bg-card p-5">
+                <h3 className="font-display font-bold mb-3">แต้มสะสม Top 5</h3>
+                <PointsLineChart rounds={charts.rounds} series={charts.topTeams} />
+              </div>
+            </div>
+          ) : (
+            <p className="text-foreground/50 text-sm">ยังไม่มีผลการแข่งขันให้แสดงกราฟ</p>
+          )
         ) : tab === "news" ? (
           <div className="space-y-4 max-w-2xl">
             {news.map((n) => (
@@ -416,7 +467,9 @@ export default async function PublicLeaguePage({
               .filter(([round]) => roundFilter === null || round === roundFilter)
               .map(([round, roundMatches]) => (
               <div key={round}>
-                <h3 className="text-sm text-foreground/50 mb-2">นัดที่ {round}</h3>
+                <h3 className="text-sm text-foreground/50 mb-2">
+                  {STAGE_LABEL[roundMatches[0].stage] ?? `นัดที่ ${round}`}
+                </h3>
                 <div className="space-y-2">
                   {roundMatches.map((m) => (
                     <Link

@@ -18,8 +18,9 @@ export type StandingRow = {
 export async function computeStandings(leagueId: string): Promise<StandingRow[]> {
   const teams = await prisma.team.findMany({ where: { leagueId } });
 
+  // playoff matches (SEMI_FINAL/FINAL) never count toward the league table
   const finishedMatches = await prisma.match.findMany({
-    where: { leagueId, status: "FINISHED" },
+    where: { leagueId, status: "FINISHED", stage: "LEAGUE" },
     orderBy: { kickoffAt: "desc" },
   });
 

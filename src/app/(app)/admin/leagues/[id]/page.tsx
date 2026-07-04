@@ -13,7 +13,14 @@ import {
   createNews,
   deleteNews,
   rescheduleRound,
+  generatePlayoffs,
+  generateFinal,
 } from "./actions";
+
+const STAGE_LABEL: Record<string, string> = {
+  SEMI_FINAL: "รอบรองชนะเลิศ",
+  FINAL: "นัดชิงชนะเลิศ",
+};
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "ฉบับร่าง",
@@ -65,6 +72,12 @@ export default async function LeagueDetailPage({
 
   const standings = tab === "standings" ? await computeStandings(id) : [];
   const generateWithId = generateSchedule.bind(null, id, dayOfWeek ?? 0);
+
+  const leagueStageMatches = matches.filter((m) => m.stage === "LEAGUE");
+  const allLeagueFinished =
+    leagueStageMatches.length > 0 && leagueStageMatches.every((m) => m.status === "FINISHED");
+  const semis = matches.filter((m) => m.stage === "SEMI_FINAL");
+  const finalMatch = matches.find((m) => m.stage === "FINAL") ?? null;
 
   let previewByRound: Map<number, { homeName: string; awayName: string }[]> | null = null;
   let previewDates: Date[] = [];
@@ -277,7 +290,9 @@ export default async function LeagueDetailPage({
                 .map(([round, roundMatches]) => (
                 <div key={round}>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                    <h3 className="text-sm text-foreground/50">นัดที่ {round}</h3>
+                    <h3 className="text-sm text-foreground/50">
+                      {STAGE_LABEL[roundMatches[0].stage] ?? `นัดที่ ${round}`}
+                    </h3>
                     {roundMatches.some((m) => m.status === "SCHEDULED") && (
                       <form action={rescheduleRound.bind(null, id)} className="flex items-center gap-1">
                         <input type="hidden" name="round" value={round} />
@@ -321,6 +336,43 @@ export default async function LeagueDetailPage({
             </div>
           )}
         </>
+      )}
+
+      {allLeagueFinished && (
+        <div className="rounded-lg bg-card border border-accent/30 p-5 space-y-3">
+          <h2 className="font-semibold">เพลย์ออฟ Top 4</h2>
+          {semis.length === 0 ? (
+            <form action={generatePlayoffs.bind(null, id)}>
+              <button
+                type="submit"
+                className="rounded-md bg-accent text-black font-semibold px-4 py-2 text-sm"
+              >
+                ⚔ สร้างรอบรองชนะเลิศ (1 พบ 4, 2 พบ 3)
+              </button>
+            </form>
+          ) : (
+            <>
+              <p className="text-sm text-foreground/60">
+                รอบรองชนะเลิศ {semis.filter((m) => m.status === "FINISHED").length}/{semis.length}{" "}
+                นัดจบแล้ว
+                {finalMatch && " · สร้างนัดชิงแล้ว"}
+              </p>
+              {semis.every((m) => m.status === "FINISHED") && !finalMatch && (
+                <form action={generateFinal.bind(null, id)}>
+                  <button
+                    type="submit"
+                    className="rounded-md bg-accent text-black font-semibold px-4 py-2 text-sm"
+                  >
+                    🏆 สร้างนัดชิงชนะเลิศ
+                  </button>
+                </form>
+              )}
+              <p className="text-xs text-foreground/45">
+                ถ้าเสมอในรอบน็อกเอาต์ ทีมอันดับลีกดีกว่าผ่านเข้ารอบ
+              </p>
+            </>
+          )}
+        </div>
       )}
 
       <div className="rounded-lg bg-card border border-white/10 p-5 space-y-4">
