@@ -161,13 +161,21 @@ export async function deleteEvent(matchId: string, formData: FormData) {
   revalidatePath(`/admin/matches/${matchId}`);
 }
 
-export async function updateVenue(matchId: string, formData: FormData) {
+export async function updateMatchInfo(matchId: string, formData: FormData) {
   await assertSuperAdmin();
+
   const venue = String(formData.get("venue") ?? "").trim();
-  await prisma.match.update({
-    where: { id: matchId },
-    data: { venue: venue || null },
-  });
+  const kickoffRaw = String(formData.get("kickoffAt") ?? "").trim();
+
+  const match = await prisma.match.findUniqueOrThrow({ where: { id: matchId } });
+  const data: { venue: string | null; kickoffAt?: Date } = { venue: venue || null };
+
+  if (kickoffRaw && match.status === "SCHEDULED") {
+    const kickoffAt = new Date(kickoffRaw);
+    if (!isNaN(kickoffAt.getTime())) data.kickoffAt = kickoffAt;
+  }
+
+  await prisma.match.update({ where: { id: matchId }, data });
   revalidatePath(`/admin/matches/${matchId}`);
 }
 

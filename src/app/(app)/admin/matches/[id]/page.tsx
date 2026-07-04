@@ -9,7 +9,7 @@ import {
   addCard,
   endMatch,
   updateStats,
-  updateVenue,
+  updateMatchInfo,
   halfTime,
   deleteEvent,
 } from "./actions";
@@ -58,7 +58,7 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
   const addCardWithId = addCard.bind(null, id);
   const endMatchWithId = endMatch.bind(null, id);
   const updateStatsWithId = updateStats.bind(null, id);
-  const updateVenueWithId = updateVenue.bind(null, id);
+  const updateMatchInfoWithId = updateMatchInfo.bind(null, id);
   const halfTimeWithId = halfTime.bind(null, id);
   const deleteEventWithId = deleteEvent.bind(null, id);
   const hasHalfTime = match.events.some((e) => e.type === "HALF_TIME");
@@ -78,8 +78,8 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
         )}
       </div>
 
-      <form action={updateVenueWithId} className="flex items-end gap-2">
-        <div className="flex-1 space-y-1">
+      <form action={updateMatchInfoWithId} className="flex flex-wrap items-end gap-2">
+        <div className="flex-1 min-w-40 space-y-1">
           <label className="text-sm text-foreground/70" htmlFor="venue">
             สนามแข่ง
           </label>
@@ -91,8 +91,22 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
           />
         </div>
+        {match.status === "SCHEDULED" && (
+          <div className="space-y-1">
+            <label className="text-sm text-foreground/70" htmlFor="kickoffAt">
+              วัน-เวลาแข่ง
+            </label>
+            <input
+              id="kickoffAt"
+              name="kickoffAt"
+              type="datetime-local"
+              defaultValue={match.kickoffAt.toISOString().slice(0, 16)}
+              className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+        )}
         <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
-          บันทึกสนาม
+          บันทึกข้อมูลแมตช์
         </button>
       </form>
 

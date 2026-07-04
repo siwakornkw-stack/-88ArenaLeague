@@ -88,6 +88,11 @@ export async function deletePlayer(playerId: string) {
 export async function setLineup(matchId: string, formData: FormData) {
   const teamId = await getManagedTeamIdForMatch(matchId);
 
+  const match = await prisma.match.findUniqueOrThrow({ where: { id: matchId } });
+  if (match.status !== "SCHEDULED" || match.kickoffAt.getTime() <= Date.now()) {
+    throw new Error("หมดเวลาส่งรายชื่อ แมตช์เริ่มแข่งแล้ว");
+  }
+
   const submittedIds = formData.getAll("playerId").map(String);
   const ownPlayers = await prisma.player.findMany({
     where: { teamId, status: "ACTIVE" },

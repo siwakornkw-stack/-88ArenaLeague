@@ -3,8 +3,14 @@ import type { SessionPayload } from "@/lib/auth";
 import { logout } from "@/app/login/actions";
 
 const NAV_BY_ROLE: Record<SessionPayload["role"], { href: string; label: string }[]> = {
-  SUPER_ADMIN: [{ href: "/dashboard", label: "ภาพรวม" }],
-  TEAM_MANAGER: [{ href: "/teams/mine", label: "ทีมของฉัน" }],
+  SUPER_ADMIN: [
+    { href: "/dashboard", label: "ภาพรวม" },
+    { href: "/account", label: "บัญชี" },
+  ],
+  TEAM_MANAGER: [
+    { href: "/teams/mine", label: "ทีมของฉัน" },
+    { href: "/account", label: "บัญชี" },
+  ],
 };
 
 const ROLE_LABEL: Record<SessionPayload["role"], string> = {

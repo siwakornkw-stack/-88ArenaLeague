@@ -10,7 +10,7 @@ export function PublicNav() {
         <Link href="/" className="hover:text-accent">
           หน้าแรก
         </Link>
-        <Link href="/#leagues" className="hover:text-accent">
+        <Link href="/leagues" className="hover:text-accent">
           ลีกทั้งหมด
         </Link>
       </nav>

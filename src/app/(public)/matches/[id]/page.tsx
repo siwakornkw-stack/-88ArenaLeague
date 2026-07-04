@@ -60,6 +60,30 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
   const homeRank = standings.findIndex((r) => r.teamId === match.homeTeamId) + 1;
   const awayRank = standings.findIndex((r) => r.teamId === match.awayTeamId) + 1;
 
+  const h2h = await prisma.match.findMany({
+    where: {
+      status: "FINISHED",
+      id: { not: match.id },
+      OR: [
+        { homeTeamId: match.homeTeamId, awayTeamId: match.awayTeamId },
+        { homeTeamId: match.awayTeamId, awayTeamId: match.homeTeamId },
+      ],
+    },
+    include: { homeTeam: true, awayTeam: true },
+    orderBy: { kickoffAt: "desc" },
+    take: 5,
+  });
+  let h2hHomeWins = 0;
+  let h2hDraws = 0;
+  let h2hAwayWins = 0;
+  for (const m of h2h) {
+    const homeGoals = m.homeTeamId === match.homeTeamId ? m.homeScore : m.awayScore;
+    const awayGoals = m.homeTeamId === match.homeTeamId ? m.awayScore : m.homeScore;
+    if (homeGoals > awayGoals) h2hHomeWins++;
+    else if (homeGoals < awayGoals) h2hAwayWins++;
+    else h2hDraws++;
+  }
+
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
     { icon: "🏆", label: "ตาราง", href: `/leagues/${match.leagueId}?tab=standings` },
@@ -134,6 +158,49 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {h2h.length > 0 && (
+          <div>
+            <h2 className="font-display font-bold mb-4">ผลเจอกันล่าสุด</h2>
+            <div className="rounded-xl border border-white/10 bg-card p-5 space-y-4">
+              <div className="flex justify-center gap-8 text-center text-sm">
+                <div>
+                  <div className="font-display italic font-extrabold text-2xl text-accent">
+                    {h2hHomeWins}
+                  </div>
+                  <div className="text-xs text-foreground/50">{match.homeTeam.name} ชนะ</div>
+                </div>
+                <div>
+                  <div className="font-display italic font-extrabold text-2xl text-foreground/70">
+                    {h2hDraws}
+                  </div>
+                  <div className="text-xs text-foreground/50">เสมอ</div>
+                </div>
+                <div>
+                  <div className="font-display italic font-extrabold text-2xl text-accent">
+                    {h2hAwayWins}
+                  </div>
+                  <div className="text-xs text-foreground/50">{match.awayTeam.name} ชนะ</div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                {h2h.map((m) => (
+                  <Link
+                    key={m.id}
+                    href={`/matches/${m.id}`}
+                    className="grid grid-cols-[1fr_56px_1fr] items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                  >
+                    <span className="text-right">{m.homeTeam.name}</span>
+                    <span className="text-center font-display font-bold">
+                      {m.homeScore}-{m.awayScore}
+                    </span>
+                    <span>{m.awayTeam.name}</span>
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
         )}
