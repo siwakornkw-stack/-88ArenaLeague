@@ -36,7 +36,10 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
       league: true,
       homeTeam: { include: { players: true } },
       awayTeam: { include: { players: true } },
-      events: { orderBy: [{ minute: "asc" }, { createdAt: "asc" }] },
+      events: {
+        orderBy: [{ minute: "asc" }, { createdAt: "asc" }],
+        include: { player: true, relatedPlayer: true },
+      },
       lineups: { include: { player: true } },
     },
   });

@@ -67,6 +67,43 @@ export async function updateLeague(leagueId: string, formData: FormData) {
   revalidatePath(`/admin/leagues/${leagueId}`);
 }
 
+export async function duplicateLeague(leagueId: string) {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
+
+  const league = await prisma.league.findUniqueOrThrow({
+    where: { id: leagueId },
+    include: { teams: { include: { players: true, managers: true } } },
+  });
+
+  const copy = await prisma.league.create({
+    data: {
+      name: league.name,
+      seasonYear: league.seasonYear + 1,
+      type: league.type,
+      legs: league.legs,
+      status: "DRAFT",
+      teams: {
+        create: league.teams.map((t) => ({
+          name: t.name,
+          abbr: t.abbr,
+          color: t.color,
+          managers: { connect: t.managers.map((m) => ({ id: m.id })) },
+          players: {
+            create: t.players.map((p) => ({
+              name: p.name,
+              number: p.number,
+              position: p.position,
+            })),
+          },
+        })),
+      },
+    },
+  });
+
+  redirect(`/admin/leagues/${copy.id}`);
+}
+
 export async function deleteLeague(leagueId: string) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");

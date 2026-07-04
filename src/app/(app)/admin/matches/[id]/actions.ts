@@ -54,6 +54,8 @@ export async function addGoal(matchId: string, formData: FormData) {
   const side = getSide(formData);
   const playerId = getPlayerId(formData);
   const minute = getMinute(formData);
+  const assistRaw = formData.get("assistPlayerId");
+  const assistPlayerId = assistRaw ? String(assistRaw) : null;
 
   await prisma.$transaction([
     prisma.match.update({
@@ -61,7 +63,53 @@ export async function addGoal(matchId: string, formData: FormData) {
       data: side === "HOME" ? { homeScore: { increment: 1 } } : { awayScore: { increment: 1 } },
     }),
     prisma.matchEvent.create({
-      data: { matchId, minute, label: "ประตู", type: "GOAL", side, playerId },
+      data: {
+        matchId,
+        minute,
+        label: "ประตู",
+        type: "GOAL",
+        side,
+        playerId,
+        relatedPlayerId: assistPlayerId && assistPlayerId !== playerId ? assistPlayerId : null,
+      },
+    }),
+  ]);
+  revalidatePath(`/admin/matches/${matchId}`);
+}
+
+export async function addSubstitution(matchId: string, formData: FormData) {
+  await assertSuperAdmin();
+  if ((await getMatchStatus(matchId)) !== "LIVE") throw new Error("Match is not live");
+
+  const side = getSide(formData);
+  const minute = getMinute(formData);
+  const playerInId = String(formData.get("playerInId") ?? "");
+  const playerOutId = String(formData.get("playerOutId") ?? "");
+  if (!playerInId || !playerOutId || playerInId === playerOutId) {
+    throw new Error("Invalid substitution");
+  }
+
+  const [playerIn, playerOut] = await Promise.all([
+    prisma.player.findUniqueOrThrow({ where: { id: playerInId } }),
+    prisma.player.findUniqueOrThrow({ where: { id: playerOutId } }),
+  ]);
+
+  await prisma.$transaction([
+    prisma.matchEvent.create({
+      data: {
+        matchId,
+        minute,
+        label: `เปลี่ยนตัว: ${playerIn.name} เข้า แทน ${playerOut.name}`,
+        type: "SUBSTITUTION",
+        side,
+        playerId: playerInId,
+        relatedPlayerId: playerOutId,
+      },
+    }),
+    prisma.matchLineup.upsert({
+      where: { matchId_playerId: { matchId, playerId: playerInId } },
+      update: {},
+      create: { matchId, playerId: playerInId, isStarting: false },
     }),
   ]);
   revalidatePath(`/admin/matches/${matchId}`);
@@ -135,7 +183,7 @@ export async function halfTime(matchId: string) {
   revalidatePath(`/admin/matches/${matchId}`);
 }
 
-const DELETABLE_EVENT_TYPES = ["GOAL", "YELLOW_CARD", "RED_CARD"];
+const DELETABLE_EVENT_TYPES = ["GOAL", "YELLOW_CARD", "RED_CARD", "SUBSTITUTION"];
 
 export async function deleteEvent(matchId: string, formData: FormData) {
   await assertSuperAdmin();

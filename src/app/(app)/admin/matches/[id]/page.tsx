@@ -7,6 +7,7 @@ import {
   kickOff,
   addGoal,
   addCard,
+  addSubstitution,
   endMatch,
   updateStats,
   updateMatchInfo,
@@ -33,7 +34,10 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
     include: {
       homeTeam: { include: { players: true } },
       awayTeam: { include: { players: true } },
-      events: { orderBy: [{ minute: "asc" }, { createdAt: "asc" }] },
+      events: {
+        orderBy: [{ minute: "asc" }, { createdAt: "asc" }],
+        include: { player: true, relatedPlayer: true },
+      },
       lineups: { include: { player: true } },
     },
   });
@@ -56,6 +60,7 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
   const kickOffWithId = kickOff.bind(null, id);
   const addGoalWithId = addGoal.bind(null, id);
   const addCardWithId = addCard.bind(null, id);
+  const addSubWithId = addSubstitution.bind(null, id);
   const endMatchWithId = endMatch.bind(null, id);
   const updateStatsWithId = updateStats.bind(null, id);
   const updateMatchInfoWithId = updateMatchInfo.bind(null, id);
@@ -127,16 +132,20 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             side="HOME"
             teamName={match.homeTeam.name}
             players={homePlayers}
+            allPlayers={match.homeTeam.players}
             addGoal={addGoalWithId}
             addCard={addCardWithId}
+            addSub={addSubWithId}
             defaultMinute={liveMinute}
           />
           <MatchActionForms
             side="AWAY"
             teamName={match.awayTeam.name}
             players={awayPlayers}
+            allPlayers={match.awayTeam.players}
             addGoal={addGoalWithId}
             addCard={addCardWithId}
+            addSub={addSubWithId}
             defaultMinute={liveMinute}
           />
         </div>
@@ -202,24 +211,39 @@ function MatchActionForms({
   side,
   teamName,
   players,
+  allPlayers,
   addGoal,
   addCard,
+  addSub,
   defaultMinute,
 }: {
   side: "HOME" | "AWAY";
   teamName: string;
   players: { id: string; name: string; number: number }[];
+  allPlayers: { id: string; name: string; number: number }[];
   addGoal: (formData: FormData) => Promise<void>;
   addCard: (formData: FormData) => Promise<void>;
+  addSub: (formData: FormData) => Promise<void>;
   defaultMinute: number;
 }) {
   return (
     <div className="rounded-lg bg-card border border-white/10 p-4 space-y-3">
       <h3 className="text-sm font-semibold">{teamName}</h3>
 
-      <form action={addGoal} className="flex gap-2 items-end">
+      <form action={addGoal} className="flex flex-wrap gap-2 items-end">
         <input type="hidden" name="side" value={side} />
         <PlayerAndMinuteFields players={players} defaultMinute={defaultMinute} />
+        <select
+          name="assistPlayerId"
+          className="rounded-md bg-black/30 border border-white/10 px-2 py-2 text-xs flex-1 min-w-24"
+        >
+          <option value="">- แอสซิสต์ -</option>
+          {players.map((p) => (
+            <option key={p.id} value={p.id}>
+              #{p.number} {p.name}
+            </option>
+          ))}
+        </select>
         <button type="submit" className="rounded-md bg-accent text-black text-xs px-3 py-2">
           ประตู
         </button>
@@ -235,6 +259,47 @@ function MatchActionForms({
         <button type="submit" className="rounded-md bg-white/10 text-xs px-3 py-2">
           บันทึก
         </button>
+      </form>
+
+      <form action={addSub} className="space-y-2">
+        <input type="hidden" name="side" value={side} />
+        <div className="flex gap-2">
+          <select
+            name="playerOutId"
+            required
+            className="rounded-md bg-black/30 border border-white/10 px-2 py-2 text-xs flex-1"
+          >
+            <option value="">- ออก -</option>
+            {players.map((p) => (
+              <option key={p.id} value={p.id}>
+                #{p.number} {p.name}
+              </option>
+            ))}
+          </select>
+          <select
+            name="playerInId"
+            required
+            className="rounded-md bg-black/30 border border-white/10 px-2 py-2 text-xs flex-1"
+          >
+            <option value="">- เข้า -</option>
+            {allPlayers.map((p) => (
+              <option key={p.id} value={p.id}>
+                #{p.number} {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex gap-2 items-end">
+          <input
+            type="number"
+            name="minute"
+            defaultValue={defaultMinute}
+            className="w-16 rounded-md bg-black/30 border border-white/10 px-2 py-2 text-xs"
+          />
+          <button type="submit" className="rounded-md bg-white/10 text-xs px-3 py-2">
+            🔄 เปลี่ยนตัว
+          </button>
+        </div>
       </form>
     </div>
   );

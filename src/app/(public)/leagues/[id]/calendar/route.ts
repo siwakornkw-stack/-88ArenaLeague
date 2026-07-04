@@ -1,0 +1,50 @@
+import { prisma } from "@/lib/db";
+
+function fmt(d: Date) {
+  return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
+function esc(s: string) {
+  return s.replace(/([,;\\])/g, "\\$1");
+}
+
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
+  const league = await prisma.league.findUnique({ where: { id } });
+  if (!league) return new Response("Not found", { status: 404 });
+
+  const matches = await prisma.match.findMany({
+    where: { leagueId: id },
+    include: { homeTeam: true, awayTeam: true },
+    orderBy: { kickoffAt: "asc" },
+  });
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//88ArenaLeague//TH",
+    `X-WR-CALNAME:${esc(league.name)}`,
+  ];
+  const stamp = fmt(new Date());
+  for (const m of matches) {
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${m.id}@88arenaleague`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART:${fmt(m.kickoffAt)}`,
+      `DTEND:${fmt(new Date(m.kickoffAt.getTime() + 2 * 3600000))}`,
+      `SUMMARY:${esc(`${m.homeTeam.name} vs ${m.awayTeam.name}`)}`,
+      ...(m.venue ? [`LOCATION:${esc(m.venue)}`] : []),
+      "END:VEVENT"
+    );
+  }
+  lines.push("END:VCALENDAR");
+
+  return new Response(lines.join("\r\n"), {
+    headers: {
+      "Content-Type": "text/calendar; charset=utf-8",
+      "Content-Disposition": `attachment; filename="league-${id}.ics"`,
+    },
+  });
+}

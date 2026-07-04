@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
-import { getTopScorers } from "@/lib/topScorers";
+import { getTopScorers, getTopAssists } from "@/lib/topScorers";
 import { getDiscipline } from "@/lib/discipline";
 import { MobileNav } from "@/components/mobile-nav";
 
@@ -55,6 +55,7 @@ export default async function PublicLeaguePage({
   const standings = tab === "standings" || isFinished ? await computeStandings(id) : [];
   const topScorers = tab === "standings" || isFinished ? await getTopScorers(id, 5) : [];
   const discipline = tab === "discipline" ? await getDiscipline(id) : null;
+  const topAssists = tab === "standings" ? await getTopAssists(id, 5) : [];
   const champion = isFinished ? (standings[0] ?? null) : null;
   const seasonTopScorer = isFinished ? (topScorers[0] ?? null) : null;
 
@@ -67,14 +68,24 @@ export default async function PublicLeaguePage({
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="bg-gradient-to-r from-[#12240F] to-background px-6 md:px-16 py-8">
-        <h1 className="font-display italic font-black text-2xl md:text-4xl text-foreground">
-          {league.name}
-        </h1>
-        <p className="mt-1 text-sm text-foreground/55">
-          ฤดูกาล {league.seasonYear} · {league.teams.length} ทีม · {STATUS_LABEL[league.status]}
-          {totalRounds > 0 && <> · นัดที่ {currentRound} จาก {totalRounds}</>}
-        </p>
+      <div className="bg-gradient-to-r from-[#12240F] to-background px-6 md:px-16 py-8 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display italic font-black text-2xl md:text-4xl text-foreground">
+            {league.name}
+          </h1>
+          <p className="mt-1 text-sm text-foreground/55">
+            ฤดูกาล {league.seasonYear} · {league.teams.length} ทีม · {STATUS_LABEL[league.status]}
+            {totalRounds > 0 && <> · นัดที่ {currentRound} จาก {totalRounds}</>}
+          </p>
+        </div>
+        {matches.length > 0 && (
+          <a
+            href={`/leagues/${id}/calendar`}
+            className="rounded-md border border-white/25 px-4 py-2 text-sm text-foreground/80 hover:border-accent/50 hover:text-accent"
+          >
+            📅 เพิ่มลงปฏิทิน
+          </a>
+        )}
       </div>
 
       {champion && (
@@ -289,6 +300,28 @@ export default async function PublicLeaguePage({
                         </span>
                         <span>{fx.awayTeam.name}</span>
                       </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {topAssists.length > 0 && (
+                <div className="rounded-xl border border-white/10 bg-card p-5">
+                  <h3 className="font-display font-bold mb-3">ดาวแอสซิสต์</h3>
+                  <div className="flex flex-col gap-3">
+                    {topAssists.map((sc, i) => (
+                      <div key={sc.playerId} className="flex items-center gap-3 text-sm">
+                        <span className="w-5 font-display italic font-extrabold text-foreground/50">
+                          {i + 1}
+                        </span>
+                        <div className="flex-1">
+                          <div className="font-display font-semibold">{sc.playerName}</div>
+                          <div className="text-xs text-foreground/45">{sc.teamName}</div>
+                        </div>
+                        <span className="font-display italic font-extrabold text-accent text-lg">
+                          {sc.goals}
+                        </span>
+                      </div>
                     ))}
                   </div>
                 </div>

@@ -4,7 +4,13 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
 import { roundRobin, buildKickoffDates } from "@/lib/schedule";
-import { generateSchedule, finishSeason, updateLeague, deleteLeague } from "./actions";
+import {
+  generateSchedule,
+  finishSeason,
+  updateLeague,
+  deleteLeague,
+  duplicateLeague,
+} from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "ฉบับร่าง",
@@ -327,6 +333,14 @@ export default async function LeagueDetailPage({
             บันทึก
           </button>
         </form>
+
+        <div className="border-t border-white/10 pt-4">
+          <form action={duplicateLeague.bind(null, id)}>
+            <button type="submit" className="text-sm text-foreground/70 hover:text-accent">
+              📋 คัดลอกไปฤดูกาล {league.seasonYear + 1} (ทีม + นักเตะ)
+            </button>
+          </form>
+        </div>
 
         <div className="border-t border-white/10 pt-4">
           {confirmDelete ? (

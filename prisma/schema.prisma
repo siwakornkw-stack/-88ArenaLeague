@@ -39,6 +39,7 @@ enum EventType {
   GOAL
   YELLOW_CARD
   RED_CARD
+  SUBSTITUTION
   HALF_TIME
   FULL_TIME
 }
@@ -94,6 +95,7 @@ model Player {
   team      Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
   teamId    String
   events    MatchEvent[]
+  relatedEvents MatchEvent[] @relation("RelatedPlayerEvents")
   lineups   MatchLineup[]
   createdAt DateTime     @default(now())
 
@@ -140,6 +142,8 @@ model MatchEvent {
   side      Side
   player    Player?   @relation(fields: [playerId], references: [id])
   playerId  String?
+  relatedPlayer   Player? @relation("RelatedPlayerEvents", fields: [relatedPlayerId], references: [id])
+  relatedPlayerId String?
   createdAt DateTime  @default(now())
 }
 

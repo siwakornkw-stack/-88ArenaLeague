@@ -6,9 +6,18 @@ type TimelineEvent = {
   label: string;
   type: string;
   side: string;
+  player?: { name: string } | null;
+  relatedPlayer?: { name: string } | null;
 };
 
-const DELETABLE_EVENT_TYPES = new Set(["GOAL", "YELLOW_CARD", "RED_CARD"]);
+const DELETABLE_EVENT_TYPES = new Set(["GOAL", "YELLOW_CARD", "RED_CARD", "SUBSTITUTION"]);
+
+function eventText(ev: TimelineEvent) {
+  let text = ev.label;
+  if (ev.type !== "SUBSTITUTION" && ev.player) text += ` — ${ev.player.name}`;
+  if (ev.type === "GOAL" && ev.relatedPlayer) text += ` (แอสซิสต์: ${ev.relatedPlayer.name})`;
+  return text;
+}
 
 function DeleteButton({
   eventId,
@@ -61,7 +70,7 @@ export function MatchTimeline({
                   {deleteAction && DELETABLE_EVENT_TYPES.has(ev.type) && (
                     <DeleteButton eventId={ev.id} deleteAction={deleteAction} />
                   )}
-                  {ev.label} <span className="text-base">{EVENT_ICON[ev.type]}</span>
+                  {eventText(ev)} <span className="text-base">{EVENT_ICON[ev.type]}</span>
                 </span>
               )}
             </div>
@@ -71,7 +80,7 @@ export function MatchTimeline({
             <div className="text-sm">
               {ev.side === "AWAY" && (
                 <span>
-                  <span className="text-base">{EVENT_ICON[ev.type]}</span> {ev.label}
+                  <span className="text-base">{EVENT_ICON[ev.type]}</span> {eventText(ev)}
                   {deleteAction && DELETABLE_EVENT_TYPES.has(ev.type) && (
                     <DeleteButton eventId={ev.id} deleteAction={deleteAction} />
                   )}
