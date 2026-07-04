@@ -61,10 +61,25 @@ export async function updateLeague(leagueId: string, formData: FormData) {
 
   const name = String(formData.get("name") ?? "").trim();
   const seasonYear = Number(formData.get("seasonYear"));
+  const description = String(formData.get("description") ?? "").trim();
+  const clampZone = (key: string) => {
+    const n = Math.round(Number(formData.get(key)) || 0);
+    return Math.min(20, Math.max(0, n));
+  };
   if (!name || !Number.isInteger(seasonYear)) return;
 
-  await prisma.league.update({ where: { id: leagueId }, data: { name, seasonYear } });
+  await prisma.league.update({
+    where: { id: leagueId },
+    data: {
+      name,
+      seasonYear,
+      description: description || null,
+      promotedCount: clampZone("promotedCount"),
+      relegatedCount: clampZone("relegatedCount"),
+    },
+  });
   revalidatePath(`/admin/leagues/${leagueId}`);
+  revalidatePath(`/leagues/${leagueId}`);
 }
 
 export async function duplicateLeague(leagueId: string) {

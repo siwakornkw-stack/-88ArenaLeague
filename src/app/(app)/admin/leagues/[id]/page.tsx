@@ -399,6 +399,46 @@ export default async function LeagueDetailPage({
               className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </div>
+          <div className="space-y-1">
+            <label className="text-sm text-foreground/70" htmlFor="league-description">
+              คำอธิบาย/กติกาลีก (โชว์หน้าสาธารณะ)
+            </label>
+            <textarea
+              id="league-description"
+              name="description"
+              rows={3}
+              defaultValue={league.description ?? ""}
+              className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1 space-y-1">
+              <label className="text-sm text-foreground/70" htmlFor="league-promoted">
+                โซนเข้ารอบ (ทีม)
+              </label>
+              <input
+                id="league-promoted"
+                name="promotedCount"
+                type="number"
+                min={0}
+                defaultValue={league.promotedCount}
+                className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
+            <div className="flex-1 space-y-1">
+              <label className="text-sm text-foreground/70" htmlFor="league-relegated">
+                โซนตกชั้น (ทีม)
+              </label>
+              <input
+                id="league-relegated"
+                name="relegatedCount"
+                type="number"
+                min={0}
+                defaultValue={league.relegatedCount}
+                className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
+          </div>
           <button
             type="submit"
             className="rounded-md bg-accent text-black font-semibold px-4 py-2 text-sm"

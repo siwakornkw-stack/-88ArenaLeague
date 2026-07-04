@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
-import { addPlayer, updatePlayerStatus, deletePlayer, setLineup } from "./actions";
+import { addPlayer, updatePlayerStatus, deletePlayer, setLineup, updateMyTeam } from "./actions";
 import { LINEUP_SIZE } from "@/lib/constants";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -113,6 +113,37 @@ export default async function MyTeamPage({
       <div>
         <h1 className="font-display font-bold text-3xl">{team.name}</h1>
         <p className="text-foreground/60 mt-1">จัดการนักเตะและตัวจริงของทีมคุณ</p>
+      </div>
+
+      <div className="rounded-lg bg-card border border-white/10 p-5">
+        <h2 className="font-semibold mb-3">ข้อมูลทีม</h2>
+        <form
+          action={updateMyTeam.bind(null, team.id)}
+          className="flex flex-wrap items-center gap-2"
+        >
+          <input
+            name="name"
+            defaultValue={team.name}
+            required
+            className="flex-1 min-w-[10rem] rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <input
+            name="abbr"
+            defaultValue={team.abbr}
+            required
+            maxLength={4}
+            className="w-20 rounded-md bg-black/30 border border-white/10 px-2 py-2 text-sm text-center outline-none focus:border-accent"
+          />
+          <input
+            type="color"
+            name="color"
+            defaultValue={team.color}
+            className="h-9 w-9 rounded-md bg-black/30 border border-white/10"
+          />
+          <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
+            บันทึก
+          </button>
+        </form>
       </div>
 
       {teamStanding && (

@@ -81,6 +81,11 @@ export default async function PublicLeaguePage({
             ฤดูกาล {league.seasonYear} · {league.teams.length} ทีม · {STATUS_LABEL[league.status]}
             {totalRounds > 0 && <> · นัดที่ {currentRound} จาก {totalRounds}</>}
           </p>
+          {league.description && (
+            <p className="mt-2 text-sm text-foreground/60 max-w-xl whitespace-pre-line">
+              {league.description}
+            </p>
+          )}
         </div>
         {matches.length > 0 && (
           <a
@@ -268,7 +273,11 @@ export default async function PublicLeaguePage({
                     <tr
                       key={row.teamId}
                       className={`border-t border-white/5 ${
-                        i < 2 ? "border-l-2 border-l-accent" : i >= standings.length - 2 ? "border-l-2 border-l-red-500" : ""
+                        i < league.promotedCount
+                          ? "border-l-2 border-l-accent"
+                          : league.relegatedCount > 0 && i >= standings.length - league.relegatedCount
+                            ? "border-l-2 border-l-red-500"
+                            : ""
                       }`}
                     >
                       <td className="py-3 px-4 font-display font-bold">{i + 1}</td>
@@ -301,12 +310,16 @@ export default async function PublicLeaguePage({
                 </tbody>
               </table>
               <div className="flex flex-wrap gap-5 px-4 py-3 text-xs text-foreground/45 border-t border-white/5 min-w-[560px]">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-accent inline-block" /> เข้ารอบแชมเปียนส์
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> ตกชั้น
-                </span>
+                {league.promotedCount > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-accent inline-block" /> เข้ารอบแชมเปียนส์
+                  </span>
+                )}
+                {league.relegatedCount > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> ตกชั้น
+                  </span>
+                )}
               </div>
             </div>
 

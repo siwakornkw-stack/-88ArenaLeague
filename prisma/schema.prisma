@@ -67,6 +67,9 @@ model League {
   seasonYear Int
   type      String
   legs      Int          @default(1)
+  description String?
+  promotedCount  Int     @default(2)
+  relegatedCount Int     @default(2)
   status    LeagueStatus @default(DRAFT)
   createdAt DateTime     @default(now())
   teams     Team[]

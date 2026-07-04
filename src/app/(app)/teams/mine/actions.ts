@@ -43,6 +43,23 @@ async function getManagedTeamIdForMatch(matchId: string) {
   throw new Error("Unauthorized");
 }
 
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+export async function updateMyTeam(teamId: string, formData: FormData) {
+  await assertManagesTeam(teamId);
+
+  const name = String(formData.get("name") ?? "").trim();
+  const abbr = String(formData.get("abbr") ?? "").trim();
+  const color = String(formData.get("color") ?? "").trim();
+  if (!name || !abbr) return;
+
+  await prisma.team.update({
+    where: { id: teamId },
+    data: { name, abbr, ...(HEX_COLOR.test(color) ? { color } : {}) },
+  });
+  revalidatePath("/teams/mine");
+}
+
 export async function addPlayer(teamId: string, formData: FormData) {
   await assertManagesTeam(teamId);
 

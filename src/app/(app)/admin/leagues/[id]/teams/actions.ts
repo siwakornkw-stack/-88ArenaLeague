@@ -56,6 +56,30 @@ export async function deleteTeam(teamId: string) {
   revalidatePath(`/admin/leagues/${team.leagueId}/teams`);
 }
 
+export async function transferPlayer(leagueId: string, formData: FormData) {
+  await assertSuperAdmin();
+
+  const playerId = String(formData.get("playerId") ?? "");
+  const toTeamId = String(formData.get("toTeamId") ?? "");
+  if (!playerId || !toTeamId) return;
+
+  const [player, target] = await Promise.all([
+    prisma.player.findUniqueOrThrow({ where: { id: playerId }, include: { team: true } }),
+    prisma.team.findUniqueOrThrow({ where: { id: toTeamId }, include: { players: true } }),
+  ]);
+  if (player.team.leagueId !== leagueId || target.leagueId !== leagueId) {
+    throw new Error("Invalid transfer");
+  }
+  if (player.teamId === toTeamId) return;
+
+  const usedNumbers = new Set(target.players.map((p) => p.number));
+  let number = player.number;
+  while (usedNumbers.has(number)) number++;
+
+  await prisma.player.update({ where: { id: playerId }, data: { teamId: toTeamId, number } });
+  revalidatePath(`/admin/leagues/${leagueId}/teams`);
+}
+
 export async function createTeamManager(teamId: string, formData: FormData) {
   await assertSuperAdmin();
 

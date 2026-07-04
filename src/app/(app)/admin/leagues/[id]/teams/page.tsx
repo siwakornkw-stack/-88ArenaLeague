@@ -2,7 +2,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
-import { createTeam, updateTeam, deleteTeam, createTeamManager, removeManager } from "./actions";
+import {
+  createTeam,
+  updateTeam,
+  deleteTeam,
+  createTeamManager,
+  removeManager,
+  transferPlayer,
+} from "./actions";
 
 export default async function LeagueTeamsPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -15,6 +22,7 @@ export default async function LeagueTeamsPage({ params }: { params: Promise<{ id
       teams: {
         include: {
           managers: true,
+          players: { orderBy: { number: "asc" } },
           _count: { select: { players: true, homeMatches: true, awayMatches: true } },
         },
         orderBy: { createdAt: "asc" },
@@ -141,6 +149,63 @@ export default async function LeagueTeamsPage({ params }: { params: Promise<{ id
           <p className="text-foreground/50 text-sm">ยังไม่มีทีมในลีกนี้</p>
         )}
       </div>
+
+      {league.teams.length >= 2 && (
+        <div className="rounded-lg bg-card border border-white/10 p-5 max-w-md">
+          <h2 className="font-semibold mb-4">ย้ายนักเตะข้ามทีม</h2>
+          <form action={transferPlayer.bind(null, id)} className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-sm text-foreground/70" htmlFor="transfer-player">
+                นักเตะ
+              </label>
+              <select
+                id="transfer-player"
+                name="playerId"
+                required
+                className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              >
+                <option value="">- เลือกนักเตะ -</option>
+                {league.teams.map((team) => (
+                  <optgroup key={team.id} label={team.name}>
+                    {team.players.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        #{p.number} {p.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-foreground/70" htmlFor="transfer-team">
+                ย้ายไปทีม
+              </label>
+              <select
+                id="transfer-team"
+                name="toTeamId"
+                required
+                className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              >
+                <option value="">- เลือกทีมปลายทาง -</option>
+                {league.teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-foreground/45">
+              ถ้าเบอร์เสื้อซ้ำกับทีมปลายทาง ระบบจะเลื่อนเป็นเบอร์ว่างถัดไปให้อัตโนมัติ
+            </p>
+            <button
+              type="submit"
+              className="rounded-md bg-accent text-black font-semibold px-4 py-2 text-sm"
+            >
+              ยืนยันย้ายทีม
+            </button>
+          </form>
+        </div>
+      )}
 
       <div className="rounded-lg bg-card border border-white/10 p-5 max-w-sm">
         <h2 className="font-semibold mb-4">เพิ่มทีม</h2>

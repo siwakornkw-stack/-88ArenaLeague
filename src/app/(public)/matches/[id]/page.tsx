@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { computeLiveMinute } from "@/lib/matchClock";
 import { computeStandings } from "@/lib/standings";
+import { buildMatchSummary } from "@/lib/matchSummary";
 import { MatchTimeline } from "@/components/match-timeline";
 import { MobileNav } from "@/components/mobile-nav";
 import { unstable_cache } from "next/cache";
@@ -145,6 +146,18 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
       </div>
 
       <div className="px-6 md:px-16 py-10 flex-1 space-y-10">
+        {(() => {
+          const summary = buildMatchSummary(match);
+          return (
+            summary && (
+              <div className="rounded-xl border border-white/10 bg-card p-5">
+                <h2 className="font-display font-bold mb-2">สรุปเกม</h2>
+                <p className="text-sm text-foreground/70 leading-relaxed">{summary}</p>
+              </div>
+            )
+          );
+        })()}
+
         {match.status !== "SCHEDULED" && (
           <div>
             <h2 className="font-display font-bold mb-4">สถิติแมตช์</h2>
