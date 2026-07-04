@@ -5,8 +5,10 @@ import { computeStandings } from "@/lib/standings";
 import { getTopScorers, getTopAssists, getTopMvps } from "@/lib/topScorers";
 import { TeamBadge } from "@/components/team-badge";
 import { getDiscipline } from "@/lib/discipline";
+import { headers } from "next/headers";
 import { getLeagueCharts } from "@/lib/leagueStats";
 import { GoalsBarChart, PointsLineChart } from "@/components/league-charts";
+import { ShareLinks } from "@/components/share-links";
 import { MobileNav } from "@/components/mobile-nav";
 
 const STAGE_LABEL: Record<string, string> = {
@@ -40,9 +42,15 @@ export default async function PublicLeaguePage({
 
   const league = await prisma.league.findUnique({
     where: { id },
-    include: { teams: { include: { _count: { select: { players: true } } } } },
+    include: {
+      teams: { include: { _count: { select: { players: true } } } },
+      sponsors: { orderBy: { createdAt: "asc" } },
+    },
   });
   if (!league) notFound();
+
+  const h = await headers();
+  const pageUrl = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "league-manager-app.vercel.app"}/leagues/${id}`;
 
   const matches = await prisma.match.findMany({
     where: { leagueId: id },
@@ -78,6 +86,53 @@ export default async function PublicLeaguePage({
           mvps: await getTopMvps(id, 10),
         }
       : null;
+
+  const finishedLeagueMatches = matches.filter(
+    (m) => m.stage === "LEAGUE" && m.status === "FINISHED"
+  );
+  const crossScore = new Map<string, (typeof matches)[number]>();
+  for (const m of finishedLeagueMatches) crossScore.set(`${m.homeTeamId}:${m.awayTeamId}`, m);
+
+  let records: { label: string; value: string; sub?: string }[] = [];
+  if (tab === "stats" && finishedLeagueMatches.length > 0) {
+    const teamName = new Map(league.teams.map((t) => [t.id, t.name]));
+    const highest = finishedLeagueMatches.reduce((a, b) =>
+      b.homeScore + b.awayScore > a.homeScore + a.awayScore ? b : a
+    );
+    const biggest = finishedLeagueMatches.reduce((a, b) =>
+      Math.abs(b.homeScore - b.awayScore) > Math.abs(a.homeScore - a.awayScore) ? b : a
+    );
+    const cleanSheets = new Map<string, number>();
+    const goalsFor = new Map<string, number>();
+    for (const m of finishedLeagueMatches) {
+      if (m.awayScore === 0) cleanSheets.set(m.homeTeamId, (cleanSheets.get(m.homeTeamId) ?? 0) + 1);
+      if (m.homeScore === 0) cleanSheets.set(m.awayTeamId, (cleanSheets.get(m.awayTeamId) ?? 0) + 1);
+      goalsFor.set(m.homeTeamId, (goalsFor.get(m.homeTeamId) ?? 0) + m.homeScore);
+      goalsFor.set(m.awayTeamId, (goalsFor.get(m.awayTeamId) ?? 0) + m.awayScore);
+    }
+    records = [
+      {
+        label: "แมตช์ประตูเยอะสุด",
+        value: `${highest.homeTeam.name} ${highest.homeScore}-${highest.awayScore} ${highest.awayTeam.name}`,
+        sub: `${highest.homeScore + highest.awayScore} ประตู`,
+      },
+    ];
+    if (biggest.homeScore !== biggest.awayScore) {
+      records.push({
+        label: "ชนะขาดสุด",
+        value: `${biggest.homeTeam.name} ${biggest.homeScore}-${biggest.awayScore} ${biggest.awayTeam.name}`,
+        sub: `ห่าง ${Math.abs(biggest.homeScore - biggest.awayScore)} ประตู`,
+      });
+    }
+    if (cleanSheets.size > 0) {
+      const [csTeam, csCount] = [...cleanSheets.entries()].sort((a, b) => b[1] - a[1])[0];
+      records.push({ label: "คลีนชีตมากสุด", value: teamName.get(csTeam) ?? "-", sub: `${csCount} นัด` });
+    }
+    if (goalsFor.size > 0) {
+      const [atkTeam, atkGoals] = [...goalsFor.entries()].sort((a, b) => b[1] - a[1])[0];
+      records.push({ label: "เกมรุกดีสุด", value: teamName.get(atkTeam) ?? "-", sub: `${atkGoals} ประตู` });
+    }
+  }
 
   const finalMatch = matches.find((m) => m.stage === "FINAL" && m.status === "FINISHED") ?? null;
   let championName: string | null = null;
@@ -119,15 +174,48 @@ export default async function PublicLeaguePage({
             </p>
           )}
         </div>
-        {matches.length > 0 && (
-          <a
-            href={`/leagues/${id}/calendar`}
-            className="rounded-md border border-white/25 px-4 py-2 text-sm text-foreground/80 hover:border-accent/50 hover:text-accent"
-          >
-            📅 เพิ่มลงปฏิทิน
-          </a>
-        )}
+        <div className="flex flex-col items-end gap-2">
+          {matches.length > 0 && (
+            <a
+              href={`/leagues/${id}/calendar`}
+              className="rounded-md border border-white/25 px-4 py-2 text-sm text-foreground/80 hover:border-accent/50 hover:text-accent"
+            >
+              📅 เพิ่มลงปฏิทิน
+            </a>
+          )}
+          <ShareLinks url={pageUrl} text={league.name} />
+        </div>
       </div>
+
+      {league.sponsors.length > 0 && (
+        <div className="px-6 md:px-16 py-3 border-b border-white/5 flex items-center gap-4 flex-wrap">
+          <span className="text-xs text-foreground/40">ผู้สนับสนุน:</span>
+          {league.sponsors.map((s) => {
+            const inner = (
+              <span className="flex items-center gap-2 text-sm text-foreground/70">
+                {s.logoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.logoUrl} alt={s.name} className="h-8 w-8 rounded object-cover" />
+                )}
+                {s.name}
+              </span>
+            );
+            return s.url ? (
+              <a
+                key={s.id}
+                href={s.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-accent"
+              >
+                {inner}
+              </a>
+            ) : (
+              <span key={s.id}>{inner}</span>
+            );
+          })}
+        </div>
+      )}
 
       {championName && (
         <div className="mx-6 md:mx-16 mt-6 rounded-2xl border border-accent/40 bg-gradient-to-r from-[#1a2e12] to-card p-5 flex flex-wrap items-center gap-6">
@@ -334,15 +422,31 @@ export default async function PublicLeaguePage({
           </div>
         ) : tab === "stats" ? (
           charts ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              <div className="rounded-xl border border-white/10 bg-card p-5">
-                <h3 className="font-display font-bold mb-3">ประตูรวมต่อนัด</h3>
-                <GoalsBarChart rounds={charts.rounds} values={charts.goalsPerRound} />
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <div className="rounded-xl border border-white/10 bg-card p-5">
+                  <h3 className="font-display font-bold mb-3">ประตูรวมต่อนัด</h3>
+                  <GoalsBarChart rounds={charts.rounds} values={charts.goalsPerRound} />
+                </div>
+                <div className="rounded-xl border border-white/10 bg-card p-5">
+                  <h3 className="font-display font-bold mb-3">แต้มสะสม Top 5</h3>
+                  <PointsLineChart rounds={charts.rounds} series={charts.topTeams} />
+                </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-card p-5">
-                <h3 className="font-display font-bold mb-3">แต้มสะสม Top 5</h3>
-                <PointsLineChart rounds={charts.rounds} series={charts.topTeams} />
-              </div>
+              {records.length > 0 && (
+                <div>
+                  <h3 className="font-display font-bold mb-3">บันทึกฤดูกาล</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {records.map((r) => (
+                      <div key={r.label} className="rounded-xl border border-white/10 bg-card p-4">
+                        <div className="text-xs text-foreground/50">{r.label}</div>
+                        <div className="mt-1 font-display font-bold text-sm">{r.value}</div>
+                        {r.sub && <div className="text-xs text-accent mt-1">{r.sub}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-foreground/50 text-sm">ยังไม่มีผลการแข่งขันให้แสดงกราฟ</p>
@@ -506,6 +610,51 @@ export default async function PublicLeaguePage({
                 </div>
               )}
             </div>
+
+            {finishedLeagueMatches.length > 0 && (
+              <div className="lg:col-span-2 rounded-xl border border-white/10 bg-card overflow-x-auto">
+                <h3 className="font-display font-bold px-4 pt-4">ตารางผลเหย้า-เยือน</h3>
+                <p className="px-4 pt-1 text-xs text-foreground/45">แถว = เจ้าบ้าน · คอลัมน์ = ทีมเยือน</p>
+                <table className="text-[11px] m-4 mt-3">
+                  <thead>
+                    <tr>
+                      <th className="p-1.5 text-left text-foreground/45">เหย้า \ เยือน</th>
+                      {league.teams.map((t) => (
+                        <th key={t.id} className="p-1.5 text-foreground/60 font-display">
+                          {t.abbr}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {league.teams.map((home) => (
+                      <tr key={home.id} className="border-t border-white/5">
+                        <td className="p-1.5 font-display font-semibold text-foreground/80">
+                          {home.abbr}
+                        </td>
+                        {league.teams.map((away) => {
+                          if (home.id === away.id) {
+                            return <td key={away.id} className="p-1.5 text-center bg-white/5" />;
+                          }
+                          const m = crossScore.get(`${home.id}:${away.id}`);
+                          return (
+                            <td key={away.id} className="p-1.5 text-center">
+                              {m ? (
+                                <Link href={`/matches/${m.id}`} className="hover:text-accent">
+                                  {m.homeScore}-{m.awayScore}
+                                </Link>
+                              ) : (
+                                <span className="text-foreground/25">·</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">

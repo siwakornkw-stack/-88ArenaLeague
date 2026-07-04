@@ -15,6 +15,8 @@ import {
   rescheduleRound,
   generatePlayoffs,
   generateFinal,
+  createSponsor,
+  deleteSponsor,
 } from "./actions";
 
 const STAGE_LABEL: Record<string, string> = {
@@ -54,7 +56,11 @@ export default async function LeagueDetailPage({
 
   const league = await prisma.league.findUnique({
     where: { id },
-    include: { teams: true, news: { orderBy: { createdAt: "desc" } } },
+    include: {
+      teams: true,
+      news: { orderBy: { createdAt: "desc" } },
+      sponsors: { orderBy: { createdAt: "asc" } },
+    },
   });
   if (!league) notFound();
 
@@ -419,6 +425,60 @@ export default async function LeagueDetailPage({
           ))}
           {league.news.length === 0 && (
             <p className="text-foreground/50 text-sm">ยังไม่มีประกาศ</p>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-lg bg-card border border-white/10 p-5 space-y-4">
+        <h2 className="font-semibold">สปอนเซอร์ลีก</h2>
+        <form
+          action={createSponsor.bind(null, id)}
+          className="flex flex-wrap items-end gap-2 max-w-2xl"
+        >
+          <input
+            name="name"
+            required
+            placeholder="ชื่อสปอนเซอร์"
+            className="flex-1 min-w-40 rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <input
+            name="url"
+            placeholder="https://... (ไม่บังคับ)"
+            className="flex-1 min-w-40 rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <input
+            type="file"
+            name="logo"
+            accept="image/png,image/jpeg,image/webp"
+            className="text-xs text-foreground/50 file:mr-2 file:rounded-md file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs file:text-foreground"
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-accent text-black font-semibold px-4 py-2 text-sm"
+          >
+            เพิ่ม
+          </button>
+        </form>
+        <div className="flex flex-wrap gap-3">
+          {league.sponsors.map((s) => (
+            <div
+              key={s.id}
+              className="flex items-center gap-2 rounded-md bg-white/5 px-3 py-2 text-sm"
+            >
+              {s.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={s.logoUrl} alt={s.name} className="h-6 w-6 rounded object-cover" />
+              )}
+              <span>{s.name}</span>
+              <form action={deleteSponsor.bind(null, id, s.id)}>
+                <button type="submit" className="text-xs text-foreground/50 hover:text-red-400">
+                  ลบ
+                </button>
+              </form>
+            </div>
+          ))}
+          {league.sponsors.length === 0 && (
+            <p className="text-foreground/50 text-sm">ยังไม่มีสปอนเซอร์</p>
           )}
         </div>
       </div>

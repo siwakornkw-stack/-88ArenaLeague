@@ -5,7 +5,9 @@ import { computeLiveMinute } from "@/lib/matchClock";
 import { computeStandings } from "@/lib/standings";
 import { buildMatchSummary } from "@/lib/matchSummary";
 import { MatchTimeline } from "@/components/match-timeline";
+import { headers } from "next/headers";
 import { PitchView } from "@/components/pitch-view";
+import { ShareLinks } from "@/components/share-links";
 import { MobileNav } from "@/components/mobile-nav";
 import { unstable_cache } from "next/cache";
 
@@ -58,6 +60,9 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
   const homePlayers = homeLineupPlayers.length > 0 ? homeLineupPlayers : match.homeTeam.players;
   const awayPlayers = awayLineupPlayers.length > 0 ? awayLineupPlayers : match.awayTeam.players;
 
+  const h = await headers();
+  const pageUrl = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "league-manager-app.vercel.app"}/matches/${id}`;
+
   const kickOffEvent = match.events.find((e) => e.type === "KICK_OFF");
   const liveMinute =
     match.status === "LIVE" && kickOffEvent ? computeLiveMinute(kickOffEvent.createdAt) : match.minute;
@@ -97,10 +102,14 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-6 md:px-16 py-4 text-sm">
+      <div className="px-6 md:px-16 py-4 text-sm flex items-center justify-between gap-3 flex-wrap">
         <Link href={`/leagues/${match.leagueId}`} className="text-foreground/60 hover:text-accent">
           ← {match.league.name}
         </Link>
+        <ShareLinks
+          url={pageUrl}
+          text={`${match.homeTeam.name} ${match.status === "SCHEDULED" ? "vs" : `${match.homeScore}-${match.awayScore}`} ${match.awayTeam.name} · ${match.league.name}`}
+        />
       </div>
 
       <div className="bg-gradient-to-r from-[#12240F] to-background px-6 md:px-16 py-10">

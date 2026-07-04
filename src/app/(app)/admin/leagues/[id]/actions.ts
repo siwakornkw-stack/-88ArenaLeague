@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { roundRobin, buildKickoffDates } from "@/lib/schedule";
 import { computeStandings } from "@/lib/standings";
+import { uploadImage } from "@/lib/blobUpload";
 import { getSession } from "@/lib/session";
 
 export async function generateSchedule(leagueId: string, dayOfWeek: number) {
@@ -231,6 +232,33 @@ export async function deleteNews(leagueId: string, newsId: string) {
   if (news.leagueId !== leagueId) throw new Error("Invalid news");
 
   await prisma.leagueNews.delete({ where: { id: newsId } });
+  revalidatePath(`/admin/leagues/${leagueId}`);
+  revalidatePath(`/leagues/${leagueId}`);
+}
+
+export async function createSponsor(leagueId: string, formData: FormData) {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const urlRaw = String(formData.get("url") ?? "").trim();
+  if (!name) return;
+  const url = /^https?:\/\//.test(urlRaw) ? urlRaw : null;
+
+  const logoUrl = await uploadImage(`sponsor-logos/${leagueId}`, formData.get("logo"));
+  await prisma.leagueSponsor.create({ data: { leagueId, name, url, logoUrl } });
+  revalidatePath(`/admin/leagues/${leagueId}`);
+  revalidatePath(`/leagues/${leagueId}`);
+}
+
+export async function deleteSponsor(leagueId: string, sponsorId: string) {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
+
+  const sponsor = await prisma.leagueSponsor.findUniqueOrThrow({ where: { id: sponsorId } });
+  if (sponsor.leagueId !== leagueId) throw new Error("Invalid sponsor");
+
+  await prisma.leagueSponsor.delete({ where: { id: sponsorId } });
   revalidatePath(`/admin/leagues/${leagueId}`);
   revalidatePath(`/leagues/${leagueId}`);
 }

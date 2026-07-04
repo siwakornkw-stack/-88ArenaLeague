@@ -81,6 +81,17 @@ model League {
   teams     Team[]
   matches   Match[]
   news      LeagueNews[]
+  sponsors  LeagueSponsor[]
+}
+
+model LeagueSponsor {
+  id        String   @id @default(cuid())
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  leagueId  String
+  name      String
+  url       String?
+  logoUrl   String?
+  createdAt DateTime @default(now())
 }
 
 model LeagueNews {
