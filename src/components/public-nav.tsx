@@ -16,6 +16,9 @@ export function PublicNav() {
         <Link href="/search" className="hover:text-accent">
           ค้นหา
         </Link>
+        <Link href="/champions" className="hover:text-accent">
+          หอเกียรติยศ
+        </Link>
       </nav>
       <Link
         href="/login"

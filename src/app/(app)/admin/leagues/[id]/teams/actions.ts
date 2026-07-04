@@ -1,9 +1,26 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { put } from "@vercel/blob";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { hashPassword } from "@/lib/auth";
+
+const MAX_LOGO_BYTES = 1024 * 1024;
+const LOGO_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+async function maybeUploadLogo(teamId: string, formData: FormData): Promise<string | null> {
+  const file = formData.get("logo");
+  if (!(file instanceof File) || file.size === 0) return null;
+  if (!LOGO_TYPES.has(file.type)) throw new Error("โลโก้รองรับเฉพาะ PNG/JPEG/WebP");
+  if (file.size > MAX_LOGO_BYTES) throw new Error("ไฟล์โลโก้ต้องไม่เกิน 1MB");
+  const blob = await put(`team-logos/${teamId}`, file, {
+    access: "public",
+    addRandomSuffix: true,
+    contentType: file.type,
+  });
+  return blob.url;
+}
 
 async function assertSuperAdmin() {
   const session = await getSession();
@@ -34,9 +51,15 @@ export async function updateTeam(teamId: string, formData: FormData) {
   const color = String(formData.get("color") ?? "").trim();
   if (!name || !abbr) return;
 
+  const logoUrl = await maybeUploadLogo(teamId, formData);
   const team = await prisma.team.update({
     where: { id: teamId },
-    data: { name, abbr, ...(HEX_COLOR.test(color) ? { color } : {}) },
+    data: {
+      name,
+      abbr,
+      ...(HEX_COLOR.test(color) ? { color } : {}),
+      ...(logoUrl ? { logoUrl } : {}),
+    },
   });
   revalidatePath(`/admin/leagues/${team.leagueId}/teams`);
 }

@@ -36,6 +36,35 @@ export async function getTopAssists(leagueId: string, limit = 5): Promise<TopSco
     .filter((row): row is TopScorerRow => row !== null);
 }
 
+export async function getTopMvps(leagueId: string, limit = 10): Promise<TopScorerRow[]> {
+  const grouped = await prisma.match.groupBy({
+    by: ["mvpPlayerId"],
+    where: { leagueId, mvpPlayerId: { not: null } },
+    _count: { mvpPlayerId: true },
+    orderBy: { _count: { mvpPlayerId: "desc" } },
+    take: limit,
+  });
+
+  const players = await prisma.player.findMany({
+    where: { id: { in: grouped.map((g) => g.mvpPlayerId!) } },
+    include: { team: true },
+  });
+  const playerById = new Map(players.map((p) => [p.id, p]));
+
+  return grouped
+    .map((g) => {
+      const player = playerById.get(g.mvpPlayerId!);
+      if (!player) return null;
+      return {
+        playerId: player.id,
+        playerName: player.name,
+        teamName: player.team.name,
+        goals: g._count.mvpPlayerId,
+      };
+    })
+    .filter((row): row is TopScorerRow => row !== null);
+}
+
 export async function getTopScorers(leagueId: string, limit = 5): Promise<TopScorerRow[]> {
   const grouped = await prisma.matchEvent.groupBy({
     by: ["playerId"],

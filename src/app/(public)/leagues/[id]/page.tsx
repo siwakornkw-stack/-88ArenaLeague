@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
-import { getTopScorers, getTopAssists } from "@/lib/topScorers";
+import { getTopScorers, getTopAssists, getTopMvps } from "@/lib/topScorers";
+import { TeamBadge } from "@/components/team-badge";
 import { getDiscipline } from "@/lib/discipline";
 import { getLeagueCharts } from "@/lib/leagueStats";
 import { GoalsBarChart, PointsLineChart } from "@/components/league-charts";
@@ -68,6 +69,15 @@ export default async function PublicLeaguePage({
       ? await prisma.leagueNews.findMany({ where: { leagueId: id }, orderBy: { createdAt: "desc" } })
       : [];
   const charts = tab === "stats" ? await getLeagueCharts(id) : null;
+  const playerBoards =
+    tab === "players"
+      ? {
+          scorers: await getTopScorers(id, 20),
+          assists: await getTopAssists(id, 20),
+          cards: (await getDiscipline(id)).players,
+          mvps: await getTopMvps(id, 10),
+        }
+      : null;
 
   const finalMatch = matches.find((m) => m.stage === "FINAL" && m.status === "FINISHED") ?? null;
   let championName: string | null = null;
@@ -140,7 +150,7 @@ export default async function PublicLeaguePage({
       )}
 
       <div className="px-6 md:px-16 py-8 flex-1">
-        <div className="flex gap-2 border-b border-white/10 mb-6">
+        <div className="flex gap-2 border-b border-white/10 mb-6 overflow-x-auto whitespace-nowrap">
           <Link
             href={`/leagues/${id}?tab=standings`}
             className={`px-4 py-2 text-sm font-display font-semibold ${
@@ -189,6 +199,14 @@ export default async function PublicLeaguePage({
           >
             กราฟ
           </Link>
+          <Link
+            href={`/leagues/${id}?tab=players`}
+            className={`px-4 py-2 text-sm font-display font-semibold ${
+              tab === "players" ? "border-b-2 border-accent text-accent" : "text-foreground/60"
+            }`}
+          >
+            นักเตะ
+          </Link>
         </div>
 
         {tab === "teams" ? (
@@ -206,12 +224,12 @@ export default async function PublicLeaguePage({
                 href={`/leagues/${id}/teams/${team.id}`}
                 className="rounded-xl border border-white/10 bg-card p-4 flex items-center gap-3 hover:border-accent/50"
               >
-                <span
-                  className="w-10 h-10 rounded-full shrink-0 grid place-items-center font-display font-bold text-xs"
-                  style={{ backgroundColor: team.color }}
-                >
-                  {team.abbr}
-                </span>
+                <TeamBadge
+                  abbr={team.abbr}
+                  color={team.color}
+                  logoUrl={team.logoUrl}
+                  className="w-10 h-10 text-xs"
+                />
                 <div>
                   <div className="font-display font-semibold">{team.name}</div>
                   <div className="text-xs text-foreground/45">{team._count.players} นักเตะ</div>
@@ -246,10 +264,55 @@ export default async function PublicLeaguePage({
               </table>
             </div>
 
+            <div className="space-y-6">
+              <div className="rounded-xl border border-white/10 bg-card p-5">
+                <h3 className="font-display font-bold mb-3">นักเตะโดนใบโทษสูงสุด</h3>
+                <div className="flex flex-col gap-3">
+                  {discipline.players.map((p, i) => (
+                    <div key={p.playerId} className="flex items-center gap-3 text-sm">
+                      <span className="w-5 font-display italic font-extrabold text-foreground/50">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1">
+                        <div className="font-display font-semibold">{p.playerName}</div>
+                        <div className="text-xs text-foreground/45">{p.teamName}</div>
+                      </div>
+                      <span className="text-yellow-400">🟨 {p.yellow}</span>
+                      <span className="text-red-400">🟥 {p.red}</span>
+                    </div>
+                  ))}
+                  {discipline.players.length === 0 && (
+                    <p className="text-foreground/50 text-sm">ยังไม่มีใบเหลือง-แดงในลีกนี้</p>
+                  )}
+                </div>
+              </div>
+
+              {discipline.teams.length > 0 && (
+                <div className="rounded-xl border border-accent/30 bg-card p-5">
+                  <h3 className="font-display font-bold mb-2">🤝 ทีมมารยาทดี</h3>
+                  {(() => {
+                    const fair = [...discipline.teams].sort(
+                      (a, b) => a.red * 3 + a.yellow - (b.red * 3 + b.yellow)
+                    )[0];
+                    return (
+                      <p className="text-sm text-foreground/70">
+                        <span className="font-display font-bold text-accent">{fair.teamName}</span>{" "}
+                        · เหลือง {fair.yellow} แดง {fair.red}
+                      </p>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : tab === "players" && playerBoards ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <PlayerBoard title="ดาวซัลโว" unit="ประตู" rows={playerBoards.scorers} />
+            <PlayerBoard title="ดาวแอสซิสต์" unit="ครั้ง" rows={playerBoards.assists} />
             <div className="rounded-xl border border-white/10 bg-card p-5">
-              <h3 className="font-display font-bold mb-3">นักเตะโดนใบโทษสูงสุด</h3>
+              <h3 className="font-display font-bold mb-3">ใบโทษสูงสุด</h3>
               <div className="flex flex-col gap-3">
-                {discipline.players.map((p, i) => (
+                {playerBoards.cards.map((p, i) => (
                   <div key={p.playerId} className="flex items-center gap-3 text-sm">
                     <span className="w-5 font-display italic font-extrabold text-foreground/50">
                       {i + 1}
@@ -262,11 +325,12 @@ export default async function PublicLeaguePage({
                     <span className="text-red-400">🟥 {p.red}</span>
                   </div>
                 ))}
-                {discipline.players.length === 0 && (
-                  <p className="text-foreground/50 text-sm">ยังไม่มีใบเหลือง-แดงในลีกนี้</p>
+                {playerBoards.cards.length === 0 && (
+                  <p className="text-foreground/50 text-sm">ยังไม่มีใบเหลือง-แดง</p>
                 )}
               </div>
             </div>
+            <PlayerBoard title="MVP สูงสุด" unit="ครั้ง" rows={playerBoards.mvps} />
           </div>
         ) : tab === "stats" ? (
           charts ? (
@@ -494,6 +558,39 @@ export default async function PublicLeaguePage({
       </div>
 
       <MobileNav items={mobileNavItems} />
+    </div>
+  );
+}
+
+function PlayerBoard({
+  title,
+  unit,
+  rows,
+}: {
+  title: string;
+  unit: string;
+  rows: { playerId: string; playerName: string; teamName: string; goals: number }[];
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-card p-5">
+      <h3 className="font-display font-bold mb-3">{title}</h3>
+      <div className="flex flex-col gap-3">
+        {rows.map((sc, i) => (
+          <div key={sc.playerId} className="flex items-center gap-3 text-sm">
+            <span className="w-5 font-display italic font-extrabold text-foreground/50">
+              {i + 1}
+            </span>
+            <div className="flex-1">
+              <div className="font-display font-semibold">{sc.playerName}</div>
+              <div className="text-xs text-foreground/45">{sc.teamName}</div>
+            </div>
+            <span className="font-display italic font-extrabold text-accent">
+              {sc.goals} <span className="text-xs text-foreground/45 not-italic font-normal">{unit}</span>
+            </span>
+          </div>
+        ))}
+        {rows.length === 0 && <p className="text-foreground/50 text-sm">ยังไม่มีข้อมูล</p>}
+      </div>
     </div>
   );
 }

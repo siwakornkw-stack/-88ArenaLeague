@@ -28,7 +28,7 @@ Thai-language football league management app, branded **88ArenaLeague**. Round-r
 
 Two route groups share the root layout — same URL space, so paths must never collide between them:
 
-- `(public)` — no auth, no auth check in code. Serves `/`, `/leagues` (all-leagues index), `/search` (teams/players), `/leagues/[id]` (standings/fixtures/top scorers/teams/discipline/news tabs), `/leagues/[id]/teams/[teamId]` (team profile: roster stats, results, fixtures), `/leagues/[id]/players/[playerId]` (player profile: totals, event log), `/leagues/[id]/calendar` (route handler, .ics download), `/leagues/[id]/compare` (two-team comparison), `/matches/[id]` (read-only scoreboard/stats/timeline/lineups/head-to-head). Entry point for anonymous visitors.
+- `(public)` — no auth, no auth check in code. Serves `/`, `/leagues` (all-leagues index), `/search` (teams/players), `/champions` (hall of fame for FINISHED seasons), `/leagues/[id]` (standings/fixtures/teams/discipline/news/charts/players tabs), `/leagues/[id]/teams/[teamId]` (team profile: roster stats, results, fixtures), `/leagues/[id]/players/[playerId]` (player profile: totals, event log), `/leagues/[id]/calendar` (route handler, .ics download), `/leagues/[id]/compare` (two-team comparison), `/matches/[id]` (read-only scoreboard/stats/timeline/lineups/head-to-head). Entry point for anonymous visitors.
 - `(app)` — gated by `src/proxy.ts` (redirects to `/login` if no session). Admin/management pages live under `/admin/leagues/[id]` (schedule generation, standings), `/admin/leagues/[id]/teams` (team/manager CRUD), and `/admin/matches/[id]` (kickoff/goals/cards/stats entry), plus `/dashboard` (SUPER_ADMIN), `/teams/mine` (TEAM_MANAGER), and `/account` (change password, any role).
 
 `src/proxy.ts` matcher: `/dashboard/:path*`, `/admin/:path*`, `/teams/:path*`, `/account/:path*`, `/login`. Anything not matched (including `/leagues/*` and `/matches/*`) is public by default.
@@ -47,6 +47,7 @@ npx tsc --noEmit
 - `DATABASE_URL` — Neon pooled connection string
 - `DATABASE_URL_UNPOOLED` — direct connection, used for migrations
 - `AUTH_SECRET` — JWT signing secret
+- `BLOB_READ_WRITE_TOKEN` — Vercel Blob store `league-logos` (team logo uploads); synced to Vercel envs, local copy lives in `.env.local`
 
 ## Deploy
 

@@ -76,6 +76,12 @@ export default async function LeagueTeamsPage({ params }: { params: Promise<{ id
                     defaultValue={team.color}
                     className="h-8 w-8 rounded-md bg-black/30 border border-white/10"
                   />
+                  <input
+                    type="file"
+                    name="logo"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="text-xs text-foreground/50 file:mr-2 file:rounded-md file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs file:text-foreground"
+                  />
                   <button type="submit" className="rounded-md bg-white/10 px-3 py-1.5 text-xs">
                     บันทึก
                   </button>

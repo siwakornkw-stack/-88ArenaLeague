@@ -1,9 +1,27 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { put } from "@vercel/blob";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { LINEUP_SIZE } from "@/lib/constants";
+
+const MAX_LOGO_BYTES = 1024 * 1024;
+const LOGO_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+async function maybeUploadLogo(teamId: string, formData: FormData): Promise<string | null> {
+  const file = formData.get("logo");
+  if (!(file instanceof File) || file.size === 0) return null;
+  if (!LOGO_TYPES.has(file.type)) throw new Error("โลโก้รองรับเฉพาะ PNG/JPEG/WebP");
+  if (file.size > MAX_LOGO_BYTES) throw new Error("ไฟล์โลโก้ต้องไม่เกิน 1MB");
+  const blob = await put(`team-logos/${teamId}`, file, {
+    access: "public",
+    addRandomSuffix: true,
+    contentType: file.type,
+  });
+  return blob.url;
+}
 
 async function assertManagesTeam(teamId: string) {
   const session = await getSession();
@@ -53,11 +71,47 @@ export async function updateMyTeam(teamId: string, formData: FormData) {
   const color = String(formData.get("color") ?? "").trim();
   if (!name || !abbr) return;
 
+  const logoUrl = await maybeUploadLogo(teamId, formData);
   await prisma.team.update({
     where: { id: teamId },
-    data: { name, abbr, ...(HEX_COLOR.test(color) ? { color } : {}) },
+    data: {
+      name,
+      abbr,
+      ...(HEX_COLOR.test(color) ? { color } : {}),
+      ...(logoUrl ? { logoUrl } : {}),
+    },
   });
   revalidatePath("/teams/mine");
+}
+
+export async function importPlayers(teamId: string, formData: FormData) {
+  await assertManagesTeam(teamId);
+
+  const raw = String(formData.get("bulk") ?? "");
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const existing = await prisma.player.findMany({ where: { teamId }, select: { number: true } });
+  const used = new Set(existing.map((p) => p.number));
+
+  const data: { teamId: string; name: string; number: number; position: string }[] = [];
+  let skipped = 0;
+  for (const line of lines) {
+    const [name, numberRaw, position] = line.split(",").map((s) => s?.trim() ?? "");
+    const number = Number(numberRaw);
+    if (!name || !position || !Number.isInteger(number) || number <= 0 || used.has(number)) {
+      skipped++;
+      continue;
+    }
+    used.add(number);
+    data.push({ teamId, name, number, position });
+  }
+
+  if (data.length > 0) await prisma.player.createMany({ data });
+  revalidatePath("/teams/mine");
+  redirect(`/teams/mine?imported=${data.length}&skipped=${skipped}`);
 }
 
 export async function addPlayer(teamId: string, formData: FormData) {

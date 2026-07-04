@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
+import { TeamBadge } from "@/components/team-badge";
 import { MobileNav } from "@/components/mobile-nav";
 
 const FORM_LABEL: Record<"W" | "D" | "L", { t: string; className: string }> = {
@@ -131,23 +132,23 @@ export default async function ComparePage({
             <div className="rounded-xl border border-white/10 bg-card overflow-hidden max-w-2xl">
               <div className="grid grid-cols-[1fr_auto_1fr] items-center px-5 py-4 border-b border-white/10">
                 <div className="flex items-center gap-3">
-                  <span
-                    className="w-10 h-10 rounded-full grid place-items-center font-display font-bold text-xs shrink-0"
-                    style={{ backgroundColor: teamA.color }}
-                  >
-                    {teamA.abbr}
-                  </span>
+                  <TeamBadge
+                    abbr={teamA.abbr}
+                    color={teamA.color}
+                    logoUrl={teamA.logoUrl}
+                    className="w-10 h-10 text-xs"
+                  />
                   <span className="font-display font-bold">{teamA.name}</span>
                 </div>
                 <span className="text-foreground/40 text-sm px-4">vs</span>
                 <div className="flex items-center gap-3 justify-end">
                   <span className="font-display font-bold text-right">{teamB.name}</span>
-                  <span
-                    className="w-10 h-10 rounded-full grid place-items-center font-display font-bold text-xs shrink-0"
-                    style={{ backgroundColor: teamB.color }}
-                  >
-                    {teamB.abbr}
-                  </span>
+                  <TeamBadge
+                    abbr={teamB.abbr}
+                    color={teamB.color}
+                    logoUrl={teamB.logoUrl}
+                    className="w-10 h-10 text-xs"
+                  />
                 </div>
               </div>
               {rows.map((r) => (

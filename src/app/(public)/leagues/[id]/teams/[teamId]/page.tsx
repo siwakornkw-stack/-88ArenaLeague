@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
+import { TeamBadge } from "@/components/team-badge";
 import { MobileNav } from "@/components/mobile-nav";
 
 const FORM_LABEL: Record<"W" | "D" | "L", { t: string; className: string }> = {
@@ -83,12 +84,12 @@ export default async function PublicTeamPage({
       </div>
 
       <div className="bg-gradient-to-r from-[#12240F] to-background px-6 md:px-16 py-8 flex items-center gap-5">
-        <span
-          className="w-16 h-16 rounded-full shrink-0 grid place-items-center font-display font-bold text-lg border-2 border-white/20"
-          style={{ backgroundColor: team.color }}
-        >
-          {team.abbr}
-        </span>
+        <TeamBadge
+          abbr={team.abbr}
+          color={team.color}
+          logoUrl={team.logoUrl}
+          className="w-16 h-16 text-lg border-2 border-white/20"
+        />
         <div>
           <h1 className="font-display italic font-black text-2xl md:text-4xl text-foreground">
             {team.name}

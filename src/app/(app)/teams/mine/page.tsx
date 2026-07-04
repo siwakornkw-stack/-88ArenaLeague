@@ -3,7 +3,14 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
-import { addPlayer, updatePlayerStatus, deletePlayer, setLineup, updateMyTeam } from "./actions";
+import {
+  addPlayer,
+  updatePlayerStatus,
+  deletePlayer,
+  setLineup,
+  updateMyTeam,
+  importPlayers,
+} from "./actions";
 import { LINEUP_SIZE } from "@/lib/constants";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -27,12 +34,12 @@ const STATUS_FILTERS = [
 export default async function MyTeamPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; imported?: string; skipped?: string }>;
 }) {
   const session = await getSession();
   if (session?.role !== "TEAM_MANAGER") redirect("/dashboard");
 
-  const { status } = await searchParams;
+  const { status, imported, skipped } = await searchParams;
   const statusFilter = status ?? "all";
 
   const team = await prisma.team.findFirst({
@@ -140,6 +147,12 @@ export default async function MyTeamPage({
             defaultValue={team.color}
             className="h-9 w-9 rounded-md bg-black/30 border border-white/10"
           />
+          <input
+            type="file"
+            name="logo"
+            accept="image/png,image/jpeg,image/webp"
+            className="text-xs text-foreground/50 file:mr-2 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-foreground"
+          />
           <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
             บันทึก
           </button>
@@ -235,6 +248,12 @@ export default async function MyTeamPage({
         </div>
       )}
 
+      {imported !== undefined && (
+        <p className="rounded-md bg-accent/10 border border-accent/30 px-4 py-2 text-sm text-accent">
+          นำเข้านักเตะ {imported} คน{Number(skipped) > 0 && ` · ข้าม ${skipped} แถว (ข้อมูลไม่ครบ/เบอร์ซ้ำ)`}
+        </p>
+      )}
+
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold">รายชื่อนักเตะ</h2>
@@ -301,6 +320,28 @@ export default async function MyTeamPage({
             <p className="text-foreground/50 text-sm">ไม่มีนักเตะในหมวดนี้</p>
           )}
         </div>
+      </div>
+
+      <div className="rounded-lg bg-card border border-white/10 p-5 max-w-sm">
+        <h2 className="font-semibold mb-2">นำเข้านักเตะเป็นชุด</h2>
+        <p className="text-xs text-foreground/50 mb-3">
+          บรรทัดละคน รูปแบบ: ชื่อ,เบอร์,ตำแหน่ง
+        </p>
+        <form action={importPlayers.bind(null, team.id)} className="space-y-3">
+          <textarea
+            name="bulk"
+            required
+            rows={5}
+            placeholder={"สมชาย ใจดี,7,FW\nวีระ มั่นคง,4,DF"}
+            className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent font-mono"
+          />
+          <button
+            type="submit"
+            className="w-full rounded-md bg-accent text-black font-semibold py-2 text-sm"
+          >
+            นำเข้ารายชื่อ
+          </button>
+        </form>
       </div>
 
       <div className="rounded-lg bg-card border border-white/10 p-5 max-w-sm">

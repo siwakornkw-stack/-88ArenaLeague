@@ -97,6 +97,7 @@ model Team {
   name      String
   abbr      String
   color     String   @default("#2E5CB8")
+  logoUrl   String?
   league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   leagueId  String
   managers  User[]   @relation("TeamManagers")
