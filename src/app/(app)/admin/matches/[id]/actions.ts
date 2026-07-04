@@ -132,9 +132,18 @@ export async function addCard(matchId: string, formData: FormData) {
   const cardType = String(formData.get("cardType")) === "RED" ? "RED_CARD" : "YELLOW_CARD";
   const label = cardType === "RED_CARD" ? "ใบแดง" : "ใบเหลือง";
 
-  await prisma.matchEvent.create({
+  const createEvent = prisma.matchEvent.create({
     data: { matchId, minute, label, type: cardType, side, playerId },
   });
+  // a red card automatically suspends the player; the manager clears it manually
+  if (cardType === "RED_CARD" && playerId) {
+    await prisma.$transaction([
+      createEvent,
+      prisma.player.update({ where: { id: playerId }, data: { status: "BANNED" } }),
+    ]);
+  } else {
+    await createEvent;
+  }
   revalidatePath(`/admin/matches/${matchId}`);
 }
 
@@ -224,9 +233,20 @@ export async function updateMatchInfo(matchId: string, formData: FormData) {
 
   const venue = String(formData.get("venue") ?? "").trim();
   const kickoffRaw = String(formData.get("kickoffAt") ?? "").trim();
+  const streamRaw = String(formData.get("streamUrl") ?? "").trim();
+  const spectatorsRaw = String(formData.get("spectators") ?? "").trim();
 
   const match = await prisma.match.findUniqueOrThrow({ where: { id: matchId } });
-  const data: { venue: string | null; kickoffAt?: Date } = { venue: venue || null };
+  const data: {
+    venue: string | null;
+    kickoffAt?: Date;
+    streamUrl: string | null;
+    spectators: number | null;
+  } = {
+    venue: venue || null,
+    streamUrl: /^https?:\/\//.test(streamRaw) ? streamRaw : null,
+    spectators: spectatorsRaw ? Math.max(0, Math.round(Number(spectatorsRaw) || 0)) : null,
+  };
 
   if (kickoffRaw && match.status === "SCHEDULED") {
     const kickoffAt = new Date(kickoffRaw);

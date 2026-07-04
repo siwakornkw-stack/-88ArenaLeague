@@ -176,12 +176,26 @@ export default async function PublicLeaguePage({
         </div>
         <div className="flex flex-col items-end gap-2">
           {matches.length > 0 && (
-            <a
-              href={`/leagues/${id}/calendar`}
-              className="rounded-md border border-white/25 px-4 py-2 text-sm text-foreground/80 hover:border-accent/50 hover:text-accent"
-            >
-              📅 เพิ่มลงปฏิทิน
-            </a>
+            <div className="flex flex-wrap gap-2 justify-end">
+              <a
+                href={`/leagues/${id}/calendar`}
+                className="rounded-md border border-white/25 px-4 py-2 text-sm text-foreground/80 hover:border-accent/50 hover:text-accent"
+              >
+                📅 เพิ่มลงปฏิทิน
+              </a>
+              <a
+                href={`/leagues/${id}/export/standings`}
+                className="rounded-md border border-white/25 px-3 py-2 text-xs text-foreground/70 hover:border-accent/50 hover:text-accent"
+              >
+                ⬇ CSV ตาราง
+              </a>
+              <a
+                href={`/leagues/${id}/export/results`}
+                className="rounded-md border border-white/25 px-3 py-2 text-xs text-foreground/70 hover:border-accent/50 hover:text-accent"
+              >
+                ⬇ CSV ผลแข่ง
+              </a>
+            </div>
           )}
           <ShareLinks url={pageUrl} text={league.name} />
         </div>

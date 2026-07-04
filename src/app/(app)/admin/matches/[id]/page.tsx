@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
@@ -58,6 +59,15 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
   const liveMinute =
     match.status === "LIVE" && kickOffEvent ? computeLiveMinute(kickOffEvent.createdAt) : match.minute;
 
+  const siblings = await prisma.match.findMany({
+    where: { leagueId: match.leagueId },
+    orderBy: [{ kickoffAt: "asc" }, { id: "asc" }],
+    select: { id: true },
+  });
+  const idx = siblings.findIndex((m) => m.id === id);
+  const prevId = idx > 0 ? siblings[idx - 1].id : null;
+  const nextId = idx >= 0 && idx < siblings.length - 1 ? siblings[idx + 1].id : null;
+
   const kickOffWithId = kickOff.bind(null, id);
   const addGoalWithId = addGoal.bind(null, id);
   const addCardWithId = addCard.bind(null, id);
@@ -71,6 +81,29 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="max-w-3xl space-y-8">
+      <div className="flex items-center justify-between text-sm">
+        {prevId ? (
+          <Link href={`/admin/matches/${prevId}`} className="text-foreground/60 hover:text-accent">
+            ← นัดก่อนหน้า
+          </Link>
+        ) : (
+          <span />
+        )}
+        <Link
+          href={`/admin/leagues/${match.leagueId}`}
+          className="text-foreground/60 hover:text-accent"
+        >
+          ตารางแข่ง
+        </Link>
+        {nextId ? (
+          <Link href={`/admin/matches/${nextId}`} className="text-foreground/60 hover:text-accent">
+            นัดถัดไป →
+          </Link>
+        ) : (
+          <span />
+        )}
+      </div>
+
       <div className="rounded-lg bg-card border border-white/10 p-6 space-y-2">
         <div className="flex items-center justify-between">
           <span className="font-semibold flex-1 text-right">{match.homeTeam.name}</span>
@@ -111,6 +144,31 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             />
           </div>
         )}
+        <div className="flex-1 min-w-40 space-y-1">
+          <label className="text-sm text-foreground/70" htmlFor="streamUrl">
+            ลิงก์ถ่ายทอดสด
+          </label>
+          <input
+            id="streamUrl"
+            name="streamUrl"
+            defaultValue={match.streamUrl ?? ""}
+            placeholder="https://youtube.com/..."
+            className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm text-foreground/70" htmlFor="spectators">
+            ผู้ชม
+          </label>
+          <input
+            id="spectators"
+            name="spectators"
+            type="number"
+            min={0}
+            defaultValue={match.spectators ?? ""}
+            className="w-24 rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+        </div>
         <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
           บันทึกข้อมูลแมตช์
         </button>

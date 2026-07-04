@@ -23,6 +23,12 @@ const STATUS_LABEL: Record<string, string> = {
   FINISHED: "จบการแข่งขัน",
 };
 
+const FORM_LABEL: Record<"W" | "D" | "L", { t: string; className: string }> = {
+  W: { t: "ช", className: "bg-accent text-black" },
+  D: { t: "ส", className: "bg-white/15 text-foreground" },
+  L: { t: "พ", className: "bg-red-500 text-white" },
+};
+
 const STAT_FIELDS = [
   { key: "Possession", label: "ครองบอล %" },
   { key: "Shots", label: "ยิงทั้งหมด" },
@@ -70,6 +76,8 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
   const standings = await getCachedStandings(match.leagueId);
   const homeRank = standings.findIndex((r) => r.teamId === match.homeTeamId) + 1;
   const awayRank = standings.findIndex((r) => r.teamId === match.awayTeamId) + 1;
+  const homeForm = standings.find((r) => r.teamId === match.homeTeamId)?.form ?? [];
+  const awayForm = standings.find((r) => r.teamId === match.awayTeamId)?.form ?? [];
 
   const h2h = await prisma.match.findMany({
     where: {
@@ -130,6 +138,18 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
             <div className="text-xs text-foreground/50">
               {homeRank > 0 && `อันดับ ${homeRank} · `}เหย้า
             </div>
+            {match.status === "SCHEDULED" && homeForm.length > 0 && (
+              <div className="flex gap-1 justify-end mt-1.5">
+                {homeForm.map((f, i) => (
+                  <span
+                    key={i}
+                    className={`w-4 h-4 rounded text-[9px] font-bold grid place-items-center ${FORM_LABEL[f].className}`}
+                  >
+                    {FORM_LABEL[f].t}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <span className="font-display font-black text-4xl md:text-6xl text-foreground shrink-0">
             {match.status === "SCHEDULED" ? "vs" : `${match.homeScore} - ${match.awayScore}`}
@@ -141,13 +161,38 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
             <div className="text-xs text-foreground/50">
               {awayRank > 0 && `อันดับ ${awayRank} · `}เยือน
             </div>
+            {match.status === "SCHEDULED" && awayForm.length > 0 && (
+              <div className="flex gap-1 mt-1.5">
+                {awayForm.map((f, i) => (
+                  <span
+                    key={i}
+                    className={`w-4 h-4 rounded text-[9px] font-bold grid place-items-center ${FORM_LABEL[f].className}`}
+                  >
+                    {FORM_LABEL[f].t}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <p className="mt-4 text-center text-xs text-foreground/45">
           นัดที่ {match.round} ·{" "}
           {match.kickoffAt.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
           {match.venue && <> · {match.venue}</>}
+          {match.spectators != null && match.spectators > 0 && <> · ผู้ชม {match.spectators}</>}
         </p>
+        {match.streamUrl && (
+          <div className="mt-3 flex justify-center">
+            <a
+              href={match.streamUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md bg-red-600 text-white font-semibold px-5 py-2 text-sm"
+            >
+              ▶ ดูถ่ายทอดสด
+            </a>
+          </div>
+        )}
         {match.mvpPlayer && (
           <p className="mt-2 text-center text-xs text-accent">
             ⭐ ผู้เล่นยอดเยี่ยม: {match.mvpPlayer.name}

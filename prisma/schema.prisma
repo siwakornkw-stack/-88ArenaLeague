@@ -146,6 +146,8 @@ model Match {
   awayTeamId String
   kickoffAt  DateTime
   venue      String?
+  streamUrl  String?
+  spectators Int?
   status     MatchStatus   @default(SCHEDULED)
   stage      MatchStage    @default(LEAGUE)
   homeScore  Int           @default(0)
