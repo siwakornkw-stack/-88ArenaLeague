@@ -173,6 +173,11 @@ export default async function LeagueDetailPage({
             <>
               <p className="text-sm text-foreground/70">
                 สร้างตารางแบบพบกันหมดจากทีมทั้งหมด {league.teams.length} ทีม
+                {league.teams.length % 2 === 1 && (
+                  <span className="block mt-1 text-xs text-yellow-400">
+                    ⚠ จำนวนทีมเป็นเลขคี่ — แต่ละนัดจะมี 1 ทีมได้พัก (bye)
+                  </span>
+                )}
               </p>
 
               <form method="get" className="flex flex-wrap items-end gap-2">

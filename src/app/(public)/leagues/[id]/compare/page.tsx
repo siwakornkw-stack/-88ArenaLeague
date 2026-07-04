@@ -92,6 +92,16 @@ export default async function ComparePage({
           { label: "ได้-เสีย", a: `${rowA.goalsFor}-${rowA.goalsAgainst}`, b: `${rowB.goalsFor}-${rowB.goalsAgainst}` },
           { label: "คลีนชีต", a: `${cleanSheetsOf(teamA!.id)}`, b: `${cleanSheetsOf(teamB!.id)}` },
           {
+            label: "ผลต่างเฉลี่ย/นัด",
+            a: rowA.played > 0 ? (rowA.goalDiff / rowA.played).toFixed(2) : "-",
+            b: rowB.played > 0 ? (rowB.goalDiff / rowB.played).toFixed(2) : "-",
+          },
+          {
+            label: "อันดับเกมรุก (ประตูได้)",
+            a: `#${[...standings].sort((x, y) => y.goalsFor - x.goalsFor).findIndex((s) => s.teamId === teamA!.id) + 1}`,
+            b: `#${[...standings].sort((x, y) => y.goalsFor - x.goalsFor).findIndex((s) => s.teamId === teamB!.id) + 1}`,
+          },
+          {
             label: "🟨/🟥",
             a: `${discA?.yellow ?? 0}/${discA?.red ?? 0}`,
             b: `${discB?.yellow ?? 0}/${discB?.red ?? 0}`,

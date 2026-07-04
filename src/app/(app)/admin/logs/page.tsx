@@ -4,6 +4,15 @@ import { prisma } from "@/lib/db";
 
 const PAGE_SIZE = 50;
 
+function relativeTime(d: Date) {
+  const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (mins < 1) return "เมื่อครู่";
+  if (mins < 60) return `${mins} นาทีที่แล้ว`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} ชม.ที่แล้ว`;
+  return `${Math.floor(hrs / 24)} วันที่แล้ว`;
+}
+
 export default async function AdminLogsPage({
   searchParams,
 }: {
@@ -58,8 +67,11 @@ export default async function AdminLogsPage({
       <div className="rounded-lg bg-card border border-white/10 divide-y divide-white/5">
         {logs.map((log) => (
           <div key={log.id} className="flex items-baseline gap-3 px-4 py-2.5 text-sm">
-            <span className="text-xs text-foreground/40 w-36 shrink-0">
-              {log.createdAt.toLocaleString("th-TH", { dateStyle: "short", timeStyle: "medium" })}
+            <span
+              className="text-xs text-foreground/40 w-36 shrink-0"
+              title={log.createdAt.toLocaleString("th-TH", { dateStyle: "short", timeStyle: "medium" })}
+            >
+              {relativeTime(log.createdAt)}
             </span>
             <span className="text-foreground/70 shrink-0">{log.userName}</span>
             <span className="text-accent shrink-0">{log.action}</span>

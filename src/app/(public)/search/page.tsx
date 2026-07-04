@@ -65,6 +65,13 @@ export default async function SearchPage({
       </div>
 
       <div className="px-6 md:px-16 py-8 flex-1 space-y-8">
+        {query.length >= 2 && (
+          <p className="text-sm text-foreground/50">
+            พบ {leagues.length + teams.length + players.length + venueMatches.length} ผลลัพธ์:
+            ลีก {leagues.length} · ทีม {teams.length} · นักเตะ {players.length} · แมตช์{" "}
+            {venueMatches.length}
+          </p>
+        )}
         {suggestions.length > 0 && (
           <div>
             <h2 className="text-sm text-foreground/50 mb-3">ลองดูลีกยอดนิยม:</h2>
@@ -147,12 +154,21 @@ export default async function SearchPage({
                   href={`/leagues/${p.team.leagueId}/players/${p.id}`}
                   className="hover-lift rounded-xl border border-white/10 bg-card p-4 flex items-center gap-3 hover:border-accent/50"
                 >
-                  <span
-                    className="w-10 h-10 rounded-full shrink-0 grid place-items-center font-display font-bold text-sm"
-                    style={{ backgroundColor: p.team.color }}
-                  >
-                    {p.number}
-                  </span>
+                  {p.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.photoUrl}
+                      alt={p.name}
+                      className="w-10 h-10 rounded-full object-cover shrink-0"
+                    />
+                  ) : (
+                    <span
+                      className="w-10 h-10 rounded-full shrink-0 grid place-items-center font-display font-bold text-sm"
+                      style={{ backgroundColor: p.team.color }}
+                    >
+                      {p.number}
+                    </span>
+                  )}
                   <div>
                     <div className="font-display font-semibold">{p.name}</div>
                     <div className="text-xs text-foreground/45">

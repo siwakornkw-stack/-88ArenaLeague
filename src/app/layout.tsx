@@ -16,8 +16,13 @@ const anuphan = Anuphan({
 });
 
 export const metadata: Metadata = {
-  title: "88ArenaLeague - ระบบจัดการลีกฟุตบอล",
+  metadataBase: new URL("https://league-manager-app.vercel.app"),
+  title: {
+    default: "88ArenaLeague - ระบบจัดการลีกฟุตบอล",
+    template: "%s · 88ArenaLeague",
+  },
   description: "ระบบจัดการลีกฟุตบอล จัดตารางแข่ง บันทึกผลสด ตารางคะแนน",
+  openGraph: { siteName: "88ArenaLeague", locale: "th_TH", type: "website" },
 };
 
 export const viewport = {

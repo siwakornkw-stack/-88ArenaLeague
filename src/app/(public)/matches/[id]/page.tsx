@@ -61,8 +61,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-export default async function PublicMatchPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PublicMatchPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ events?: string }>;
+}) {
   const { id } = await params;
+  const { events: eventsFilter } = await searchParams;
+  const goalsOnly = eventsFilter === "goals";
 
   const match = await prisma.match.findUnique({
     where: { id },
@@ -89,6 +97,13 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
 
   const homePlayers = homeLineupPlayers.length > 0 ? homeLineupPlayers : match.homeTeam.players;
   const awayPlayers = awayLineupPlayers.length > 0 ? awayLineupPlayers : match.awayTeam.players;
+
+  const homeBench = match.lineups
+    .filter((l) => !l.isStarting && match.homeTeam.players.some((p) => p.id === l.playerId))
+    .map((l) => l.player);
+  const awayBench = match.lineups
+    .filter((l) => !l.isStarting && match.awayTeam.players.some((p) => p.id === l.playerId))
+    .map((l) => l.player);
 
   const h = await headers();
   const pageUrl = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "league-manager-app.vercel.app"}/matches/${id}`;
@@ -306,6 +321,21 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
                   </div>
                 );
               })}
+              <div className="text-xs text-foreground/45 pt-2 border-t border-white/5 flex justify-between">
+                <span>
+                  ความแม่นยิงเข้ากรอบ:{" "}
+                  {match.homeShots > 0
+                    ? Math.round((match.homeShotsOnTarget / match.homeShots) * 100)
+                    : 0}
+                  %
+                </span>
+                <span>
+                  {match.awayShots > 0
+                    ? Math.round((match.awayShotsOnTarget / match.awayShots) * 100)
+                    : 0}
+                  %
+                </span>
+              </div>
             </div>
           </div>
         )}
@@ -354,16 +384,32 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
         )}
 
         <div>
-          <div className="flex items-baseline justify-between mb-4">
+          <div className="flex items-baseline justify-between mb-4 gap-3 flex-wrap">
             <h2 className="font-display font-bold">ไทม์ไลน์</h2>
-            {match.status !== "SCHEDULED" && (
-              <span className="text-xs text-foreground/45">
-                ⚽ {goalCount} · 🟨 {yellowCount} · 🟥 {redCount}
-              </span>
-            )}
+            <span className="flex items-center gap-3 text-xs">
+              <Link
+                href={`/matches/${id}${goalsOnly ? "" : "?events=goals"}`}
+                className={`rounded-full px-3 py-1 ${
+                  goalsOnly ? "bg-accent text-black font-semibold" : "bg-white/5 text-foreground/60"
+                }`}
+              >
+                ⚽ เฉพาะประตู
+              </Link>
+              {match.status !== "SCHEDULED" && (
+                <span className="text-foreground/45">
+                  ⚽ {goalCount} · 🟨 {yellowCount} · 🟥 {redCount}
+                </span>
+              )}
+            </span>
           </div>
           <div className="rounded-xl border border-white/10 bg-card p-5">
-            <MatchTimeline events={match.events} />
+            <MatchTimeline
+              events={
+                goalsOnly
+                  ? match.events.filter((e) => e.type === "GOAL" || e.type === "OWN_GOAL")
+                  : match.events
+              }
+            />
           </div>
         </div>
 
@@ -406,6 +452,13 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
           <LineupCard teamName={match.homeTeam.name} players={homePlayers} />
           <LineupCard teamName={match.awayTeam.name} players={awayPlayers} />
         </div>
+
+        {(homeBench.length > 0 || awayBench.length > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <LineupCard teamName={`${match.homeTeam.name} (สำรอง)`} players={homeBench} />
+            <LineupCard teamName={`${match.awayTeam.name} (สำรอง)`} players={awayBench} />
+          </div>
+        )}
       </div>
 
       <MobileNav items={mobileNavItems} />

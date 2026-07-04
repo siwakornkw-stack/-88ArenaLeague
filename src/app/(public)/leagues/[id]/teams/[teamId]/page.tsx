@@ -217,6 +217,41 @@ export default async function PublicTeamPage({
         )}
 
         {leagueOnly.length > 0 && (
+          <p className="text-sm text-foreground/60">
+            ฟอร์ม 5 นัดหลังสุด: ชนะ{" "}
+            <b className="text-accent">{(row?.form ?? []).filter((f) => f === "W").length}</b> เสมอ{" "}
+            <b>{(row?.form ?? []).filter((f) => f === "D").length}</b> แพ้{" "}
+            <b className="text-red-400">{(row?.form ?? []).filter((f) => f === "L").length}</b>
+            {upcoming[0] && (
+              <>
+                {" "}
+                · นัดต่อไปพบ{" "}
+                <b>
+                  {upcoming[0].homeTeamId === teamId
+                    ? upcoming[0].awayTeam.name
+                    : upcoming[0].homeTeam.name}
+                </b>
+                {(() => {
+                  const oppId =
+                    upcoming[0].homeTeamId === teamId
+                      ? upcoming[0].awayTeamId
+                      : upcoming[0].homeTeamId;
+                  const last = [...allFinished]
+                    .reverse()
+                    .find((m) => m.homeTeamId === oppId || m.awayTeamId === oppId);
+                  return last ? (
+                    <span className="text-foreground/45">
+                      {" "}
+                      (เจอกันล่าสุด {last.homeScore}-{last.awayScore})
+                    </span>
+                  ) : null;
+                })()}
+              </>
+            )}
+          </p>
+        )}
+
+        {leagueOnly.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
             <div className="rounded-xl border border-white/10 bg-card p-4 text-sm">
               <div className="text-xs text-foreground/50 mb-1">ผลงานเหย้า</div>
@@ -295,8 +330,20 @@ export default async function PublicTeamPage({
                 href={`/leagues/${id}/players/${p.id}`}
                 className="flex items-center gap-3 px-5 py-2.5 text-sm border-t border-white/5 hover:bg-white/5"
               >
-                <span className="w-8 font-display font-bold text-accent">{p.number}</span>
-                <span className="flex-1">{p.name}</span>
+                {p.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={p.photoUrl}
+                    alt={p.name}
+                    className="w-8 h-8 rounded-full object-cover shrink-0"
+                  />
+                ) : (
+                  <span className="w-8 font-display font-bold text-accent">{p.number}</span>
+                )}
+                <span className="flex-1">
+                  {p.photoUrl && <span className="text-foreground/40 mr-1.5">#{p.number}</span>}
+                  {p.name}
+                </span>
                 <span className="w-14 text-foreground/50 text-xs">{p.position}</span>
                 {p.status === "INJURED" && (
                   <span className="text-[10px] rounded-full bg-yellow-400/10 text-yellow-400 px-2 py-0.5 shrink-0">

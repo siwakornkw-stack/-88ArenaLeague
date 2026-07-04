@@ -47,9 +47,11 @@ export default async function LeaguesIndexPage({
   const { q = "", sort = "latest" } = await searchParams;
   const query = q.trim();
 
-  const [leagues, finishedIds] = await Promise.all([
+  const [leagues, finishedIds, liveNow, totalTeams] = await Promise.all([
     getFeaturedLeagues(100),
     prisma.league.findMany({ where: { status: "FINISHED" }, select: { id: true } }),
+    prisma.match.count({ where: { status: "LIVE" } }),
+    prisma.team.count({ where: { league: { status: { not: "DRAFT" } } } }),
   ]);
   const finishedSet = new Set(finishedIds.map((l) => l.id));
 
@@ -73,7 +75,10 @@ export default async function LeaguesIndexPage({
         <h1 className="font-display italic font-black text-2xl md:text-4xl text-foreground">
           ลีก<span className="text-accent">ทั้งหมด</span>
         </h1>
-        <p className="mt-1 text-sm text-foreground/55">{filtered.length} ลีกที่เปิดให้ชม</p>
+        <p className="mt-1 text-sm text-foreground/55">
+          {filtered.length} ลีกที่เปิดให้ชม · {totalTeams} ทีม
+          {liveNow > 0 && <span className="text-accent"> · ● {liveNow} แมตช์สดตอนนี้</span>}
+        </p>
         <form method="get" className="mt-4 flex flex-wrap gap-2 max-w-lg">
           <input
             name="q"

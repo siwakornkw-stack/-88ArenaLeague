@@ -141,7 +141,12 @@ export default async function DashboardPage() {
 
       {tasks.length > 0 && (
         <div className="rounded-lg bg-card border border-white/10 p-5">
-          <h2 className="font-semibold mb-3">งานที่รอดำเนินการ</h2>
+          <h2 className="font-semibold mb-3">
+            งานที่รอดำเนินการ{" "}
+            <span className="ml-1 rounded-full bg-accent/15 text-accent px-2 py-0.5 text-xs">
+              {tasks.length}
+            </span>
+          </h2>
           <div className="space-y-2">
             {tasks.map((task) => (
               <Link
@@ -227,6 +232,7 @@ export default async function DashboardPage() {
                     </p>
                   </div>
                   <span className="text-xs rounded-full bg-white/5 px-3 py-1 text-foreground/70 shrink-0">
+                    {league.status === "FINISHED" ? "🏆 " : ""}
                     {STATUS_LABEL[league.status]}
                   </span>
                 </div>

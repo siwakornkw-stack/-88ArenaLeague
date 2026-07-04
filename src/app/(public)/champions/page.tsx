@@ -69,6 +69,19 @@ export default async function ChampionsPage() {
             ) : null;
           })()}
 
+        {entries[0] && (
+          <div className="rounded-2xl border border-accent/50 bg-gradient-to-r from-[#22380f] to-card p-6 max-w-2xl live-glow">
+            <div className="text-xs text-foreground/50">แชมป์ล่าสุด · ฤดูกาล {entries[0].league.seasonYear}</div>
+            <div className="mt-1 font-display italic font-black text-3xl text-accent">
+              🏆 {entries[0].championName}
+            </div>
+            <div className="text-sm text-foreground/60 mt-1">
+              {entries[0].league.name}
+              {entries[0].note && <> · {entries[0].note}</>}
+            </div>
+          </div>
+        )}
+
         {entries.length === 0 ? (
           <p className="text-foreground/50 text-sm">ยังไม่มีฤดูกาลที่จบการแข่งขัน</p>
         ) : (

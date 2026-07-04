@@ -20,7 +20,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         ? await computeHomeAwayStandings(id, "AWAY")
         : await computeStandings(id);
   const rows = [
-    ["อันดับ", "ทีม", "แข่ง", "ชนะ", "เสมอ", "แพ้", "ได้", "เสีย", "ผลต่าง", "แต้ม"],
+    ["อันดับ", "ทีม", "แข่ง", "ชนะ", "เสมอ", "แพ้", "ได้", "เสีย", "ผลต่าง", "แต้ม", "ฟอร์ม"],
     ...standings.map((r, i) => [
       i + 1,
       r.teamName,
@@ -32,6 +32,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       r.goalsAgainst,
       r.goalDiff,
       r.points,
+      r.form.join(""),
     ]),
   ];
   const csv = "﻿" + rows.map((row) => row.map(csvCell).join(",")).join("\r\n");

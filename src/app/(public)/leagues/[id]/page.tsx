@@ -6,7 +6,7 @@ import {
   computeStandingsUpTo,
   computeHomeAwayStandings,
 } from "@/lib/standings";
-import { getTopScorers, getTopAssists, getTopMvps } from "@/lib/topScorers";
+import { getTopScorers, getTopAssists, getTopMvps, getGoalContributions } from "@/lib/topScorers";
 import { TeamBadge } from "@/components/team-badge";
 import { getDiscipline } from "@/lib/discipline";
 import { headers } from "next/headers";
@@ -107,7 +107,7 @@ export default async function PublicLeaguePage({
 
   const isFinished = league.status === "FINISHED";
   const standings =
-    tab === "standings" || tab === "teams" || isFinished
+    tab === "standings" || tab === "teams" || tab === "discipline" || isFinished
       ? sideView && tab === "standings"
         ? await computeHomeAwayStandings(id, sideView)
         : asofRound
@@ -136,6 +136,7 @@ export default async function PublicLeaguePage({
           assists: await getTopAssists(id, 20),
           cards: (await getDiscipline(id)).players,
           mvps: await getTopMvps(id, 10),
+          contributions: await getGoalContributions(id, 10),
         }
       : null;
 
@@ -199,6 +200,33 @@ export default async function PublicLeaguePage({
       const [drawTeam, drawCount] = [...draws.entries()].sort((a, b) => b[1] - a[1])[0];
       records.push({ label: "เสมอมากสุด", value: teamName.get(drawTeam) ?? "-", sub: `${drawCount} นัด` });
     }
+    const homeWins = finishedLeagueMatches.filter((m) => m.homeScore > m.awayScore);
+    if (homeWins.length > 0) {
+      const big = homeWins.reduce((a, b) =>
+        b.homeScore - b.awayScore > a.homeScore - a.awayScore ? b : a
+      );
+      records.push({
+        label: "ถล่มเจ้าบ้านสุด (เหย้าชนะ)",
+        value: `${big.homeTeam.name} ${big.homeScore}-${big.awayScore} ${big.awayTeam.name}`,
+      });
+    }
+    const awayWins = finishedLeagueMatches.filter((m) => m.awayScore > m.homeScore);
+    if (awayWins.length > 0) {
+      const big = awayWins.reduce((a, b) =>
+        b.awayScore - b.homeScore > a.awayScore - a.homeScore ? b : a
+      );
+      records.push({
+        label: "บุกชนะขาดสุด (เยือน)",
+        value: `${big.homeTeam.name} ${big.homeScore}-${big.awayScore} ${big.awayTeam.name}`,
+      });
+    }
+    const quiet = finishedLeagueMatches.reduce((a, b) =>
+      b.homeScore + b.awayScore < a.homeScore + a.awayScore ? b : a
+    );
+    records.push({
+      label: "เกมเหนียวสุด (ประตูน้อยสุด)",
+      value: `${quiet.homeTeam.name} ${quiet.homeScore}-${quiet.awayScore} ${quiet.awayTeam.name}`,
+    });
   }
 
   const zonesOn = !sideView && !asofRound;
@@ -472,6 +500,7 @@ export default async function PublicLeaguePage({
                     <th className="text-center">🟨 เหลือง</th>
                     <th className="text-center">🟥 แดง</th>
                     <th className="text-center">คะแนนแฟร์เพลย์</th>
+                    <th className="text-center">เฉลี่ย/นัด</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -482,6 +511,15 @@ export default async function PublicLeaguePage({
                       <td className="text-center text-red-400">{row.red}</td>
                       <td className="text-center text-foreground/70">
                         {row.yellow + row.red * 3}
+                      </td>
+                      <td className="text-center text-foreground/50">
+                        {(() => {
+                          const played =
+                            standings.find((s) => s.teamId === row.teamId)?.played ?? 0;
+                          return played > 0
+                            ? ((row.yellow + row.red) / played).toFixed(1)
+                            : "-";
+                        })()}
                       </td>
                     </tr>
                   ))}
@@ -576,6 +614,11 @@ export default async function PublicLeaguePage({
               </div>
             </div>
             <PlayerBoard title="MVP สูงสุด" unit="ครั้ง" rows={playerBoards.mvps} />
+            <PlayerBoard
+              title="ยิง+จ่ายรวม (G+A)"
+              unit="ครั้ง"
+              rows={playerBoards.contributions}
+            />
           </div>
         ) : tab === "stats" ? (
           charts ? (
@@ -612,6 +655,14 @@ export default async function PublicLeaguePage({
                     {finishedLeagueMatches.filter((m) => m.homeScore === m.awayScore).length}
                   </div>
                   <div className="text-xs text-foreground/55">นัดเสมอ</div>
+                </div>
+                <div>
+                  <div className="font-display italic font-extrabold text-2xl text-accent">
+                    {finishedLeagueMatches.reduce((s, m) => s + m.homeScore, 0)}
+                    <span className="text-foreground/40 text-base mx-1">/</span>
+                    {finishedLeagueMatches.reduce((s, m) => s + m.awayScore, 0)}
+                  </div>
+                  <div className="text-xs text-foreground/55">ประตูเหย้า/เยือน</div>
                 </div>
                 {(() => {
                   const totalSpectators = matches.reduce((s, m) => s + (m.spectators ?? 0), 0);
@@ -741,6 +792,8 @@ export default async function PublicLeaguePage({
                     <th className="text-center">ชนะ</th>
                     <th className="text-center">เสมอ</th>
                     <th className="text-center">แพ้</th>
+                    <th className="text-center">ได้</th>
+                    <th className="text-center">เสีย</th>
                     <th className="text-center">+/-</th>
                     <th className="text-center">แต้ม</th>
                     <th className="text-center">ฟอร์ม</th>
@@ -783,6 +836,8 @@ export default async function PublicLeaguePage({
                       <td className="text-center text-foreground/70">{row.won}</td>
                       <td className="text-center text-foreground/70">{row.drawn}</td>
                       <td className="text-center text-foreground/70">{row.lost}</td>
+                      <td className="text-center text-foreground/50">{row.goalsFor}</td>
+                      <td className="text-center text-foreground/50">{row.goalsAgainst}</td>
                       <td className="text-center text-foreground/70">
                         {row.goalDiff >= 0 ? "+" : ""}
                         {row.goalDiff}

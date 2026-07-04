@@ -135,6 +135,12 @@ export default async function Home() {
                 ดูลีกที่กำลังแข่ง
               </Link>
             )}
+            <Link
+              href="/help"
+              className="rounded-md px-4 py-3 font-display font-semibold text-foreground/60 hover:text-accent"
+            >
+              📖 วิธีใช้งาน
+            </Link>
           </div>
           <div className="mt-14 flex flex-wrap gap-10">
             <Stat value={leagueCount} label="ลีกที่กำลังแข่ง" />

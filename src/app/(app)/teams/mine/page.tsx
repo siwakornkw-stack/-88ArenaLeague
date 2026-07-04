@@ -408,6 +408,12 @@ export default async function MyTeamPage({
           <span className="w-10 text-center">เหลือง</span>
         </div>
 
+        <p className="px-4 pt-1 text-xs text-foreground/45">
+          พร้อมลงเล่น {team.players.filter((p) => p.status === "ACTIVE").length} · บาดเจ็บ{" "}
+          {team.players.filter((p) => p.status === "INJURED").length} · โดนแบน{" "}
+          {team.players.filter((p) => p.status === "BANNED").length}
+        </p>
+
         <div className="space-y-2 mt-1">
           {filteredPlayers.map((p) => (
             <div

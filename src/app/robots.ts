@@ -8,5 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       disallow: ["/admin/", "/dashboard", "/teams/", "/account", "/login"],
     },
     sitemap: "https://league-manager-app.vercel.app/sitemap.xml",
+    host: "https://league-manager-app.vercel.app",
   };
 }

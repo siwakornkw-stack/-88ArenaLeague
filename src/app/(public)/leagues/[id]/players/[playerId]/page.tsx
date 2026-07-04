@@ -26,7 +26,10 @@ export default async function PublicPlayerPage({
     }),
     prisma.matchEvent.findMany({
       where: { playerId },
-      include: { match: { include: { homeTeam: true, awayTeam: true } } },
+      include: {
+        match: { include: { homeTeam: true, awayTeam: true } },
+        relatedPlayer: true,
+      },
       orderBy: [{ match: { kickoffAt: "desc" } }, { minute: "asc" }],
     }),
     prisma.match.count({ where: { mvpPlayerId: playerId } }),
@@ -38,6 +41,28 @@ export default async function PublicPlayerPage({
     orderBy: { match: { kickoffAt: "desc" } },
     take: 5,
   });
+
+  const assistPartners = new Map<string, number>();
+  for (const ev of events) {
+    if (ev.type !== "GOAL") continue;
+    const rp = (ev as { relatedPlayer?: { name: string } | null }).relatedPlayer;
+    if (rp) assistPartners.set(rp.name, (assistPartners.get(rp.name) ?? 0) + 1);
+  }
+  const topPartners = [...assistPartners.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+  const POSITION_COLOR: Record<string, string> = {
+    GK: "bg-yellow-400/15 text-yellow-400",
+    DF: "bg-blue-400/15 text-blue-300",
+    MF: "bg-emerald-400/15 text-emerald-300",
+    FW: "bg-red-400/15 text-red-300",
+  };
+  const posKey = player.position.toUpperCase().includes("GK") || player.position.includes("ผู้รักษา")
+    ? "GK"
+    : player.position.toUpperCase().includes("DF") || player.position.includes("กองหลัง")
+      ? "DF"
+      : player.position.toUpperCase().includes("FW") || player.position.includes("กองหน้า") || player.position.includes("ปีก")
+        ? "FW"
+        : "MF";
 
   const MINUTE_BUCKETS = ["1-15", "16-30", "31-45", "46-60", "61-75", "76+"];
   const goalBuckets = [0, 0, 0, 0, 0, 0];
@@ -92,8 +117,11 @@ export default async function PublicPlayerPage({
           <h1 className="font-display italic font-black text-2xl md:text-4xl text-foreground">
             {player.name}
           </h1>
-          <p className="mt-1 text-sm text-foreground/55">
-            {player.position} · {player.team.name} · {player.team.league.name}
+          <p className="mt-1 text-sm text-foreground/55 flex items-center gap-2">
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${POSITION_COLOR[posKey]}`}>
+              {player.position}
+            </span>
+            {player.team.name} · {player.team.league.name}
           </p>
           <div className="mt-2 flex items-center gap-3">
             {player.status === "BANNED" && (
@@ -130,6 +158,23 @@ export default async function PublicPlayerPage({
           <div className="rounded-xl border border-white/10 bg-card p-5 max-w-2xl">
             <h2 className="font-display font-bold mb-3">ช่วงเวลาที่ยิงประตู (นาที)</h2>
             <GoalsBarChart rounds={MINUTE_BUCKETS} values={goalBuckets} />
+          </div>
+        )}
+
+        {topPartners.length > 0 && (
+          <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">
+            <div className="text-xs text-foreground/50 mb-2">🤝 คู่หูแอสซิสต์ให้บ่อยสุด</div>
+            <div className="space-y-1">
+              {topPartners.map(([name, count], i) => (
+                <div key={name} className="flex items-center justify-between">
+                  <span>
+                    <span className="text-foreground/40 mr-2">{i + 1}</span>
+                    {name}
+                  </span>
+                  <span className="font-display font-bold text-accent">{count}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

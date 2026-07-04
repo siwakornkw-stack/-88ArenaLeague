@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
 import { getTopScorers } from "@/lib/topScorers";
+import { getDiscipline } from "@/lib/discipline";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,6 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }),
     getTopScorers(id, 20),
   ]);
+  const discipline = await getDiscipline(id);
 
   return Response.json({
     league: {
@@ -42,6 +44,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     },
     standings,
     topScorers,
+    discipline,
     matches: matches.map((m) => ({
       id: m.id,
       round: m.round,
