@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { ShareLinks } from "@/components/share-links";
 import { computeStandings, computeStandingsUpTo } from "@/lib/standings";
 import {
   addPlayer,
@@ -100,6 +102,14 @@ export default async function MyTeamPage({
 
   const teamStanding = standings.find((row) => row.teamId === team.id) ?? null;
   const teamRank = standings.findIndex((row) => row.teamId === team.id) + 1;
+
+  const hdrs = await headers();
+  const publicTeamUrl = `${hdrs.get("x-forwarded-proto") ?? "https"}://${hdrs.get("host") ?? "league-manager-app.vercel.app"}/leagues/${team.leagueId}/teams/${team.id}`;
+  const myTopScorers = team.players
+    .map((p) => ({ name: p.name, goals: goalsByPlayer.get(p.id) ?? 0 }))
+    .filter((p) => p.goals > 0)
+    .sort((a, b) => b.goals - a.goals)
+    .slice(0, 3);
   let rankDelta = 0;
   const lastFinRound = teamMatches
     .filter((m) => m.status === "FINISHED" && m.stage === "LEAGUE")
@@ -227,6 +237,18 @@ export default async function MyTeamPage({
               </span>
             ))}
           </div>
+          {myTopScorers.length > 0 && (
+            <div className="mt-4 border-t border-white/10 pt-3 text-sm">
+              <div className="text-xs text-foreground/50 mb-1.5">⚽ ดาวซัลโวของทีม</div>
+              <div className="flex flex-wrap gap-4">
+                {myTopScorers.map((s) => (
+                  <span key={s.name}>
+                    {s.name} <span className="text-accent font-display font-bold">{s.goals}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -234,12 +256,15 @@ export default async function MyTeamPage({
         <div className="rounded-lg bg-card border border-white/10 p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">โปรแกรมและผลของทีม</h2>
-            <a
-              href={`/leagues/${team.leagueId}/calendar?team=${team.id}`}
-              className="text-xs text-foreground/60 hover:text-accent"
-            >
-              📅 โหลดปฏิทินทีม (.ics)
-            </a>
+            <span className="flex items-center gap-3">
+              <a
+                href={`/leagues/${team.leagueId}/calendar?team=${team.id}`}
+                className="text-xs text-foreground/60 hover:text-accent"
+              >
+                📅 โหลดปฏิทินทีม (.ics)
+              </a>
+              <ShareLinks url={publicTeamUrl} text={team.name} />
+            </span>
           </div>
           <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
             {teamMatches.map((m) => {

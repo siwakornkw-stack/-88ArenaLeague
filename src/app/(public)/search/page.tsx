@@ -11,7 +11,7 @@ export default async function SearchPage({
   const { q = "" } = await searchParams;
   const query = q.trim();
 
-  const [teams, players, leagues] =
+  const [teams, players, leagues, venueMatches] =
     query.length >= 2
       ? await Promise.all([
           prisma.team.findMany({
@@ -29,8 +29,14 @@ export default async function SearchPage({
             include: { teams: { select: { id: true } } },
             take: 10,
           }),
+          prisma.match.findMany({
+            where: { venue: { contains: query, mode: "insensitive" } },
+            include: { homeTeam: true, awayTeam: true },
+            orderBy: { kickoffAt: "desc" },
+            take: 10,
+          }),
         ])
-      : [[], [], []];
+      : [[], [], [], []];
 
   const suggestions = query.length < 2 ? await getFeaturedLeagues(6) : [];
 
@@ -75,9 +81,13 @@ export default async function SearchPage({
             </div>
           </div>
         )}
-        {query.length >= 2 && teams.length === 0 && players.length === 0 && leagues.length === 0 && (
-          <p className="text-foreground/50 text-sm">ไม่พบผลลัพธ์สำหรับ &quot;{query}&quot;</p>
-        )}
+        {query.length >= 2 &&
+          teams.length === 0 &&
+          players.length === 0 &&
+          leagues.length === 0 &&
+          venueMatches.length === 0 && (
+            <p className="text-foreground/50 text-sm">ไม่พบผลลัพธ์สำหรับ &quot;{query}&quot;</p>
+          )}
 
         {leagues.length > 0 && (
           <div>
@@ -149,6 +159,27 @@ export default async function SearchPage({
                       {p.team.name} · {p.team.league.name}
                     </div>
                   </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+        {venueMatches.length > 0 && (
+          <div>
+            <h2 className="font-display font-bold mb-3">แมตช์ในสนาม &quot;{query}&quot; ({venueMatches.length})</h2>
+            <div className="flex flex-col gap-2 max-w-2xl">
+              {venueMatches.map((m) => (
+                <Link
+                  key={m.id}
+                  href={`/matches/${m.id}`}
+                  className="grid grid-cols-[1fr_56px_1fr_auto] items-center gap-2 rounded-lg bg-card border border-white/10 px-3 py-2 text-sm hover:border-accent/50"
+                >
+                  <span className="text-right truncate">{m.homeTeam.name}</span>
+                  <span className="text-center font-display font-bold">
+                    {m.status === "SCHEDULED" ? "vs" : `${m.homeScore}-${m.awayScore}`}
+                  </span>
+                  <span className="truncate">{m.awayTeam.name}</span>
+                  <span className="text-xs text-foreground/40">📍 {m.venue}</span>
                 </Link>
               ))}
             </div>

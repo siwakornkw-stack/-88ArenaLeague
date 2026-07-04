@@ -252,6 +252,19 @@ export async function deleteEvent(matchId: string, formData: FormData) {
   revalidatePath(`/admin/matches/${matchId}`);
 }
 
+export async function updateEventMinute(matchId: string, formData: FormData) {
+  await assertSuperAdmin();
+
+  const eventId = String(formData.get("eventId") ?? "");
+  const minute = getMinute(formData);
+  const event = await prisma.matchEvent.findUniqueOrThrow({ where: { id: eventId } });
+  if (event.matchId !== matchId) throw new Error("Invalid event");
+  if (!DELETABLE_EVENT_TYPES.includes(event.type)) throw new Error("Cannot edit this event");
+
+  await prisma.matchEvent.update({ where: { id: eventId }, data: { minute } });
+  revalidatePath(`/admin/matches/${matchId}`);
+}
+
 export async function updateMatchInfo(matchId: string, formData: FormData) {
   await assertSuperAdmin();
 

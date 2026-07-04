@@ -46,12 +46,37 @@ function DeleteButton({
   );
 }
 
+function MinuteEditForm({
+  event,
+  editMinuteAction,
+}: {
+  event: TimelineEvent;
+  editMinuteAction: (formData: FormData) => Promise<void>;
+}) {
+  return (
+    <form action={editMinuteAction} className="inline-flex items-center gap-1">
+      <input type="hidden" name="eventId" value={event.id} />
+      <input
+        type="number"
+        name="minute"
+        defaultValue={event.minute}
+        className="w-12 rounded bg-black/30 border border-white/10 px-1 py-0.5 text-[10px] text-center"
+      />
+      <button type="submit" className="text-[10px] text-foreground/40 hover:text-accent">
+        ✓
+      </button>
+    </form>
+  );
+}
+
 export function MatchTimeline({
   events,
   deleteAction,
+  editMinuteAction,
 }: {
   events: TimelineEvent[];
   deleteAction?: (formData: FormData) => Promise<void>;
+  editMinuteAction?: (formData: FormData) => Promise<void>;
 }) {
   if (events.length === 0) {
     return <p className="text-foreground/50 text-sm">ยังไม่มีเหตุการณ์</p>;
@@ -81,7 +106,11 @@ export function MatchTimeline({
               )}
             </div>
             <span className="text-center text-xs font-display font-bold text-foreground/60">
-              {ev.minute}&apos;
+              {editMinuteAction && DELETABLE_EVENT_TYPES.has(ev.type) ? (
+                <MinuteEditForm event={ev} editMinuteAction={editMinuteAction} />
+              ) : (
+                <>{ev.minute}&apos;</>
+              )}
             </span>
             <div className="text-sm">
               {ev.side === "AWAY" && (

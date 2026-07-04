@@ -2,31 +2,39 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 
+const PAGE_SIZE = 50;
+
 export default async function AdminLogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ action?: string }>;
+  searchParams: Promise<{ action?: string; page?: string }>;
 }) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") redirect("/teams/mine");
 
-  const { action } = await searchParams;
+  const { action, page } = await searchParams;
   const actionFilter = action?.trim() || null;
+  const pageNum = Math.max(1, Number(page) || 1);
 
-  const [logs, actions] = await Promise.all([
+  const [logs, actions, total] = await Promise.all([
     prisma.adminLog.findMany({
       where: actionFilter ? { action: actionFilter } : undefined,
       orderBy: { createdAt: "desc" },
-      take: 200,
+      take: PAGE_SIZE,
+      skip: (pageNum - 1) * PAGE_SIZE,
     }),
     prisma.adminLog.findMany({ distinct: ["action"], select: { action: true } }),
+    prisma.adminLog.count({ where: actionFilter ? { action: actionFilter } : undefined }),
   ]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="max-w-3xl space-y-6">
       <div>
         <h1 className="font-display font-bold text-3xl">ประวัติระบบ</h1>
-        <p className="text-foreground/60 mt-1">บันทึกการทำงานของแอดมิน (ล่าสุด 200 รายการ)</p>
+        <p className="text-foreground/60 mt-1">
+          บันทึกการทำงานของแอดมิน · {total} รายการ · หน้า {pageNum}/{totalPages}
+        </p>
       </div>
 
       <form method="get" className="flex items-center gap-2">
@@ -62,6 +70,27 @@ export default async function AdminLogsPage({
           <p className="px-4 py-6 text-sm text-foreground/50">ยังไม่มีบันทึก</p>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center gap-3 text-sm">
+          {pageNum > 1 && (
+            <a
+              href={`/admin/logs?page=${pageNum - 1}${actionFilter ? `&action=${encodeURIComponent(actionFilter)}` : ""}`}
+              className="rounded-md bg-white/10 px-4 py-2 hover:text-accent"
+            >
+              ← ก่อนหน้า
+            </a>
+          )}
+          {pageNum < totalPages && (
+            <a
+              href={`/admin/logs?page=${pageNum + 1}${actionFilter ? `&action=${encodeURIComponent(actionFilter)}` : ""}`}
+              className="rounded-md bg-white/10 px-4 py-2 hover:text-accent"
+            >
+              ถัดไป →
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -255,6 +255,22 @@ export async function createNews(leagueId: string, formData: FormData) {
   revalidatePath(`/leagues/${leagueId}`);
 }
 
+export async function updateNews(leagueId: string, newsId: string, formData: FormData) {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
+
+  const news = await prisma.leagueNews.findUniqueOrThrow({ where: { id: newsId } });
+  if (news.leagueId !== leagueId) throw new Error("Invalid news");
+
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  if (!title || !body) return;
+
+  await prisma.leagueNews.update({ where: { id: newsId }, data: { title, body } });
+  revalidatePath(`/admin/leagues/${leagueId}`);
+  revalidatePath(`/leagues/${leagueId}`);
+}
+
 export async function deleteNews(leagueId: string, newsId: string) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
@@ -301,6 +317,7 @@ export async function rescheduleRound(leagueId: string, formData: FormData) {
   const round = Number(formData.get("round"));
   const date = String(formData.get("date") ?? "");
   const time = String(formData.get("time") ?? "");
+  const venue = String(formData.get("venue") ?? "").trim();
   if (!Number.isInteger(round) || !date || !time) return;
 
   const kickoffAt = new Date(`${date}T${time}`);
@@ -308,7 +325,7 @@ export async function rescheduleRound(leagueId: string, formData: FormData) {
 
   await prisma.match.updateMany({
     where: { leagueId, round, status: "SCHEDULED" },
-    data: { kickoffAt },
+    data: { kickoffAt, ...(venue ? { venue } : {}) },
   });
   revalidatePath(`/admin/leagues/${leagueId}`);
 }

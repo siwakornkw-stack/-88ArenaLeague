@@ -21,7 +21,13 @@ const ROLE_LABEL: Record<SessionPayload["role"], string> = {
   TEAM_MANAGER: "ผู้จัดการทีม",
 };
 
-export function Sidebar({ session }: { session: SessionPayload }) {
+export function Sidebar({
+  session,
+  liveCount = 0,
+}: {
+  session: SessionPayload;
+  liveCount?: number;
+}) {
   const items = NAV_BY_ROLE[session.role];
 
   return (
@@ -38,6 +44,11 @@ export function Sidebar({ session }: { session: SessionPayload }) {
             className="block rounded-md px-3 py-2 text-sm text-foreground/80 hover:bg-white/5 hover:text-foreground"
           >
             {item.label}
+            {item.href === "/dashboard" && liveCount > 0 && (
+              <span className="ml-2 rounded-full bg-red-500/15 text-red-400 px-2 py-0.5 text-[10px]">
+                ● {liveCount} สด
+              </span>
+            )}
           </Link>
         ))}
       </nav>

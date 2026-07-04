@@ -27,7 +27,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const title = `${league.name} ฤดูกาล ${league.seasonYear} · 88ArenaLeague`;
   const description =
     league.description ?? `ตารางคะแนน โปรแกรมแข่ง และผลบอลสดของ ${league.name}`;
-  return { title, description, openGraph: { title, description } };
+  return {
+    title,
+    description,
+    openGraph: { title, description },
+    alternates: { canonical: `https://league-manager-app.vercel.app/leagues/${id}` },
+  };
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -102,7 +107,7 @@ export default async function PublicLeaguePage({
 
   const isFinished = league.status === "FINISHED";
   const standings =
-    tab === "standings" || isFinished
+    tab === "standings" || tab === "teams" || isFinished
       ? sideView && tab === "standings"
         ? await computeHomeAwayStandings(id, sideView)
         : asofRound
@@ -407,7 +412,20 @@ export default async function PublicLeaguePage({
             ⚖ เปรียบเทียบทีม
           </Link>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {league.teams.map((team) => (
+            {[...league.teams]
+              .sort((a, b) => {
+                const ia = standings.findIndex((r) => r.teamId === a.id);
+                const ib = standings.findIndex((r) => r.teamId === b.id);
+                return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+              })
+              .map((team) => {
+                const teamRank = standings.findIndex((r) => r.teamId === team.id) + 1;
+                const nextFx = matches.find(
+                  (m) =>
+                    m.status === "SCHEDULED" &&
+                    (m.homeTeamId === team.id || m.awayTeamId === team.id)
+                );
+                return (
               <Link
                 key={team.id}
                 href={`/leagues/${id}/teams/${team.id}`}
@@ -419,12 +437,25 @@ export default async function PublicLeaguePage({
                   logoUrl={team.logoUrl}
                   className="w-10 h-10 text-xs"
                 />
-                <div>
-                  <div className="font-display font-semibold">{team.name}</div>
+                <div className="min-w-0">
+                  <div className="font-display font-semibold">
+                    {teamRank > 0 && (
+                      <span className="text-foreground/40 text-xs mr-1.5">#{teamRank}</span>
+                    )}
+                    {team.name}
+                  </div>
                   <div className="text-xs text-foreground/45">{team._count.players} นักเตะ</div>
+                  {nextFx && (
+                    <div className="text-[10px] text-foreground/40 mt-0.5 truncate">
+                      นัดต่อไป: vs{" "}
+                      {nextFx.homeTeamId === team.id ? nextFx.awayTeam.name : nextFx.homeTeam.name}{" "}
+                      ({nextFx.kickoffAt.toLocaleDateString("th-TH", { day: "numeric", month: "short" })})
+                    </div>
+                  )}
                 </div>
               </Link>
-            ))}
+                );
+              })}
             {league.teams.length === 0 && (
               <p className="text-foreground/50 text-sm">ยังไม่มีทีมในลีกนี้</p>
             )}
@@ -581,6 +612,17 @@ export default async function PublicLeaguePage({
                   </div>
                   <div className="text-xs text-foreground/55">นัดเสมอ</div>
                 </div>
+                {(() => {
+                  const totalSpectators = matches.reduce((s, m) => s + (m.spectators ?? 0), 0);
+                  return totalSpectators > 0 ? (
+                    <div>
+                      <div className="font-display italic font-extrabold text-2xl text-accent">
+                        {totalSpectators.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-foreground/55">ผู้ชมรวม</div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -728,7 +770,14 @@ export default async function PublicLeaguePage({
                           return null;
                         })()}
                       </td>
-                      <td className="font-display font-semibold">{row.teamName}</td>
+                      <td className="font-display font-semibold">
+                        <Link
+                          href={`/leagues/${id}/teams/${row.teamId}`}
+                          className="hover:text-accent"
+                        >
+                          {row.teamName}
+                        </Link>
+                      </td>
                       <td className="text-center text-foreground/70">{row.played}</td>
                       <td className="text-center text-foreground/70">{row.won}</td>
                       <td className="text-center text-foreground/70">{row.drawn}</td>
@@ -793,6 +842,30 @@ export default async function PublicLeaguePage({
                         <span>{fx.awayTeam.name}</span>
                       </Link>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {finishedLeagueMatches.length > 0 && (
+                <div className="rounded-xl border border-white/10 bg-card p-5">
+                  <h3 className="font-display font-bold mb-3">ผลล่าสุด</h3>
+                  <div className="flex flex-col gap-2">
+                    {[...finishedLeagueMatches]
+                      .sort((a, b) => b.kickoffAt.getTime() - a.kickoffAt.getTime())
+                      .slice(0, 3)
+                      .map((m) => (
+                        <Link
+                          key={m.id}
+                          href={`/matches/${m.id}`}
+                          className="grid grid-cols-[1fr_56px_1fr] items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                        >
+                          <span className="text-right truncate">{m.homeTeam.name}</span>
+                          <span className="text-center font-display font-bold">
+                            {m.homeScore}-{m.awayScore}
+                          </span>
+                          <span className="truncate">{m.awayTeam.name}</span>
+                        </Link>
+                      ))}
                   </div>
                 </div>
               )}

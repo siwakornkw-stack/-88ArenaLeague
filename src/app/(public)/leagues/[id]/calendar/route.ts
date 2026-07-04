@@ -39,6 +39,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       `DTSTART:${fmt(m.kickoffAt)}`,
       `DTEND:${fmt(new Date(m.kickoffAt.getTime() + 2 * 3600000))}`,
       `SUMMARY:${esc(`${m.homeTeam.name} vs ${m.awayTeam.name}`)}`,
+      `DESCRIPTION:${esc(
+        m.status === "FINISHED"
+          ? `จบแล้ว ${m.homeScore}-${m.awayScore} · ${league.name}`
+          : `นัดที่ ${m.round} · ${league.name}`
+      )}`,
       ...(m.venue ? [`LOCATION:${esc(m.venue)}`] : []),
       "END:VEVENT"
     );

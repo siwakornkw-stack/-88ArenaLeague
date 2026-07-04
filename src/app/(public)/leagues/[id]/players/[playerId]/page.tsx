@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { headers } from "next/headers";
 import { EVENT_ICON } from "@/lib/matchEvents";
 import { GoalsBarChart } from "@/components/league-charts";
+import { ShareLinks } from "@/components/share-links";
 import { MobileNav } from "@/components/mobile-nav";
 
 export default async function PublicPlayerPage({
@@ -49,6 +51,9 @@ export default async function PublicPlayerPage({
   const yellows = events.filter((e) => e.type === "YELLOW_CARD").length;
   const reds = events.filter((e) => e.type === "RED_CARD").length;
 
+  const h = await headers();
+  const pageUrl = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "league-manager-app.vercel.app"}/leagues/${id}/players/${playerId}`;
+
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
     { icon: "🏆", label: "ตาราง", href: `/leagues/${id}?tab=standings` },
@@ -89,6 +94,24 @@ export default async function PublicPlayerPage({
           <p className="mt-1 text-sm text-foreground/55">
             {player.position} · {player.team.name} · {player.team.league.name}
           </p>
+          <div className="mt-2 flex items-center gap-3">
+            {player.status === "BANNED" && (
+              <span className="text-xs rounded-full bg-red-500/10 text-red-400 px-3 py-1">
+                ⛔ ติดโทษแบน
+              </span>
+            )}
+            {player.status === "INJURED" && (
+              <span className="text-xs rounded-full bg-yellow-400/10 text-yellow-400 px-3 py-1">
+                🩹 บาดเจ็บ
+              </span>
+            )}
+            {player.status === "ACTIVE" && yellows >= 3 && (
+              <span className="text-xs rounded-full bg-yellow-400/10 text-yellow-400 px-3 py-1">
+                ⚠ ใบเหลืองสะสม {yellows} — เสี่ยงโดนแบน
+              </span>
+            )}
+            <ShareLinks url={pageUrl} text={`${player.name} · ${player.team.name}`} />
+          </div>
         </div>
       </div>
 

@@ -64,6 +64,13 @@ export default async function Home() {
     ]);
 
   const topStandings = featuredLeagues[0] ? await getCachedTopStandings(featuredLeagues[0].id) : [];
+  const featuredSponsors = featuredLeagues[0]
+    ? await prisma.leagueSponsor.findMany({
+        where: { leagueId: featuredLeagues[0].id },
+        orderBy: { createdAt: "asc" },
+        take: 6,
+      })
+    : [];
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/", active: true },
@@ -254,6 +261,21 @@ export default async function Home() {
         </div>
       </section>
 
+      {featuredSponsors.length > 0 && (
+        <section className="px-6 md:px-16 py-8 border-t border-white/5 flex items-center gap-5 flex-wrap">
+          <span className="text-xs text-foreground/40">ผู้สนับสนุน {featuredLeagues[0]?.name}:</span>
+          {featuredSponsors.map((s) => (
+            <span key={s.id} className="flex items-center gap-2 text-sm text-foreground/60">
+              {s.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={s.logoUrl} alt={s.name} className="h-7 w-7 rounded object-cover" />
+              )}
+              {s.name}
+            </span>
+          ))}
+        </section>
+      )}
+
       <footer className="px-6 md:px-16 py-8 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 text-sm">
         <span className="font-display italic font-bold text-foreground">
           88ARENA<span className="text-accent">LEAGUE</span>
@@ -272,7 +294,10 @@ export default async function Home() {
             เข้าสู่ระบบ
           </Link>
         </nav>
-        <span className="text-foreground/40 text-xs">© 2026 88ArenaLeague — แพลตฟอร์มจัดการลีกฟุตบอล</span>
+        <span className="text-foreground/40 text-xs">
+          © 2026 88ArenaLeague — อัปเดตล่าสุด{" "}
+          {new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })} น.
+        </span>
       </footer>
 
       <MobileNav items={mobileNavItems} />

@@ -17,6 +17,7 @@ import {
   reopenMatch,
   deleteEvent,
   quickStat,
+  updateEventMinute,
 } from "./actions";
 
 const STAT_FIELDS = [
@@ -80,6 +81,21 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
   const halfTimeWithId = halfTime.bind(null, id);
   const deleteEventWithId = deleteEvent.bind(null, id);
   const quickStatWithId = quickStat.bind(null, id);
+  const updateEventMinuteWithId = updateEventMinute.bind(null, id);
+
+  const h2h = await prisma.match.findMany({
+    where: {
+      status: "FINISHED",
+      id: { not: id },
+      OR: [
+        { homeTeamId: match.homeTeamId, awayTeamId: match.awayTeamId },
+        { homeTeamId: match.awayTeamId, awayTeamId: match.homeTeamId },
+      ],
+    },
+    include: { homeTeam: true, awayTeam: true },
+    orderBy: { kickoffAt: "desc" },
+    take: 3,
+  });
   const hasHalfTime = match.events.some((e) => e.type === "HALF_TIME");
   const homeLineupCount = match.lineups.filter((l) =>
     match.homeTeam.players.some((p) => p.id === l.playerId)
@@ -370,9 +386,30 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
         </div>
       )}
 
+      {h2h.length > 0 && (
+        <div className="rounded-lg bg-card border border-white/10 p-4">
+          <h3 className="text-sm font-semibold mb-2">ผลเจอกันล่าสุด</h3>
+          <div className="space-y-1">
+            {h2h.map((m) => (
+              <div key={m.id} className="grid grid-cols-[1fr_56px_1fr] items-center gap-2 text-xs text-foreground/70">
+                <span className="text-right truncate">{m.homeTeam.name}</span>
+                <span className="text-center font-display font-bold text-foreground">
+                  {m.homeScore}-{m.awayScore}
+                </span>
+                <span className="truncate">{m.awayTeam.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div>
-        <h2 className="font-semibold mb-3">ไทม์ไลน์</h2>
-        <MatchTimeline events={match.events} deleteAction={deleteEventWithId} />
+        <h2 className="font-semibold mb-3">ไทม์ไลน์ (แก้นาทีในช่องได้)</h2>
+        <MatchTimeline
+          events={match.events}
+          deleteAction={deleteEventWithId}
+          editMinuteAction={updateEventMinuteWithId}
+        />
       </div>
     </div>
   );

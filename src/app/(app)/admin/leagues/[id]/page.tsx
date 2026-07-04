@@ -18,6 +18,7 @@ import {
   createSponsor,
   deleteSponsor,
   deleteSchedule,
+  updateNews,
 } from "./actions";
 
 const STAGE_LABEL: Record<string, string> = {
@@ -359,6 +360,11 @@ export default async function LeagueDetailPage({
                           required
                           className="rounded-md bg-black/30 border border-white/10 px-2 py-1 text-xs"
                         />
+                        <input
+                          name="venue"
+                          placeholder="สนาม (ไม่บังคับ)"
+                          className="w-32 rounded-md bg-black/30 border border-white/10 px-2 py-1 text-xs"
+                        />
                         <button type="submit" className="rounded-md bg-white/10 px-3 py-1 text-xs">
                           ตั้งทั้งนัด
                         </button>
@@ -464,19 +470,33 @@ export default async function LeagueDetailPage({
         </form>
         <div className="space-y-2">
           {league.news.map((n) => (
-            <div
-              key={n.id}
-              className="flex items-start justify-between gap-3 rounded-md bg-white/5 px-3 py-2 text-sm"
-            >
-              <div>
-                <div className="font-semibold">{n.title}</div>
+            <div key={n.id} className="rounded-md bg-white/5 px-3 py-2 text-sm space-y-2">
+              <div className="flex items-start justify-between gap-3">
                 <div className="text-xs text-foreground/50">
                   {n.createdAt.toLocaleDateString("th-TH", { dateStyle: "medium" })}
                 </div>
+                <form action={deleteNews.bind(null, id, n.id)}>
+                  <button type="submit" className="text-xs text-foreground/50 hover:text-red-400">
+                    ลบ
+                  </button>
+                </form>
               </div>
-              <form action={deleteNews.bind(null, id, n.id)}>
-                <button type="submit" className="text-xs text-foreground/50 hover:text-red-400">
-                  ลบ
+              <form action={updateNews.bind(null, id, n.id)} className="space-y-2 max-w-md">
+                <input
+                  name="title"
+                  defaultValue={n.title}
+                  required
+                  className="w-full rounded-md bg-black/30 border border-white/10 px-2 py-1.5 text-sm outline-none focus:border-accent"
+                />
+                <textarea
+                  name="body"
+                  defaultValue={n.body}
+                  required
+                  rows={2}
+                  className="w-full rounded-md bg-black/30 border border-white/10 px-2 py-1.5 text-sm outline-none focus:border-accent"
+                />
+                <button type="submit" className="rounded-md bg-white/10 px-3 py-1 text-xs">
+                  บันทึกแก้ไข
                 </button>
               </form>
             </div>

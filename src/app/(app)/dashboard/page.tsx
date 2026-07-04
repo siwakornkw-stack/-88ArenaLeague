@@ -33,7 +33,7 @@ export default async function DashboardPage() {
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const endOfDay = new Date(startOfDay.getTime() + 86400000);
 
-  const [leagues, todayMatches, attentionMatches, adminLogs, users] = await Promise.all([
+  const [leagues, todayMatches, attentionMatches, adminLogs, users, tomorrowMatches] = await Promise.all([
     prisma.league.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -68,6 +68,13 @@ export default async function DashboardPage() {
     prisma.user.findMany({
       include: { managedTeams: { select: { name: true } } },
       orderBy: { createdAt: "asc" },
+    }),
+    prisma.match.findMany({
+      where: {
+        kickoffAt: { gte: endOfDay, lt: new Date(endOfDay.getTime() + 86400000) },
+      },
+      include: { homeTeam: true, awayTeam: true, league: true },
+      orderBy: { kickoffAt: "asc" },
     }),
   ]);
 
@@ -171,6 +178,29 @@ export default async function DashboardPage() {
                     : m.status === "LIVE"
                       ? `สด ${m.events[0] ? computeLiveMinute(m.events[0].createdAt) : m.minute}'`
                       : "จบ"}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tomorrowMatches.length > 0 && (
+        <div className="rounded-lg bg-card border border-white/10 p-5">
+          <h2 className="font-semibold mb-3">แมตช์พรุ่งนี้</h2>
+          <div className="space-y-2">
+            {tomorrowMatches.map((m) => (
+              <Link
+                key={m.id}
+                href={`/admin/matches/${m.id}`}
+                className="flex items-center justify-between rounded-md bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+              >
+                <span className="text-foreground/50 text-xs">{m.league.name}</span>
+                <span>
+                  {m.homeTeam.name} vs {m.awayTeam.name}
+                </span>
+                <span className="text-foreground/50 text-xs">
+                  {m.kickoffAt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </Link>
             ))}

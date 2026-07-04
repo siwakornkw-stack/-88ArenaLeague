@@ -53,7 +53,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       : match.status === "FINISHED"
         ? `ผลการแข่งขัน · ${match.league.name} นัดที่ ${match.round}`
         : `${match.kickoffAt.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })} · ${match.league.name}`;
-  return { title, description, openGraph: { title, description } };
+  return {
+    title,
+    description,
+    openGraph: { title, description },
+    alternates: { canonical: `https://league-manager-app.vercel.app/matches/${id}` },
+  };
 }
 
 export default async function PublicMatchPage({ params }: { params: Promise<{ id: string }> }) {
@@ -218,9 +223,34 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
         <p className="mt-4 text-center text-xs text-foreground/45">
           นัดที่ {match.round} ·{" "}
           {match.kickoffAt.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
-          {match.venue && <> · {match.venue}</>}
+          {match.venue && (
+            <>
+              {" "}
+              ·{" "}
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(match.venue)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-accent underline decoration-dotted"
+              >
+                📍 {match.venue}
+              </a>
+            </>
+          )}
           {match.spectators != null && match.spectators > 0 && <> · ผู้ชม {match.spectators}</>}
         </p>
+        {match.status === "SCHEDULED" &&
+          (() => {
+            const hoursLeft = Math.round(
+              (match.kickoffAt.getTime() - Date.now()) / 3600000
+            );
+            if (hoursLeft <= 0 || hoursLeft > 48) return null;
+            return (
+              <p className="mt-2 text-center text-xs text-accent">
+                ⏳ เริ่มในอีกประมาณ {hoursLeft} ชั่วโมง
+              </p>
+            );
+          })()}
         {match.streamUrl && (
           <div className="mt-3 flex justify-center">
             <a

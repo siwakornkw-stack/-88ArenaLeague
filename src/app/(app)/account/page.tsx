@@ -1,13 +1,15 @@
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { changePassword } from "./actions";
+import { changePassword, updateProfile } from "./actions";
 
 const STATUS_MESSAGE: Record<string, { text: string; ok: boolean }> = {
   ok: { text: "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว", ok: true },
   wrong: { text: "รหัสผ่านปัจจุบันไม่ถูกต้อง", ok: false },
   short: { text: "รหัสผ่านใหม่ต้องยาวอย่างน้อย 8 ตัวอักษร", ok: false },
   mismatch: { text: "รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน", ok: false },
+  renamed: { text: "เปลี่ยนชื่อเรียบร้อย (ชื่อในแถบข้างจะอัปเดตเมื่อเข้าสู่ระบบใหม่)", ok: true },
+  noname: { text: "กรุณากรอกชื่อ", ok: false },
 };
 
 export default async function AccountPage({
@@ -61,6 +63,21 @@ export default async function AccountPage({
           </p>
         </div>
       )}
+
+      <div className="rounded-lg bg-card border border-white/10 p-5">
+        <h2 className="font-semibold mb-3">เปลี่ยนชื่อที่แสดง</h2>
+        <form action={updateProfile} className="flex gap-2">
+          <input
+            name="name"
+            defaultValue={user?.name ?? session.name}
+            required
+            className="flex-1 rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
+            บันทึก
+          </button>
+        </form>
+      </div>
 
       {myLogs.length > 0 && (
         <div className="rounded-lg bg-card border border-white/10 p-5">

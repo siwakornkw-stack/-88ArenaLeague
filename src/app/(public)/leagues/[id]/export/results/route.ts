@@ -25,12 +25,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const matches = await prisma.match.findMany({
     where: { leagueId: id },
-    include: { homeTeam: true, awayTeam: true },
+    include: { homeTeam: true, awayTeam: true, mvpPlayer: true },
     orderBy: [{ round: "asc" }, { kickoffAt: "asc" }],
   });
 
   const rows = [
-    ["นัดที่", "รอบ", "วันเวลา", "เหย้า", "สกอร์", "เยือน", "สนาม", "สถานะ"],
+    ["นัดที่", "รอบ", "วันเวลา", "เหย้า", "สกอร์", "เยือน", "สนาม", "สถานะ", "MVP"],
     ...matches.map((m) => [
       m.round,
       STAGE_LABEL[m.stage] ?? m.stage,
@@ -40,6 +40,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       m.awayTeam.name,
       m.venue ?? "-",
       STATUS_LABEL[m.status] ?? m.status,
+      m.mvpPlayer?.name ?? "-",
     ]),
   ];
   const csv = "﻿" + rows.map((row) => row.map(csvCell).join(",")).join("\r\n");

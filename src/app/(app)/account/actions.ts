@@ -5,6 +5,17 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { verifyPassword, hashPassword } from "@/lib/auth";
 
+export async function updateProfile(formData: FormData) {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) redirect("/account?status=noname");
+
+  await prisma.user.update({ where: { id: session.userId }, data: { name } });
+  redirect("/account?status=renamed");
+}
+
 export async function changePassword(formData: FormData) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");

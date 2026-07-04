@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
+import { getTopScorers } from "@/lib/topScorers";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -10,13 +11,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   });
   if (!league) return new Response("Not found", { status: 404 });
 
-  const [standings, matches] = await Promise.all([
+  const [standings, matches, topScorers] = await Promise.all([
     computeStandings(id),
     prisma.match.findMany({
       where: { leagueId: id },
       include: { homeTeam: true, awayTeam: true },
       orderBy: [{ round: "asc" }, { kickoffAt: "asc" }],
     }),
+    getTopScorers(id, 20),
   ]);
 
   return Response.json({
@@ -39,6 +41,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       })),
     },
     standings,
+    topScorers,
     matches: matches.map((m) => ({
       id: m.id,
       round: m.round,

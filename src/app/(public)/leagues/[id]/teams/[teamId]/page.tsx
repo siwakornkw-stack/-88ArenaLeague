@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { headers } from "next/headers";
 import { computeStandings } from "@/lib/standings";
 import { TeamBadge } from "@/components/team-badge";
 import { PointsLineChart } from "@/components/league-charts";
+import { ShareLinks } from "@/components/share-links";
 import { MobileNav } from "@/components/mobile-nav";
 
 const FORM_LABEL: Record<"W" | "D" | "L", { t: string; className: string }> = {
@@ -25,7 +27,14 @@ export async function generateMetadata({
   if (!team) return {};
   const title = `${team.name} · ${team.league.name}`;
   const description = `สถิติทีม รายชื่อนักเตะ และผลการแข่งขันของ ${team.name}`;
-  return { title, description, openGraph: { title, description } };
+  return {
+    title,
+    description,
+    openGraph: { title, description },
+    alternates: {
+      canonical: `https://league-manager-app.vercel.app/leagues/${id}/teams/${teamId}`,
+    },
+  };
 }
 
 export default async function PublicTeamPage({
@@ -66,6 +75,17 @@ export default async function PublicTeamPage({
 
   const rank = standings.findIndex((r) => r.teamId === teamId) + 1;
   const row = standings.find((r) => r.teamId === teamId) ?? null;
+
+  const h = await headers();
+  const pageUrl = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "league-manager-app.vercel.app"}/leagues/${id}/teams/${teamId}`;
+
+  const teamScorers = new Map<string, { name: string; goals: number }>();
+  for (const g of eventsGrouped) {
+    if (!g.playerId || g.type !== "GOAL") continue;
+    const player = team.players.find((p) => p.id === g.playerId);
+    if (player) teamScorers.set(g.playerId, { name: player.name, goals: g._count.playerId });
+  }
+  const topTeamScorers = [...teamScorers.values()].sort((a, b) => b.goals - a.goals).slice(0, 3);
 
   const appsByPlayer = new Map(appsGrouped.map((g) => [g.playerId, g._count.playerId]));
   const goalsByPlayer = new Map<string, number>();
@@ -172,6 +192,9 @@ export default async function PublicTeamPage({
               ))}
             </div>
           )}
+          <div className="mt-2">
+            <ShareLinks url={pageUrl} text={`${team.name} · ${team.league.name}`} />
+          </div>
         </div>
       </div>
 
@@ -222,6 +245,23 @@ export default async function PublicTeamPage({
               rounds={progressionRounds}
               series={[{ name: team.name, color: team.color, points: progressionPoints }]}
             />
+          </div>
+        )}
+
+        {topTeamScorers.length > 0 && (
+          <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">
+            <div className="text-xs text-foreground/50 mb-2">⚽ ดาวซัลโวของทีม</div>
+            <div className="space-y-1">
+              {topTeamScorers.map((s, i) => (
+                <div key={s.name} className="flex items-center justify-between">
+                  <span>
+                    <span className="text-foreground/40 mr-2">{i + 1}</span>
+                    {s.name}
+                  </span>
+                  <span className="font-display font-bold text-accent">{s.goals}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
