@@ -99,7 +99,17 @@ export default async function LeagueTeamsPage({ params }: { params: Promise<{ id
               </div>
 
               <div className="pl-7 space-y-2">
-                <p className="text-xs text-foreground/50">{team._count.players} นักเตะ</p>
+                <p className="text-xs text-foreground/50">
+                  {team._count.players} นักเตะ ·{" "}
+                  <Link
+                    href={`/leagues/${id}/teams/${team.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-accent"
+                  >
+                    ดูหน้าสาธารณะ ↗
+                  </Link>
+                </p>
 
                 {team.managers.map((manager) => (
                   <div

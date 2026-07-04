@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { getFeaturedLeagues } from "@/lib/featuredLeagues";
 import { MobileNav } from "@/components/mobile-nav";
 
 export default async function SearchPage({
@@ -31,6 +32,8 @@ export default async function SearchPage({
         ])
       : [[], [], []];
 
+  const suggestions = query.length < 2 ? await getFeaturedLeagues(6) : [];
+
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
     { icon: "🔍", label: "ค้นหา", href: "/search", active: true },
@@ -56,6 +59,22 @@ export default async function SearchPage({
       </div>
 
       <div className="px-6 md:px-16 py-8 flex-1 space-y-8">
+        {suggestions.length > 0 && (
+          <div>
+            <h2 className="text-sm text-foreground/50 mb-3">ลองดูลีกยอดนิยม:</h2>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((lg) => (
+                <Link
+                  key={lg.id}
+                  href={`/leagues/${lg.id}`}
+                  className="rounded-full border border-white/15 px-4 py-1.5 text-sm text-foreground/75 hover:border-accent/50 hover:text-accent"
+                >
+                  {lg.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
         {query.length >= 2 && teams.length === 0 && players.length === 0 && leagues.length === 0 && (
           <p className="text-foreground/50 text-sm">ไม่พบผลลัพธ์สำหรับ &quot;{query}&quot;</p>
         )}

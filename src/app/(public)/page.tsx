@@ -1,11 +1,18 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getFeaturedLeagues } from "@/lib/featuredLeagues";
+import { computeStandings } from "@/lib/standings";
 import { computeLiveMinute } from "@/lib/matchClock";
 import { MobileNav } from "@/components/mobile-nav";
 import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
+
+const getCachedTopStandings = unstable_cache(
+  async (leagueId: string) => (await computeStandings(leagueId)).slice(0, 5),
+  ["landing-top-standings"],
+  { revalidate: 30 }
+);
 
 const getCachedLandingStats = unstable_cache(
   async () => {
@@ -55,6 +62,8 @@ export default async function Home() {
         orderBy: { kickoffAt: "asc" },
       }),
     ]);
+
+  const topStandings = featuredLeagues[0] ? await getCachedTopStandings(featuredLeagues[0].id) : [];
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/", active: true },
@@ -200,6 +209,35 @@ export default async function Home() {
           </div>
         )}
       </section>
+
+      {featuredLeagues[0] && topStandings.length > 0 && (
+        <section className="px-6 md:px-16 py-12 border-t border-white/5">
+          <div className="flex items-baseline justify-between mb-5">
+            <h2 className="font-display italic font-extrabold text-xl text-foreground">
+              ตารางคะแนน <span className="text-accent">{featuredLeagues[0].name}</span>
+            </h2>
+            <Link
+              href={`/leagues/${featuredLeagues[0].id}?tab=standings`}
+              className="text-xs text-foreground/55 hover:text-accent"
+            >
+              ดูตารางเต็ม →
+            </Link>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-card overflow-hidden max-w-2xl">
+            {topStandings.map((row, i) => (
+              <div
+                key={row.teamId}
+                className="flex items-center gap-4 px-4 py-2.5 text-sm border-t border-white/5 first:border-t-0"
+              >
+                <span className="w-5 font-display font-bold text-foreground/50">{i + 1}</span>
+                <span className="flex-1 font-display font-semibold">{row.teamName}</span>
+                <span className="text-xs text-foreground/45">แข่ง {row.played}</span>
+                <span className="font-display italic font-extrabold text-accent">{row.points}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="px-6 md:px-16 py-14 bg-accent">
         <h2 className="font-display italic font-extrabold text-2xl md:text-3xl text-black mb-8">

@@ -24,15 +24,16 @@ export default async function ChampionsPage() {
       ]);
 
       let championName = standings[0]?.teamName ?? null;
+      let runnerUp = standings[1]?.teamName ?? null;
       let note = standings[0] ? `${standings[0].points} แต้ม` : null;
       if (finalMatch) {
-        const winner =
-          finalMatch.homeScore >= finalMatch.awayScore ? finalMatch.homeTeam : finalMatch.awayTeam;
-        championName = winner.name;
+        const homeWon = finalMatch.homeScore >= finalMatch.awayScore;
+        championName = homeWon ? finalMatch.homeTeam.name : finalMatch.awayTeam.name;
+        runnerUp = homeWon ? finalMatch.awayTeam.name : finalMatch.homeTeam.name;
         note = `ชนะนัดชิง ${finalMatch.homeScore}-${finalMatch.awayScore}`;
       }
 
-      return { league, championName, note, topScorer: topScorers[0] ?? null };
+      return { league, championName, runnerUp, note, topScorer: topScorers[0] ?? null };
     })
   );
 
@@ -72,7 +73,7 @@ export default async function ChampionsPage() {
           <p className="text-foreground/50 text-sm">ยังไม่มีฤดูกาลที่จบการแข่งขัน</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
-            {entries.map(({ league, championName, note, topScorer }) => (
+            {entries.map(({ league, championName, runnerUp, note, topScorer }) => (
               <Link
                 key={league.id}
                 href={`/leagues/${league.id}`}
@@ -90,8 +91,13 @@ export default async function ChampionsPage() {
                     {note && <div className="text-xs text-foreground/60">{note}</div>}
                   </div>
                 </div>
-                {topScorer && (
+                {runnerUp && (
                   <div className="mt-3 text-xs text-foreground/60">
+                    🥈 รองแชมป์: <span className="text-foreground">{runnerUp}</span>
+                  </div>
+                )}
+                {topScorer && (
+                  <div className="mt-1 text-xs text-foreground/60">
                     ⚽ ดาวซัลโว: <span className="text-foreground">{topScorer.playerName}</span> (
                     {topScorer.goals} ประตู)
                   </div>

@@ -20,6 +20,10 @@ export const metadata: Metadata = {
   description: "ระบบจัดการลีกฟุตบอล จัดตารางแข่ง บันทึกผลสด ตารางคะแนน",
 };
 
+export const viewport = {
+  themeColor: "#101410",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

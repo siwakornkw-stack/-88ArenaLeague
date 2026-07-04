@@ -93,6 +93,19 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
     match.status === "LIVE" && kickOffEvent ? computeLiveMinute(kickOffEvent.createdAt) : match.minute;
   const hasHalfTime = match.events.some((e) => e.type === "HALF_TIME");
 
+  const siblings = await prisma.match.findMany({
+    where: { leagueId: match.leagueId },
+    orderBy: [{ kickoffAt: "asc" }, { id: "asc" }],
+    select: { id: true },
+  });
+  const sibIdx = siblings.findIndex((m) => m.id === id);
+  const prevId = sibIdx > 0 ? siblings[sibIdx - 1].id : null;
+  const nextId = sibIdx >= 0 && sibIdx < siblings.length - 1 ? siblings[sibIdx + 1].id : null;
+
+  const goalCount = match.events.filter((e) => e.type === "GOAL" || e.type === "OWN_GOAL").length;
+  const yellowCount = match.events.filter((e) => e.type === "YELLOW_CARD").length;
+  const redCount = match.events.filter((e) => e.type === "RED_CARD").length;
+
   const standings = await getCachedStandings(match.leagueId);
   const homeRank = standings.findIndex((r) => r.teamId === match.homeTeamId) + 1;
   const awayRank = standings.findIndex((r) => r.teamId === match.awayTeamId) + 1;
@@ -143,6 +156,11 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
 
       <div className="bg-gradient-to-r from-[#12240F] to-background px-6 md:px-16 py-10">
         <div className="flex items-center justify-center gap-3 text-xs font-display font-semibold mb-4">
+          {match.stage !== "LEAGUE" && (
+            <span className="rounded-full border border-accent/40 bg-accent/10 text-accent px-3 py-1">
+              {match.stage === "FINAL" ? "🏆 นัดชิงชนะเลิศ" : "รอบรองชนะเลิศ"}
+            </span>
+          )}
           {match.status === "LIVE" ? (
             <span className="flex items-center gap-1 text-accent">
               <span className="w-2 h-2 rounded-full bg-accent animate-pulse" /> LIVE ·{" "}
@@ -305,10 +323,34 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
         )}
 
         <div>
-          <h2 className="font-display font-bold mb-4">ไทม์ไลน์</h2>
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="font-display font-bold">ไทม์ไลน์</h2>
+            {match.status !== "SCHEDULED" && (
+              <span className="text-xs text-foreground/45">
+                ⚽ {goalCount} · 🟨 {yellowCount} · 🟥 {redCount}
+              </span>
+            )}
+          </div>
           <div className="rounded-xl border border-white/10 bg-card p-5">
             <MatchTimeline events={match.events} />
           </div>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          {prevId ? (
+            <Link href={`/matches/${prevId}`} className="text-foreground/60 hover:text-accent">
+              ← แมตช์ก่อนหน้า
+            </Link>
+          ) : (
+            <span />
+          )}
+          {nextId ? (
+            <Link href={`/matches/${nextId}`} className="text-foreground/60 hover:text-accent">
+              แมตช์ถัดไป →
+            </Link>
+          ) : (
+            <span />
+          )}
         </div>
 
         {(homePlayers.length > 0 || awayPlayers.length > 0) && (

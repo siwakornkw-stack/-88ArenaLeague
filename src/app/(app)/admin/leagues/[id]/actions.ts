@@ -158,6 +158,25 @@ export async function generateFinal(leagueId: string) {
   revalidatePath(`/leagues/${leagueId}`);
 }
 
+export async function deleteSchedule(leagueId: string) {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
+
+  const matches = await prisma.match.findMany({ where: { leagueId }, select: { status: true } });
+  if (matches.length === 0) return;
+  if (matches.some((m) => m.status !== "SCHEDULED")) {
+    throw new Error("ลบไม่ได้ มีแมตช์ที่เริ่มแข่งหรือจบไปแล้ว");
+  }
+
+  await prisma.$transaction([
+    prisma.match.deleteMany({ where: { leagueId } }),
+    prisma.league.update({ where: { id: leagueId }, data: { status: "DRAFT" } }),
+  ]);
+  await logAdmin(session, "ลบตารางแข่ง", `ลีก ${leagueId} · ${matches.length} แมตช์`);
+  revalidatePath(`/admin/leagues/${leagueId}`);
+  revalidatePath(`/leagues/${leagueId}`);
+}
+
 export async function updateLeague(leagueId: string, formData: FormData) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");

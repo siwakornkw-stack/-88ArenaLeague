@@ -111,6 +111,13 @@ export default async function PublicLeaguePage({
       : [];
   const topScorers = tab === "standings" || isFinished ? await getTopScorers(id, 5) : [];
   const discipline = tab === "discipline" ? await getDiscipline(id) : null;
+  const bannedPlayers =
+    tab === "discipline"
+      ? await prisma.player.findMany({
+          where: { team: { leagueId: id }, status: "BANNED" },
+          include: { team: true },
+        })
+      : [];
   const topAssists = tab === "standings" ? await getTopAssists(id, 5) : [];
   const news =
     tab === "news"
@@ -473,6 +480,26 @@ export default async function PublicLeaguePage({
                 </div>
               </div>
 
+              {bannedPlayers.length > 0 && (
+                <div className="rounded-xl border border-red-500/30 bg-card p-5">
+                  <h3 className="font-display font-bold mb-3">⛔ ติดโทษแบนตอนนี้</h3>
+                  <div className="flex flex-col gap-2">
+                    {bannedPlayers.map((p) => (
+                      <Link
+                        key={p.id}
+                        href={`/leagues/${id}/players/${p.id}`}
+                        className="flex items-center justify-between text-sm hover:text-accent"
+                      >
+                        <span>
+                          #{p.number} {p.name}
+                        </span>
+                        <span className="text-xs text-foreground/45">{p.team.name}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {discipline.teams.length > 0 && (
                 <div className="rounded-xl border border-accent/30 bg-card p-5">
                   <h3 className="font-display font-bold mb-2">🤝 ทีมมารยาทดี</h3>
@@ -521,6 +548,41 @@ export default async function PublicLeaguePage({
         ) : tab === "stats" ? (
           charts ? (
             <div className="space-y-6">
+              <div className="flex flex-wrap gap-8 rounded-xl border border-white/10 bg-card p-5 text-sm">
+                <div>
+                  <div className="font-display italic font-extrabold text-2xl text-accent">
+                    {finishedLeagueMatches.reduce((s, m) => s + m.homeScore + m.awayScore, 0)}
+                  </div>
+                  <div className="text-xs text-foreground/55">ประตูรวม</div>
+                </div>
+                <div>
+                  <div className="font-display italic font-extrabold text-2xl text-accent">
+                    {finishedLeagueMatches.length > 0
+                      ? (
+                          finishedLeagueMatches.reduce((s, m) => s + m.homeScore + m.awayScore, 0) /
+                          finishedLeagueMatches.length
+                        ).toFixed(1)
+                      : "0"}
+                  </div>
+                  <div className="text-xs text-foreground/55">ประตูเฉลี่ย/นัด</div>
+                </div>
+                <div>
+                  <div className="font-display italic font-extrabold text-2xl text-accent">
+                    {
+                      finishedLeagueMatches.filter((m) => m.homeScore === 0 || m.awayScore === 0)
+                        .length
+                    }
+                  </div>
+                  <div className="text-xs text-foreground/55">นัดที่มีคลีนชีต</div>
+                </div>
+                <div>
+                  <div className="font-display italic font-extrabold text-2xl text-accent">
+                    {finishedLeagueMatches.filter((m) => m.homeScore === m.awayScore).length}
+                  </div>
+                  <div className="text-xs text-foreground/55">นัดเสมอ</div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <div className="rounded-xl border border-white/10 bg-card p-5">
                   <h3 className="font-display font-bold mb-3">ประตูรวมต่อนัด</h3>

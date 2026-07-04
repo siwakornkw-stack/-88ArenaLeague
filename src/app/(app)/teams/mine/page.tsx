@@ -35,13 +35,14 @@ const STATUS_FILTERS = [
 export default async function MyTeamPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; imported?: string; skipped?: string }>;
+  searchParams: Promise<{ status?: string; imported?: string; skipped?: string; sort?: string }>;
 }) {
   const session = await getSession();
   if (session?.role !== "TEAM_MANAGER") redirect("/dashboard");
 
-  const { status, imported, skipped } = await searchParams;
+  const { status, imported, skipped, sort } = await searchParams;
   const statusFilter = status ?? "all";
+  const sortByGoals = sort === "goals";
 
   const team = await prisma.team.findFirst({
     where: { managers: { some: { id: session.userId } } },
@@ -122,6 +123,11 @@ export default async function MyTeamPage({
     if (statusFilter === "OUT") return p.status !== "ACTIVE";
     return p.status === statusFilter;
   });
+  if (sortByGoals) {
+    filteredPlayers.sort(
+      (a, b) => (goalsByPlayer.get(b.id) ?? 0) - (goalsByPlayer.get(a.id) ?? 0)
+    );
+  }
 
   const selectedPlayerIds = new Set(nextMatch?.lineups.map((l) => l.playerId) ?? []);
   const eligiblePlayers = team.players.filter((p) => p.status === "ACTIVE");
@@ -298,7 +304,8 @@ export default async function MyTeamPage({
           </div>
           <p className="text-sm text-foreground/60 mb-4">
             {nextMatch.homeTeam.name} vs {nextMatch.awayTeam.name} ·{" "}
-            {nextMatch.kickoffAt.toLocaleDateString("th-TH")}
+            {nextMatch.kickoffAt.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
+            {nextMatch.venue && <> · {nextMatch.venue}</>}
           </p>
           <form action={setLineupWithId} className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
@@ -348,7 +355,7 @@ export default async function MyTeamPage({
             {STATUS_FILTERS.map((f) => (
               <Link
                 key={f.value}
-                href={`/teams/mine?status=${f.value}`}
+                href={`/teams/mine?status=${f.value}${sortByGoals ? "&sort=goals" : ""}`}
                 className={`rounded-full px-3 py-1 text-xs ${
                   statusFilter === f.value ? "bg-accent text-black" : "bg-white/5 text-foreground/60"
                 }`}
@@ -356,6 +363,14 @@ export default async function MyTeamPage({
                 {f.label}
               </Link>
             ))}
+            <Link
+              href={`/teams/mine?status=${statusFilter}${sortByGoals ? "" : "&sort=goals"}`}
+              className={`rounded-full px-3 py-1 text-xs ${
+                sortByGoals ? "bg-accent text-black" : "bg-white/5 text-foreground/60"
+              }`}
+            >
+              ⚽ เรียงตามประตู
+            </Link>
           </div>
         </div>
 

@@ -24,6 +24,14 @@ export default async function AccountPage({
     where: { id: session.userId },
     include: { managedTeams: { select: { name: true } } },
   });
+  const myLogs =
+    session.role === "SUPER_ADMIN"
+      ? await prisma.adminLog.findMany({
+          where: { userId: session.userId },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        })
+      : [];
 
   return (
     <div className="max-w-sm space-y-6">
@@ -51,6 +59,23 @@ export default async function AccountPage({
             <span className="text-foreground/50">สมาชิกตั้งแต่:</span>{" "}
             {user.createdAt.toLocaleDateString("th-TH", { dateStyle: "long" })}
           </p>
+        </div>
+      )}
+
+      {myLogs.length > 0 && (
+        <div className="rounded-lg bg-card border border-white/10 p-5">
+          <h2 className="font-semibold mb-3">กิจกรรมล่าสุดของฉัน</h2>
+          <div className="space-y-1.5 text-sm">
+            {myLogs.map((log) => (
+              <div key={log.id} className="flex items-baseline gap-2">
+                <span className="text-xs text-foreground/40 w-28 shrink-0">
+                  {log.createdAt.toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}
+                </span>
+                <span className="text-accent shrink-0">{log.action}</span>
+                <span className="text-foreground/50 truncate">{log.detail}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

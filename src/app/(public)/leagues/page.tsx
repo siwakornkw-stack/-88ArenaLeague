@@ -42,9 +42,9 @@ function LeagueCard({ lg }: { lg: FeaturedLeague }) {
 export default async function LeaguesIndexPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string }>;
 }) {
-  const { q = "" } = await searchParams;
+  const { q = "", sort = "latest" } = await searchParams;
   const query = q.trim();
 
   const [leagues, finishedIds] = await Promise.all([
@@ -53,9 +53,12 @@ export default async function LeaguesIndexPage({
   ]);
   const finishedSet = new Set(finishedIds.map((l) => l.id));
 
-  const filtered = query
+  let filtered = query
     ? leagues.filter((lg) => lg.name.toLowerCase().includes(query.toLowerCase()))
     : leagues;
+  if (sort === "name") {
+    filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name, "th"));
+  }
   const active = filtered.filter((lg) => !finishedSet.has(lg.id));
   const finished = filtered.filter((lg) => finishedSet.has(lg.id));
 
@@ -71,13 +74,21 @@ export default async function LeaguesIndexPage({
           ลีก<span className="text-accent">ทั้งหมด</span>
         </h1>
         <p className="mt-1 text-sm text-foreground/55">{filtered.length} ลีกที่เปิดให้ชม</p>
-        <form method="get" className="mt-4 flex gap-2 max-w-sm">
+        <form method="get" className="mt-4 flex flex-wrap gap-2 max-w-lg">
           <input
             name="q"
             defaultValue={query}
             placeholder="ค้นหาชื่อลีก"
-            className="flex-1 rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+            className="flex-1 min-w-40 rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
           />
+          <select
+            name="sort"
+            defaultValue={sort}
+            className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          >
+            <option value="latest">ล่าสุดก่อน</option>
+            <option value="name">เรียงตามชื่อ</option>
+          </select>
           <button type="submit" className="rounded-md bg-accent text-black font-semibold px-5 py-2 text-sm">
             ค้นหา
           </button>

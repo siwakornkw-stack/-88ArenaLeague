@@ -5,11 +5,14 @@ import { logout } from "@/app/login/actions";
 const NAV_BY_ROLE: Record<SessionPayload["role"], { href: string; label: string }[]> = {
   SUPER_ADMIN: [
     { href: "/dashboard", label: "ภาพรวม" },
+    { href: "/admin/logs", label: "ประวัติระบบ" },
     { href: "/account", label: "บัญชี" },
+    { href: "/", label: "ดูเว็บสาธารณะ" },
   ],
   TEAM_MANAGER: [
     { href: "/teams/mine", label: "ทีมของฉัน" },
     { href: "/account", label: "บัญชี" },
+    { href: "/", label: "ดูเว็บสาธารณะ" },
   ],
 };
 

@@ -96,12 +96,37 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
         ) : (
           <span />
         )}
-        <Link
-          href={`/admin/leagues/${match.leagueId}`}
-          className="text-foreground/60 hover:text-accent"
-        >
-          ตารางแข่ง
-        </Link>
+        <span className="flex items-center gap-3">
+          <Link
+            href={`/admin/leagues/${match.leagueId}`}
+            className="text-foreground/60 hover:text-accent"
+          >
+            ตารางแข่ง
+          </Link>
+          <Link
+            href={`/matches/${id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-foreground/60 hover:text-accent"
+          >
+            ดูหน้าสาธารณะ ↗
+          </Link>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              match.status === "LIVE"
+                ? "bg-red-500/15 text-red-400"
+                : match.status === "FINISHED"
+                  ? "bg-white/10 text-foreground/60"
+                  : "bg-accent/15 text-accent"
+            }`}
+          >
+            {match.status === "LIVE"
+              ? "LIVE"
+              : match.status === "FINISHED"
+                ? "จบแล้ว"
+                : "ยังไม่แข่ง"}
+          </span>
+        </span>
         {nextId ? (
           <Link href={`/admin/matches/${nextId}`} className="text-foreground/60 hover:text-accent">
             นัดถัดไป →

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { EVENT_ICON } from "@/lib/matchEvents";
+import { GoalsBarChart } from "@/components/league-charts";
 import { MobileNav } from "@/components/mobile-nav";
 
 export default async function PublicPlayerPage({
@@ -28,6 +29,21 @@ export default async function PublicPlayerPage({
     }),
     prisma.match.count({ where: { mvpPlayerId: playerId } }),
   ]);
+
+  const recentLineups = await prisma.matchLineup.findMany({
+    where: { playerId, match: { status: { in: ["LIVE", "FINISHED"] } } },
+    include: { match: { include: { homeTeam: true, awayTeam: true } } },
+    orderBy: { match: { kickoffAt: "desc" } },
+    take: 5,
+  });
+
+  const MINUTE_BUCKETS = ["1-15", "16-30", "31-45", "46-60", "61-75", "76+"];
+  const goalBuckets = [0, 0, 0, 0, 0, 0];
+  for (const ev of events) {
+    if (ev.type !== "GOAL") continue;
+    const idx = Math.min(5, Math.floor(Math.max(0, ev.minute - 1) / 15));
+    goalBuckets[idx]++;
+  }
 
   const goals = events.filter((e) => e.type === "GOAL").length;
   const yellows = events.filter((e) => e.type === "YELLOW_CARD").length;
@@ -85,6 +101,37 @@ export default async function PublicPlayerPage({
           <Stat value={mvpCount} label="MVP" />
           <Stat value={apps > 0 ? Number((goals / apps).toFixed(2)) : 0} label="ประตู/นัด" />
         </div>
+
+        {goals >= 2 && (
+          <div className="rounded-xl border border-white/10 bg-card p-5 max-w-2xl">
+            <h2 className="font-display font-bold mb-3">ช่วงเวลาที่ยิงประตู (นาที)</h2>
+            <GoalsBarChart rounds={MINUTE_BUCKETS} values={goalBuckets} />
+          </div>
+        )}
+
+        {recentLineups.length > 0 && (
+          <div className="rounded-xl border border-white/10 bg-card p-5 max-w-2xl">
+            <h2 className="font-display font-bold mb-3">ลงสนามล่าสุด</h2>
+            <div className="flex flex-col gap-2">
+              {recentLineups.map((l) => (
+                <Link
+                  key={l.id}
+                  href={`/matches/${l.matchId}`}
+                  className="grid grid-cols-[1fr_56px_1fr_auto] items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                >
+                  <span className="text-right truncate">{l.match.homeTeam.name}</span>
+                  <span className="text-center font-display font-bold">
+                    {l.match.homeScore}-{l.match.awayScore}
+                  </span>
+                  <span className="truncate">{l.match.awayTeam.name}</span>
+                  <span className="text-xs text-foreground/40">
+                    {l.isStarting ? "ตัวจริง" : "สำรอง"}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="rounded-xl border border-white/10 bg-card p-5">
           <h2 className="font-display font-bold mb-3">เหตุการณ์ในสนาม</h2>

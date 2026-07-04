@@ -17,6 +17,7 @@ import {
   generateFinal,
   createSponsor,
   deleteSponsor,
+  deleteSchedule,
 } from "./actions";
 
 const STAGE_LABEL: Record<string, string> = {
@@ -366,19 +367,32 @@ export default async function LeagueDetailPage({
                   </div>
                   <div className="space-y-2">
                     {roundMatches.map((m) => (
-                      <Link
+                      <div
                         key={m.id}
-                        href={`/admin/matches/${m.id}`}
-                        className="flex items-center justify-between rounded-md bg-card border border-white/10 px-4 py-3 hover:border-accent/50"
+                        className="flex items-center gap-2 rounded-md bg-card border border-white/10 px-4 py-3 hover:border-accent/50"
                       >
-                        <span>{m.homeTeam.name}</span>
-                        <span className="text-foreground/50 text-sm">
-                          {m.status === "SCHEDULED"
-                            ? m.kickoffAt.toLocaleDateString("th-TH")
-                            : `${m.homeScore} - ${m.awayScore}`}
-                        </span>
-                        <span>{m.awayTeam.name}</span>
-                      </Link>
+                        <Link
+                          href={`/admin/matches/${m.id}`}
+                          className="flex flex-1 items-center justify-between"
+                        >
+                          <span>{m.homeTeam.name}</span>
+                          <span className="text-foreground/50 text-sm">
+                            {m.status === "SCHEDULED"
+                              ? m.kickoffAt.toLocaleDateString("th-TH")
+                              : `${m.homeScore} - ${m.awayScore}`}
+                          </span>
+                          <span>{m.awayTeam.name}</span>
+                        </Link>
+                        <Link
+                          href={`/matches/${m.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="ดูหน้าสาธารณะ"
+                          className="text-foreground/30 hover:text-accent text-xs shrink-0"
+                        >
+                          ↗
+                        </Link>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -602,6 +616,16 @@ export default async function LeagueDetailPage({
             บันทึก
           </button>
         </form>
+
+        {matches.length > 0 && matches.every((m) => m.status === "SCHEDULED") && (
+          <div className="border-t border-white/10 pt-4">
+            <form action={deleteSchedule.bind(null, id)}>
+              <button type="submit" className="text-sm text-yellow-400 hover:underline">
+                🗑 ลบตารางแข่งทั้งหมด (ยังไม่มีผล — สร้างใหม่ได้)
+              </button>
+            </form>
+          </div>
+        )}
 
         <div className="border-t border-white/10 pt-4">
           <form action={duplicateLeague.bind(null, id)}>

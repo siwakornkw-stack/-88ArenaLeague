@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
 import { TeamBadge } from "@/components/team-badge";
+import { PointsLineChart } from "@/components/league-charts";
 import { MobileNav } from "@/components/mobile-nav";
 
 const FORM_LABEL: Record<"W" | "D" | "L", { t: string; className: string }> = {
@@ -98,6 +99,31 @@ export default async function PublicTeamPage({
   }
   const rival = [...oppCount.values()].sort((a, b) => b.games - a.games)[0] ?? null;
 
+  const leagueOnly = allFinished
+    .filter((m) => m.stage === "LEAGUE")
+    .sort((a, b) => a.round - b.round);
+  const progressionRounds: number[] = [];
+  const progressionPoints: number[] = [];
+  let cumPts = 0;
+  const splits = {
+    HOME: { won: 0, drawn: 0, lost: 0, gf: 0, ga: 0 },
+    AWAY: { won: 0, drawn: 0, lost: 0, gf: 0, ga: 0 },
+  };
+  for (const m of leagueOnly) {
+    const isHome = m.homeTeamId === teamId;
+    const gf = isHome ? m.homeScore : m.awayScore;
+    const ga = isHome ? m.awayScore : m.homeScore;
+    cumPts += gf > ga ? 3 : gf === ga ? 1 : 0;
+    progressionRounds.push(m.round);
+    progressionPoints.push(cumPts);
+    const s = splits[isHome ? "HOME" : "AWAY"];
+    s.gf += gf;
+    s.ga += ga;
+    if (gf > ga) s.won++;
+    else if (gf < ga) s.lost++;
+    else s.drawn++;
+  }
+
   const resultFor = (m: (typeof matches)[number]): "W" | "D" | "L" => {
     const isHome = m.homeTeamId === teamId;
     const gf = isHome ? m.homeScore : m.awayScore;
@@ -162,6 +188,39 @@ export default async function PublicTeamPage({
             <Stat
               value={row.played > 0 ? (row.goalsFor / row.played).toFixed(1) : "-"}
               label="ประตูเฉลี่ย/นัด"
+            />
+          </div>
+        )}
+
+        {leagueOnly.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+            <div className="rounded-xl border border-white/10 bg-card p-4 text-sm">
+              <div className="text-xs text-foreground/50 mb-1">ผลงานเหย้า</div>
+              <div className="font-display font-bold">
+                ชนะ {splits.HOME.won} เสมอ {splits.HOME.drawn} แพ้ {splits.HOME.lost}
+              </div>
+              <div className="text-xs text-foreground/50 mt-1">
+                ได้-เสีย {splits.HOME.gf}-{splits.HOME.ga}
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-card p-4 text-sm">
+              <div className="text-xs text-foreground/50 mb-1">ผลงานเยือน</div>
+              <div className="font-display font-bold">
+                ชนะ {splits.AWAY.won} เสมอ {splits.AWAY.drawn} แพ้ {splits.AWAY.lost}
+              </div>
+              <div className="text-xs text-foreground/50 mt-1">
+                ได้-เสีย {splits.AWAY.gf}-{splits.AWAY.ga}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {progressionPoints.length >= 2 && (
+          <div className="rounded-xl border border-white/10 bg-card p-5 max-w-2xl">
+            <h2 className="font-display font-bold mb-3">แต้มสะสมของทีม</h2>
+            <PointsLineChart
+              rounds={progressionRounds}
+              series={[{ name: team.name, color: team.color, points: progressionPoints }]}
             />
           </div>
         )}
