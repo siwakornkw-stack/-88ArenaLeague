@@ -10,7 +10,13 @@ type TimelineEvent = {
   relatedPlayer?: { name: string } | null;
 };
 
-const DELETABLE_EVENT_TYPES = new Set(["GOAL", "YELLOW_CARD", "RED_CARD", "SUBSTITUTION"]);
+const DELETABLE_EVENT_TYPES = new Set([
+  "GOAL",
+  "OWN_GOAL",
+  "YELLOW_CARD",
+  "RED_CARD",
+  "SUBSTITUTION",
+]);
 
 function eventText(ev: TimelineEvent) {
   let text = ev.label;

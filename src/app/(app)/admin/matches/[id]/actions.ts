@@ -54,23 +54,30 @@ export async function addGoal(matchId: string, formData: FormData) {
   const side = getSide(formData);
   const playerId = getPlayerId(formData);
   const minute = getMinute(formData);
+  const goalType = String(formData.get("goalType") ?? "NORMAL");
   const assistRaw = formData.get("assistPlayerId");
   const assistPlayerId = assistRaw ? String(assistRaw) : null;
+
+  const isOwnGoal = goalType === "OWN_GOAL";
+  // an own goal by `side`'s player scores for the opposite side
+  const scoringSide = isOwnGoal ? (side === "HOME" ? "AWAY" : "HOME") : side;
 
   await prisma.$transaction([
     prisma.match.update({
       where: { id: matchId },
-      data: side === "HOME" ? { homeScore: { increment: 1 } } : { awayScore: { increment: 1 } },
+      data:
+        scoringSide === "HOME" ? { homeScore: { increment: 1 } } : { awayScore: { increment: 1 } },
     }),
     prisma.matchEvent.create({
       data: {
         matchId,
         minute,
-        label: "ประตู",
-        type: "GOAL",
+        label: isOwnGoal ? "ทำเข้าตัวเอง" : goalType === "PENALTY" ? "ประตู (จุดโทษ)" : "ประตู",
+        type: isOwnGoal ? "OWN_GOAL" : "GOAL",
         side,
         playerId,
-        relatedPlayerId: assistPlayerId && assistPlayerId !== playerId ? assistPlayerId : null,
+        relatedPlayerId:
+          !isOwnGoal && assistPlayerId && assistPlayerId !== playerId ? assistPlayerId : null,
       },
     }),
   ]);
@@ -183,7 +190,7 @@ export async function halfTime(matchId: string) {
   revalidatePath(`/admin/matches/${matchId}`);
 }
 
-const DELETABLE_EVENT_TYPES = ["GOAL", "YELLOW_CARD", "RED_CARD", "SUBSTITUTION"];
+const DELETABLE_EVENT_TYPES = ["GOAL", "OWN_GOAL", "YELLOW_CARD", "RED_CARD", "SUBSTITUTION"];
 
 export async function deleteEvent(matchId: string, formData: FormData) {
   await assertSuperAdmin();
@@ -193,12 +200,15 @@ export async function deleteEvent(matchId: string, formData: FormData) {
   if (event.matchId !== matchId) throw new Error("Invalid event");
   if (!DELETABLE_EVENT_TYPES.includes(event.type)) throw new Error("Cannot delete this event");
 
-  if (event.type === "GOAL" && (event.side === "HOME" || event.side === "AWAY")) {
+  const isScoring = event.type === "GOAL" || event.type === "OWN_GOAL";
+  if (isScoring && (event.side === "HOME" || event.side === "AWAY")) {
     const match = await prisma.match.findUniqueOrThrow({ where: { id: matchId } });
-    const data =
-      event.side === "HOME"
-        ? { homeScore: Math.max(0, match.homeScore - 1) }
-        : { awayScore: Math.max(0, match.awayScore - 1) };
+    // OWN_GOAL benefited the opposite side of the event's team
+    const benefitedHome =
+      event.type === "GOAL" ? event.side === "HOME" : event.side === "AWAY";
+    const data = benefitedHome
+      ? { homeScore: Math.max(0, match.homeScore - 1) }
+      : { awayScore: Math.max(0, match.awayScore - 1) };
     await prisma.$transaction([
       prisma.matchEvent.delete({ where: { id: eventId } }),
       prisma.match.update({ where: { id: matchId }, data }),
@@ -224,6 +234,17 @@ export async function updateMatchInfo(matchId: string, formData: FormData) {
   }
 
   await prisma.match.update({ where: { id: matchId }, data });
+  revalidatePath(`/admin/matches/${matchId}`);
+}
+
+export async function updateMvp(matchId: string, formData: FormData) {
+  await assertSuperAdmin();
+  if ((await getMatchStatus(matchId)) !== "FINISHED") throw new Error("Match is not finished");
+
+  const raw = formData.get("mvpPlayerId");
+  const mvpPlayerId = raw ? String(raw) : null;
+
+  await prisma.match.update({ where: { id: matchId }, data: { mvpPlayerId } });
   revalidatePath(`/admin/matches/${matchId}`);
 }
 

@@ -56,6 +56,10 @@ export default async function PublicLeaguePage({
   const topScorers = tab === "standings" || isFinished ? await getTopScorers(id, 5) : [];
   const discipline = tab === "discipline" ? await getDiscipline(id) : null;
   const topAssists = tab === "standings" ? await getTopAssists(id, 5) : [];
+  const news =
+    tab === "news"
+      ? await prisma.leagueNews.findMany({ where: { leagueId: id }, orderBy: { createdAt: "desc" } })
+      : [];
   const champion = isFinished ? (standings[0] ?? null) : null;
   const seasonTopScorer = isFinished ? (topScorers[0] ?? null) : null;
 
@@ -144,6 +148,14 @@ export default async function PublicLeaguePage({
           >
             วินัย
           </Link>
+          <Link
+            href={`/leagues/${id}?tab=news`}
+            className={`px-4 py-2 text-sm font-display font-semibold ${
+              tab === "news" ? "border-b-2 border-accent text-accent" : "text-foreground/60"
+            }`}
+          >
+            ข่าวสาร
+          </Link>
         </div>
 
         {tab === "teams" ? (
@@ -214,6 +226,23 @@ export default async function PublicLeaguePage({
                 )}
               </div>
             </div>
+          </div>
+        ) : tab === "news" ? (
+          <div className="space-y-4 max-w-2xl">
+            {news.map((n) => (
+              <div key={n.id} className="rounded-xl border border-white/10 bg-card p-5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className="font-display font-bold">{n.title}</h3>
+                  <span className="text-xs text-foreground/45 shrink-0">
+                    {n.createdAt.toLocaleDateString("th-TH", { dateStyle: "medium" })}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-foreground/70 whitespace-pre-line">{n.body}</p>
+              </div>
+            ))}
+            {news.length === 0 && (
+              <p className="text-foreground/50 text-sm">ยังไม่มีประกาศจากผู้จัดลีก</p>
+            )}
           </div>
         ) : matches.length === 0 ? (
           <p className="text-foreground/50 text-sm">ยังไม่มีตารางแข่งสำหรับลีกนี้</p>

@@ -13,6 +13,9 @@ export function PublicNav() {
         <Link href="/leagues" className="hover:text-accent">
           ลีกทั้งหมด
         </Link>
+        <Link href="/search" className="hover:text-accent">
+          ค้นหา
+        </Link>
       </nav>
       <Link
         href="/login"

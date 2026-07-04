@@ -21,12 +21,13 @@ Thai-language football league management app, branded **88ArenaLeague**. Round-r
 - Same "computed on the fly" rule applies to the live match clock: `Match.minute` is only written once, at `endMatch` (final length). While `status === "LIVE"`, the displayed minute is derived from the `KICK_OFF` event's `createdAt` via `computeLiveMinute()` in `src/lib/matchClock.ts` — never read `match.minute` directly for a live match.
 - Both `/matches/[id]` and `/admin/matches/[id]` render the event timeline via the shared `src/components/match-timeline.tsx`, which splits events by `MatchEvent.side` (HOME left / AWAY right / NEUTRAL centered) — KICK_OFF/HALF_TIME/FULL_TIME are NEUTRAL.
 - `MatchEvent.relatedPlayerId` is dual-purpose: assist player on GOAL events, outgoing player on SUBSTITUTION events (where `playerId` is the incoming player, who also gets a `MatchLineup` row with `isStarting: false`).
+- `OWN_GOAL` events carry `side` = the team whose player scored it, but the goal counts for the OPPOSITE side — both `addGoal` and `deleteEvent` invert the side when adjusting the score. Top scorers count only type `GOAL`.
 
 ## Routing
 
 Two route groups share the root layout — same URL space, so paths must never collide between them:
 
-- `(public)` — no auth, no auth check in code. Serves `/`, `/leagues` (all-leagues index), `/leagues/[id]` (standings/fixtures/top scorers/teams/discipline tabs), `/leagues/[id]/teams/[teamId]` (team profile: roster stats, results, fixtures), `/leagues/[id]/players/[playerId]` (player profile: totals, event log), `/leagues/[id]/calendar` (route handler, .ics download), `/matches/[id]` (read-only scoreboard/stats/timeline/lineups/head-to-head). Entry point for anonymous visitors.
+- `(public)` — no auth, no auth check in code. Serves `/`, `/leagues` (all-leagues index), `/search` (teams/players), `/leagues/[id]` (standings/fixtures/top scorers/teams/discipline/news tabs), `/leagues/[id]/teams/[teamId]` (team profile: roster stats, results, fixtures), `/leagues/[id]/players/[playerId]` (player profile: totals, event log), `/leagues/[id]/calendar` (route handler, .ics download), `/matches/[id]` (read-only scoreboard/stats/timeline/lineups/head-to-head). Entry point for anonymous visitors.
 - `(app)` — gated by `src/proxy.ts` (redirects to `/login` if no session). Admin/management pages live under `/admin/leagues/[id]` (schedule generation, standings), `/admin/leagues/[id]/teams` (team/manager CRUD), and `/admin/matches/[id]` (kickoff/goals/cards/stats entry), plus `/dashboard` (SUPER_ADMIN), `/teams/mine` (TEAM_MANAGER), and `/account` (change password, any role).
 
 `src/proxy.ts` matcher: `/dashboard/:path*`, `/admin/:path*`, `/teams/:path*`, `/account/:path*`, `/login`. Anything not matched (including `/leagues/*` and `/matches/*`) is public by default.

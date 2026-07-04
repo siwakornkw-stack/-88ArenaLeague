@@ -41,6 +41,7 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
         include: { player: true, relatedPlayer: true },
       },
       lineups: { include: { player: true } },
+      mvpPlayer: true,
     },
   });
   if (!match) notFound();
@@ -136,6 +137,11 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
           {match.kickoffAt.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
           {match.venue && <> · {match.venue}</>}
         </p>
+        {match.mvpPlayer && (
+          <p className="mt-2 text-center text-xs text-accent">
+            ⭐ ผู้เล่นยอดเยี่ยม: {match.mvpPlayer.name}
+          </p>
+        )}
       </div>
 
       <div className="px-6 md:px-16 py-10 flex-1 space-y-10">

@@ -37,6 +37,7 @@ enum PlayerStatus {
 enum EventType {
   KICK_OFF
   GOAL
+  OWN_GOAL
   YELLOW_CARD
   RED_CARD
   SUBSTITUTION
@@ -70,6 +71,16 @@ model League {
   createdAt DateTime     @default(now())
   teams     Team[]
   matches   Match[]
+  news      LeagueNews[]
+}
+
+model LeagueNews {
+  id        String   @id @default(cuid())
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  leagueId  String
+  title     String
+  body      String
+  createdAt DateTime @default(now())
 }
 
 model Team {
@@ -96,6 +107,7 @@ model Player {
   teamId    String
   events    MatchEvent[]
   relatedEvents MatchEvent[] @relation("RelatedPlayerEvents")
+  mvpMatches Match[]     @relation("MvpMatches")
   lineups   MatchLineup[]
   createdAt DateTime     @default(now())
 
@@ -127,6 +139,8 @@ model Match {
   awayCorners        Int   @default(0)
   homeFouls          Int   @default(0)
   awayFouls          Int   @default(0)
+  mvpPlayer   Player? @relation("MvpMatches", fields: [mvpPlayerId], references: [id])
+  mvpPlayerId String?
   events     MatchEvent[]
   lineups    MatchLineup[]
   createdAt  DateTime      @default(now())

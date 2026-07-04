@@ -11,6 +11,7 @@ import {
   endMatch,
   updateStats,
   updateMatchInfo,
+  updateMvp,
   halfTime,
   deleteEvent,
 } from "./actions";
@@ -168,6 +169,44 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
         </div>
       )}
 
+      {match.status === "FINISHED" && (
+        <form
+          action={updateMvp.bind(null, id)}
+          className="flex items-end gap-2 rounded-lg bg-card border border-white/10 p-4"
+        >
+          <div className="flex-1 space-y-1">
+            <label className="text-sm text-foreground/70" htmlFor="mvpPlayerId">
+              ⭐ ผู้เล่นยอดเยี่ยม (MVP)
+            </label>
+            <select
+              id="mvpPlayerId"
+              name="mvpPlayerId"
+              defaultValue={match.mvpPlayerId ?? ""}
+              className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+            >
+              <option value="">- ไม่ระบุ -</option>
+              <optgroup label={match.homeTeam.name}>
+                {match.homeTeam.players.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    #{p.number} {p.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label={match.awayTeam.name}>
+                {match.awayTeam.players.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    #{p.number} {p.name}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
+          <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
+            บันทึก MVP
+          </button>
+        </form>
+      )}
+
       {match.status !== "SCHEDULED" && (
         <div>
           <h2 className="font-semibold mb-3">สถิติแมตช์</h2>
@@ -243,6 +282,14 @@ function MatchActionForms({
               #{p.number} {p.name}
             </option>
           ))}
+        </select>
+        <select
+          name="goalType"
+          className="rounded-md bg-black/30 border border-white/10 px-2 py-2 text-xs"
+        >
+          <option value="NORMAL">ปกติ</option>
+          <option value="PENALTY">จุดโทษ</option>
+          <option value="OWN_GOAL">เข้าตัวเอง</option>
         </select>
         <button type="submit" className="rounded-md bg-accent text-black text-xs px-3 py-2">
           ประตู
