@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { EVENT_ICON } from "@/lib/matchEvents";
 import { computeLiveMinute } from "@/lib/matchClock";
-import { kickOff, addGoal, addCard, endMatch, updateStats } from "./actions";
+import { MatchTimeline } from "@/components/match-timeline";
+import { kickOff, addGoal, addCard, endMatch, updateStats, updateVenue } from "./actions";
 
 const STAT_FIELDS = [
   { key: "Possession", label: "ครองบอล %" },
@@ -45,6 +45,7 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
   const addCardWithId = addCard.bind(null, id);
   const endMatchWithId = endMatch.bind(null, id);
   const updateStatsWithId = updateStats.bind(null, id);
+  const updateVenueWithId = updateVenue.bind(null, id);
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -60,6 +61,24 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
           <p className="text-center text-xs text-accent">LIVE {liveMinute}&apos;</p>
         )}
       </div>
+
+      <form action={updateVenueWithId} className="flex items-end gap-2">
+        <div className="flex-1 space-y-1">
+          <label className="text-sm text-foreground/70" htmlFor="venue">
+            สนามแข่ง
+          </label>
+          <input
+            id="venue"
+            name="venue"
+            defaultValue={match.venue ?? ""}
+            placeholder="เช่น สนามกีฬาเทศบาล"
+            className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+        </div>
+        <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
+          บันทึกสนาม
+        </button>
+      </form>
 
       {match.status === "SCHEDULED" && (
         <form action={kickOffWithId}>
@@ -134,18 +153,7 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
 
       <div>
         <h2 className="font-semibold mb-3">ไทม์ไลน์</h2>
-        <div className="space-y-2">
-          {match.events.map((event) => (
-            <div key={event.id} className="flex items-center gap-3 text-sm">
-              <span className="text-foreground/50 w-10">{event.minute}&apos;</span>
-              <span>{EVENT_ICON[event.type]}</span>
-              <span>{event.label}</span>
-            </div>
-          ))}
-          {match.events.length === 0 && (
-            <p className="text-foreground/50 text-sm">ยังไม่มีเหตุการณ์</p>
-          )}
-        </div>
+        <MatchTimeline events={match.events} />
       </div>
     </div>
   );

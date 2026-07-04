@@ -178,6 +178,14 @@ export default async function PublicLeaguePage({
                   ))}
                 </tbody>
               </table>
+              <div className="flex flex-wrap gap-5 px-4 py-3 text-xs text-foreground/45 border-t border-white/5 min-w-[560px]">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-accent inline-block" /> เข้ารอบแชมเปียนส์
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> ตกชั้น
+                </span>
+              </div>
             </div>
 
             <div className="flex flex-col gap-5">

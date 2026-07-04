@@ -105,6 +105,9 @@ export default async function MyTeamPage({
   const eligiblePlayers = team.players.filter((p) => p.status === "ACTIVE");
   const addPlayerWithId = addPlayer.bind(null, team.id);
   const setLineupWithId = nextMatch ? setLineup.bind(null, nextMatch.id) : null;
+  const daysUntilNextMatch = nextMatch
+    ? Math.ceil((nextMatch.kickoffAt.getTime() - Date.now()) / 86400000)
+    : null;
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -155,7 +158,14 @@ export default async function MyTeamPage({
 
       {nextMatch && setLineupWithId && (
         <div className="rounded-lg bg-card border border-white/10 p-5">
-          <h2 className="font-semibold mb-1">เลือกตัวจริงนัดถัดไป</h2>
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-semibold">เลือกตัวจริงนัดถัดไป</h2>
+            {daysUntilNextMatch !== null && (
+              <span className="text-xs font-semibold rounded-full px-3 py-1 border border-yellow-400/40 bg-yellow-400/10 text-yellow-400">
+                {daysUntilNextMatch > 0 ? `เหลือ ${daysUntilNextMatch} วัน` : "ถึงกำหนดแล้ว"}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-foreground/60 mb-4">
             {nextMatch.homeTeam.name} vs {nextMatch.awayTeam.name} ·{" "}
             {nextMatch.kickoffAt.toLocaleDateString("th-TH")}
@@ -176,6 +186,14 @@ export default async function MyTeamPage({
               {eligiblePlayers.length === 0 && (
                 <p className="text-sm text-foreground/50 col-span-2">ไม่มีนักเตะที่พร้อมลงเล่น</p>
               )}
+            </div>
+            <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+              <div
+                className="h-full bg-accent rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, Math.round((selectedPlayerIds.size / LINEUP_SIZE) * 100))}%`,
+                }}
+              />
             </div>
             <p className="text-xs text-foreground/50">
               เลือกแล้ว {selectedPlayerIds.size}/{LINEUP_SIZE}

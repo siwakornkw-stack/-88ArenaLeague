@@ -169,6 +169,15 @@ export default async function DashboardPage() {
                   {pending > 0 && <span className="text-accent">● {pending} รอบันทึกผล</span>}
                 </div>
 
+                {totalRounds > 0 && (
+                  <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                    <div
+                      className="h-full bg-accent rounded-full"
+                      style={{ width: `${Math.round((currentRound / totalRounds) * 100)}%` }}
+                    />
+                  </div>
+                )}
+
                 <div className="flex gap-3 text-sm">
                   <Link href={`/admin/leagues/${league.id}`} className="text-accent hover:underline">
                     จัดการ

@@ -14,6 +14,12 @@ const STATUS_LABEL: Record<string, string> = {
 
 const DAY_LABELS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 
+const FORM_LABEL: Record<"W" | "D" | "L", { t: string; className: string }> = {
+  W: { t: "ช", className: "bg-accent text-black" },
+  D: { t: "ส", className: "bg-white/15 text-foreground" },
+  L: { t: "พ", className: "bg-red-500 text-white" },
+};
+
 export default async function LeagueDetailPage({
   params,
   searchParams,
@@ -202,7 +208,18 @@ export default async function LeagueDetailPage({
                       {row.goalDiff})
                     </td>
                     <td className="text-center font-semibold">{row.points}</td>
-                    <td className="text-center text-foreground/60">{row.form.join(" ")}</td>
+                    <td>
+                      <div className="flex gap-1 justify-center py-1">
+                        {row.form.map((f, j) => (
+                          <span
+                            key={j}
+                            className={`w-4 h-4 rounded text-[9px] font-bold grid place-items-center ${FORM_LABEL[f].className}`}
+                          >
+                            {FORM_LABEL[f].t}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -80,6 +80,15 @@ export async function updateStats(matchId: string, formData: FormData) {
   revalidatePath(`/admin/matches/${matchId}`);
 }
 
+export async function updateVenue(matchId: string, formData: FormData) {
+  const venue = String(formData.get("venue") ?? "").trim();
+  await prisma.match.update({
+    where: { id: matchId },
+    data: { venue: venue || null },
+  });
+  revalidatePath(`/admin/matches/${matchId}`);
+}
+
 export async function endMatch(matchId: string) {
   const kickoffEvent = await prisma.matchEvent.findFirst({
     where: { matchId, type: "KICK_OFF" },

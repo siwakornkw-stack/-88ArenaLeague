@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { EVENT_ICON } from "@/lib/matchEvents";
 import { computeLiveMinute } from "@/lib/matchClock";
+import { computeStandings } from "@/lib/standings";
+import { MatchTimeline } from "@/components/match-timeline";
 import { MobileNav } from "@/components/mobile-nav";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -48,6 +49,10 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
   const liveMinute =
     match.status === "LIVE" && kickOffEvent ? computeLiveMinute(kickOffEvent.createdAt) : match.minute;
 
+  const standings = await computeStandings(match.leagueId);
+  const homeRank = standings.findIndex((r) => r.teamId === match.homeTeamId) + 1;
+  const awayRank = standings.findIndex((r) => r.teamId === match.awayTeamId) + 1;
+
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
     { icon: "🏆", label: "ตาราง", href: `/leagues/${match.leagueId}?tab=standings` },
@@ -72,15 +77,25 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
           )}
         </div>
         <div className="flex items-center justify-center gap-6 md:gap-14">
-          <span className="flex-1 text-right font-display font-bold text-lg md:text-2xl text-foreground">
-            {match.homeTeam.name}
-          </span>
+          <div className="flex-1 text-right">
+            <div className="font-display font-bold text-lg md:text-2xl text-foreground">
+              {match.homeTeam.name}
+            </div>
+            <div className="text-xs text-foreground/50">
+              {homeRank > 0 && `อันดับ ${homeRank} · `}เหย้า
+            </div>
+          </div>
           <span className="font-display font-black text-4xl md:text-6xl text-foreground shrink-0">
             {match.status === "SCHEDULED" ? "vs" : `${match.homeScore} - ${match.awayScore}`}
           </span>
-          <span className="flex-1 font-display font-bold text-lg md:text-2xl text-foreground">
-            {match.awayTeam.name}
-          </span>
+          <div className="flex-1">
+            <div className="font-display font-bold text-lg md:text-2xl text-foreground">
+              {match.awayTeam.name}
+            </div>
+            <div className="text-xs text-foreground/50">
+              {awayRank > 0 && `อันดับ ${awayRank} · `}เยือน
+            </div>
+          </div>
         </div>
         <p className="mt-4 text-center text-xs text-foreground/45">
           นัดที่ {match.round} ·{" "}
@@ -118,17 +133,8 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
 
         <div>
           <h2 className="font-display font-bold mb-4">ไทม์ไลน์</h2>
-          <div className="rounded-xl border border-white/10 bg-card p-5 space-y-3">
-            {match.events.map((event) => (
-              <div key={event.id} className="flex items-center gap-3 text-sm">
-                <span className="text-foreground/50 w-10">{event.minute}&apos;</span>
-                <span>{EVENT_ICON[event.type]}</span>
-                <span>{event.label}</span>
-              </div>
-            ))}
-            {match.events.length === 0 && (
-              <p className="text-foreground/50 text-sm">ยังไม่มีเหตุการณ์</p>
-            )}
+          <div className="rounded-xl border border-white/10 bg-card p-5">
+            <MatchTimeline events={match.events} />
           </div>
         </div>
 
