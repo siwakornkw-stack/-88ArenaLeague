@@ -5,6 +5,13 @@ import { computeLiveMinute } from "@/lib/matchClock";
 import { computeStandings } from "@/lib/standings";
 import { MatchTimeline } from "@/components/match-timeline";
 import { MobileNav } from "@/components/mobile-nav";
+import { unstable_cache } from "next/cache";
+
+const getCachedStandings = unstable_cache(
+  (leagueId: string) => computeStandings(leagueId),
+  ["match-standings"],
+  { revalidate: 30 }
+);
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED: "ยังไม่เริ่ม",
@@ -49,7 +56,7 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
   const liveMinute =
     match.status === "LIVE" && kickOffEvent ? computeLiveMinute(kickOffEvent.createdAt) : match.minute;
 
-  const standings = await computeStandings(match.leagueId);
+  const standings = await getCachedStandings(match.leagueId);
   const homeRank = standings.findIndex((r) => r.teamId === match.homeTeamId) + 1;
   const awayRank = standings.findIndex((r) => r.teamId === match.awayTeamId) + 1;
 

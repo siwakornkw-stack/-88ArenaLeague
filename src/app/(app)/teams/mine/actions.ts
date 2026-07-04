@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import { LINEUP_SIZE } from "@/lib/constants";
 
 async function assertManagesTeam(teamId: string) {
   const session = await getSession();
@@ -71,11 +72,18 @@ export async function updatePlayerStatus(playerId: string, formData: FormData) {
 
 export async function deletePlayer(playerId: string) {
   await assertManagesPlayer(playerId);
+
+  const player = await prisma.player.findUniqueOrThrow({
+    where: { id: playerId },
+    include: { _count: { select: { events: true, lineups: true } } },
+  });
+  if (player._count.events > 0 || player._count.lineups > 0) {
+    throw new Error("ลบนักเตะไม่ได้ เนื่องจากมีสถิติในแมตช์แล้ว");
+  }
+
   await prisma.player.delete({ where: { id: playerId } });
   revalidatePath("/teams/mine");
 }
-
-const LINEUP_SIZE = 12;
 
 export async function setLineup(matchId: string, formData: FormData) {
   const teamId = await getManagedTeamIdForMatch(matchId);

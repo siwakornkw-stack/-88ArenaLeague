@@ -3,8 +3,24 @@ import { prisma } from "@/lib/db";
 import { getFeaturedLeagues } from "@/lib/featuredLeagues";
 import { computeLiveMinute } from "@/lib/matchClock";
 import { MobileNav } from "@/components/mobile-nav";
+import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
+
+const getCachedLandingStats = unstable_cache(
+  async () => {
+    const [featuredLeagues, leagueCount, teamCount, playerCount, matchCount] = await Promise.all([
+      getFeaturedLeagues(3),
+      prisma.league.count({ where: { status: { not: "DRAFT" } } }),
+      prisma.team.count(),
+      prisma.player.count(),
+      prisma.match.count({ where: { status: { in: ["LIVE", "FINISHED"] } } }),
+    ]);
+    return { featuredLeagues, leagueCount, teamCount, playerCount, matchCount };
+  },
+  ["landing-stats"],
+  { revalidate: 30 }
+);
 
 const FEATURES = [
   { icon: "⚙", title: "ตารางแข่งอัตโนมัติ", desc: "สร้างโปรแกรมพบกันหมดในคลิกเดียว จัดสนามและเวลาให้เอง" },
@@ -14,13 +30,9 @@ const FEATURES = [
 ];
 
 export default async function Home() {
-  const [featuredLeagues, leagueCount, teamCount, playerCount, matchCount, liveMatches] =
+  const [{ featuredLeagues, leagueCount, teamCount, playerCount, matchCount }, liveMatches] =
     await Promise.all([
-      getFeaturedLeagues(3),
-      prisma.league.count({ where: { status: { not: "DRAFT" } } }),
-      prisma.team.count(),
-      prisma.player.count(),
-      prisma.match.count({ where: { status: { in: ["LIVE", "FINISHED"] } } }),
+      getCachedLandingStats(),
       prisma.match.findMany({
         where: { status: "LIVE" },
         include: {

@@ -30,7 +30,8 @@ function getPlayerId(formData: FormData) {
 }
 
 function getMinute(formData: FormData) {
-  return Number(formData.get("minute")) || 0;
+  const minute = Number(formData.get("minute")) || 0;
+  return Math.min(130, Math.max(0, Math.round(minute)));
 }
 
 export async function kickOff(matchId: string) {
@@ -86,21 +87,24 @@ export async function updateStats(matchId: string, formData: FormData) {
   await assertSuperAdmin();
   if ((await getMatchStatus(matchId)) === "SCHEDULED") throw new Error("Match has not started");
 
-  const num = (key: string) => Number(formData.get(key)) || 0;
+  const clamp = (key: string, max: number) => {
+    const n = Math.round(Number(formData.get(key)) || 0);
+    return Math.min(max, Math.max(0, n));
+  };
 
   await prisma.match.update({
     where: { id: matchId },
     data: {
-      homePossession: num("homePossession"),
-      awayPossession: num("awayPossession"),
-      homeShots: num("homeShots"),
-      awayShots: num("awayShots"),
-      homeShotsOnTarget: num("homeShotsOnTarget"),
-      awayShotsOnTarget: num("awayShotsOnTarget"),
-      homeCorners: num("homeCorners"),
-      awayCorners: num("awayCorners"),
-      homeFouls: num("homeFouls"),
-      awayFouls: num("awayFouls"),
+      homePossession: clamp("homePossession", 100),
+      awayPossession: clamp("awayPossession", 100),
+      homeShots: clamp("homeShots", 999),
+      awayShots: clamp("awayShots", 999),
+      homeShotsOnTarget: clamp("homeShotsOnTarget", 999),
+      awayShotsOnTarget: clamp("awayShotsOnTarget", 999),
+      homeCorners: clamp("homeCorners", 999),
+      awayCorners: clamp("awayCorners", 999),
+      homeFouls: clamp("homeFouls", 999),
+      awayFouls: clamp("awayFouls", 999),
     },
   });
   revalidatePath(`/admin/matches/${matchId}`);

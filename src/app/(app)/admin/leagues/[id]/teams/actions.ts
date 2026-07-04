@@ -65,6 +65,9 @@ export async function createTeamManager(teamId: string, formData: FormData) {
   const password = String(formData.get("password") ?? "");
   if (!name || !email || !password) return;
 
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) throw new Error("อีเมลนี้ถูกใช้แล้ว");
+
   const passwordHash = await hashPassword(password);
   await prisma.user.create({
     data: {

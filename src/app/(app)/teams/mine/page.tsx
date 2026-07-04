@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
 import { addPlayer, updatePlayerStatus, deletePlayer, setLineup } from "./actions";
+import { LINEUP_SIZE } from "@/lib/constants";
 
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: "ปกติ",
@@ -22,8 +23,6 @@ const STATUS_FILTERS = [
   { value: "ACTIVE", label: "พร้อมลงเล่น" },
   { value: "OUT", label: "ไม่พร้อม" },
 ] as const;
-
-const LINEUP_SIZE = 12;
 
 export default async function MyTeamPage({
   searchParams,
