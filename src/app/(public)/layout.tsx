@@ -4,7 +4,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   return (
     <div className="flex min-h-screen w-full flex-col">
       <PublicNav />
-      <main className="flex-1 flex flex-col">{children}</main>
+      <main className="flex-1 flex flex-col animate-fade-up">{children}</main>
     </div>
   );
 }

@@ -77,7 +77,7 @@ export default async function ChampionsPage() {
               <Link
                 key={league.id}
                 href={`/leagues/${league.id}`}
-                className="rounded-2xl border border-accent/30 bg-gradient-to-r from-[#1a2e12] to-card p-5 hover:border-accent/60"
+                className="hover-lift rounded-2xl border border-accent/30 bg-gradient-to-r from-[#1a2e12] to-card p-5 hover:border-accent/60"
               >
                 <div className="text-xs text-foreground/50">
                   ฤดูกาล {league.seasonYear} · {league.name}

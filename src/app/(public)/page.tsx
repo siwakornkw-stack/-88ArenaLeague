@@ -83,20 +83,30 @@ export default async function Home() {
     <div className="flex flex-1 flex-col">
       {liveMatches.length > 0 && <meta httpEquiv="refresh" content="60" />}
       {liveMatches.length > 0 && (
-        <div className="bg-accent overflow-x-auto">
-          <div className="flex gap-10 whitespace-nowrap px-6 py-2 font-display font-semibold text-sm text-black">
-            {liveMatches.map((m) => (
-              <span key={m.id}>
+        <div className="bg-accent overflow-hidden">
+          <div className="animate-marquee flex w-max gap-10 whitespace-nowrap px-6 py-2 font-display font-semibold text-sm text-black">
+            {[...liveMatches, ...liveMatches].map((m, i) => (
+              <Link key={`${m.id}-${i}`} href={`/matches/${m.id}`} className="hover:underline">
                 ● LIVE — {m.homeTeam.name} {m.homeScore}-{m.awayScore} {m.awayTeam.name} (
                 {m.events[0] ? computeLiveMinute(m.events[0].createdAt) : m.minute}
                 &apos;)
-              </span>
+              </Link>
             ))}
           </div>
         </div>
       )}
 
       <section className="relative overflow-hidden px-6 md:px-16 py-16 md:py-24 bg-gradient-to-br from-background to-[#12240F]">
+        <div className="glow-blob w-96 h-96 -top-20 -right-20" />
+        <div className="glow-blob w-72 h-72 bottom-0 left-1/3 opacity-60" />
+        <div
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(212,255,58,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(212,255,58,.6) 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
+        />
         <div className="max-w-2xl relative">
           <span className="inline-block rounded-full border border-accent/40 px-4 py-1 text-xs font-display font-semibold text-accent tracking-widest">
             แพลตฟอร์มจัดการลีกฟุตบอล
@@ -161,7 +171,7 @@ export default async function Home() {
               <Link
                 key={m.id}
                 href={`/matches/${m.id}`}
-                className="rounded-xl border border-white/10 bg-card p-3 hover:border-accent/50"
+                className="hover-lift rounded-xl border border-white/10 bg-card p-3 hover:border-accent/50"
               >
                 <div className="text-[10px] text-foreground/40 mb-1.5">{m.league.name}</div>
                 <div className="flex items-center justify-between gap-2 text-sm">
@@ -191,7 +201,7 @@ export default async function Home() {
               <Link
                 key={lg.id}
                 href={`/leagues/${lg.id}`}
-                className="rounded-2xl border border-white/10 bg-card overflow-hidden hover:border-accent/50"
+                className="hover-lift rounded-2xl border border-white/10 bg-card overflow-hidden hover:border-accent/50"
               >
                 <div className="p-5">
                   <div className="font-display italic font-extrabold text-xl text-foreground">
@@ -252,7 +262,7 @@ export default async function Home() {
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {FEATURES.map((f) => (
-            <div key={f.title} className="rounded-xl bg-background p-5">
+            <div key={f.title} className="hover-lift rounded-xl bg-background p-5">
               <div className="text-2xl text-accent mb-2">{f.icon}</div>
               <div className="font-display font-bold text-foreground mb-1">{f.title}</div>
               <div className="text-sm text-foreground/60 leading-relaxed">{f.desc}</div>

@@ -159,7 +159,8 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
         />
       </div>
 
-      <div className="bg-gradient-to-r from-[#12240F] to-background px-6 md:px-16 py-10">
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#12240F] to-background px-6 md:px-16 py-10">
+        <div className="glow-blob w-96 h-96 -top-32 left-1/2 -translate-x-1/2" />
         <div className="flex items-center justify-center gap-3 text-xs font-display font-semibold mb-4">
           {match.stage !== "LEAGUE" && (
             <span className="rounded-full border border-accent/40 bg-accent/10 text-accent px-3 py-1">
@@ -167,7 +168,7 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
             </span>
           )}
           {match.status === "LIVE" ? (
-            <span className="flex items-center gap-1 text-accent">
+            <span className="live-glow flex items-center gap-1.5 text-accent rounded-full border border-accent/40 bg-accent/10 px-4 py-1.5">
               <span className="w-2 h-2 rounded-full bg-accent animate-pulse" /> LIVE ·{" "}
               {hasHalfTime ? "ครึ่งหลัง" : "ครึ่งแรก"} {liveMinute}&apos;
             </span>
@@ -196,7 +197,7 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
               </div>
             )}
           </div>
-          <span className="font-display font-black text-4xl md:text-6xl text-foreground shrink-0">
+          <span className="font-display italic font-black text-5xl md:text-7xl text-foreground shrink-0 tracking-tight drop-shadow-[0_0_25px_rgba(212,255,58,0.15)]">
             {match.status === "SCHEDULED" ? "vs" : `${match.homeScore} - ${match.awayScore}`}
           </span>
           <div className="flex-1">

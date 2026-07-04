@@ -117,7 +117,7 @@ export default async function SearchPage({
                 <Link
                   key={team.id}
                   href={`/leagues/${team.leagueId}/teams/${team.id}`}
-                  className="rounded-xl border border-white/10 bg-card p-4 flex items-center gap-3 hover:border-accent/50"
+                  className="hover-lift rounded-xl border border-white/10 bg-card p-4 flex items-center gap-3 hover:border-accent/50"
                 >
                   <span
                     className="w-10 h-10 rounded-full shrink-0 grid place-items-center font-display font-bold text-xs"
@@ -145,7 +145,7 @@ export default async function SearchPage({
                 <Link
                   key={p.id}
                   href={`/leagues/${p.team.leagueId}/players/${p.id}`}
-                  className="rounded-xl border border-white/10 bg-card p-4 flex items-center gap-3 hover:border-accent/50"
+                  className="hover-lift rounded-xl border border-white/10 bg-card p-4 flex items-center gap-3 hover:border-accent/50"
                 >
                   <span
                     className="w-10 h-10 rounded-full shrink-0 grid place-items-center font-display font-bold text-sm"

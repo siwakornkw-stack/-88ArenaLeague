@@ -9,7 +9,7 @@ function LeagueCard({ lg }: { lg: FeaturedLeague }) {
   return (
     <Link
       href={`/leagues/${lg.id}`}
-      className="rounded-2xl border border-white/10 bg-card p-5 hover:border-accent/50"
+      className="hover-lift rounded-2xl border border-white/10 bg-card p-5 hover:border-accent/50"
     >
       <div className="font-display italic font-extrabold text-xl text-foreground">{lg.name}</div>
       <div className="mt-1 text-xs text-foreground/45">{lg.type}</div>

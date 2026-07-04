@@ -245,7 +245,8 @@ export default async function PublicLeaguePage({
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="bg-gradient-to-r from-[#12240F] to-background px-6 md:px-16 py-8 flex flex-wrap items-start justify-between gap-4">
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#12240F] to-background px-6 md:px-16 py-8 flex flex-wrap items-start justify-between gap-4">
+        <div className="glow-blob w-80 h-80 -top-24 right-10" />
         <div>
           <h1 className="font-display italic font-black text-2xl md:text-4xl text-foreground">
             {league.name}
@@ -344,59 +345,59 @@ export default async function PublicLeaguePage({
       )}
 
       <div className="px-6 md:px-16 py-8 flex-1">
-        <div className="flex gap-2 border-b border-white/10 mb-6 overflow-x-auto whitespace-nowrap">
+        <div className="flex gap-2 mb-6 overflow-x-auto whitespace-nowrap pb-1">
           <Link
             href={`/leagues/${id}?tab=standings`}
-            className={`px-4 py-2 text-sm font-display font-semibold ${
-              tab === "standings" ? "border-b-2 border-accent text-accent" : "text-foreground/60"
+            className={`rounded-full px-4 py-1.5 text-sm font-display font-semibold transition-colors ${
+              tab === "standings" ? "bg-accent text-black" : "bg-white/5 text-foreground/60 hover:text-foreground"
             }`}
           >
             ตารางคะแนน
           </Link>
           <Link
             href={`/leagues/${id}?tab=fixtures`}
-            className={`px-4 py-2 text-sm font-display font-semibold ${
-              tab === "fixtures" ? "border-b-2 border-accent text-accent" : "text-foreground/60"
+            className={`rounded-full px-4 py-1.5 text-sm font-display font-semibold transition-colors ${
+              tab === "fixtures" ? "bg-accent text-black" : "bg-white/5 text-foreground/60 hover:text-foreground"
             }`}
           >
             โปรแกรมแข่ง
           </Link>
           <Link
             href={`/leagues/${id}?tab=teams`}
-            className={`px-4 py-2 text-sm font-display font-semibold ${
-              tab === "teams" ? "border-b-2 border-accent text-accent" : "text-foreground/60"
+            className={`rounded-full px-4 py-1.5 text-sm font-display font-semibold transition-colors ${
+              tab === "teams" ? "bg-accent text-black" : "bg-white/5 text-foreground/60 hover:text-foreground"
             }`}
           >
             ทีม
           </Link>
           <Link
             href={`/leagues/${id}?tab=discipline`}
-            className={`px-4 py-2 text-sm font-display font-semibold ${
-              tab === "discipline" ? "border-b-2 border-accent text-accent" : "text-foreground/60"
+            className={`rounded-full px-4 py-1.5 text-sm font-display font-semibold transition-colors ${
+              tab === "discipline" ? "bg-accent text-black" : "bg-white/5 text-foreground/60 hover:text-foreground"
             }`}
           >
             วินัย
           </Link>
           <Link
             href={`/leagues/${id}?tab=news`}
-            className={`px-4 py-2 text-sm font-display font-semibold ${
-              tab === "news" ? "border-b-2 border-accent text-accent" : "text-foreground/60"
+            className={`rounded-full px-4 py-1.5 text-sm font-display font-semibold transition-colors ${
+              tab === "news" ? "bg-accent text-black" : "bg-white/5 text-foreground/60 hover:text-foreground"
             }`}
           >
             ข่าวสาร
           </Link>
           <Link
             href={`/leagues/${id}?tab=stats`}
-            className={`px-4 py-2 text-sm font-display font-semibold ${
-              tab === "stats" ? "border-b-2 border-accent text-accent" : "text-foreground/60"
+            className={`rounded-full px-4 py-1.5 text-sm font-display font-semibold transition-colors ${
+              tab === "stats" ? "bg-accent text-black" : "bg-white/5 text-foreground/60 hover:text-foreground"
             }`}
           >
             กราฟ
           </Link>
           <Link
             href={`/leagues/${id}?tab=players`}
-            className={`px-4 py-2 text-sm font-display font-semibold ${
-              tab === "players" ? "border-b-2 border-accent text-accent" : "text-foreground/60"
+            className={`rounded-full px-4 py-1.5 text-sm font-display font-semibold transition-colors ${
+              tab === "players" ? "bg-accent text-black" : "bg-white/5 text-foreground/60 hover:text-foreground"
             }`}
           >
             นักเตะ
@@ -429,7 +430,7 @@ export default async function PublicLeaguePage({
               <Link
                 key={team.id}
                 href={`/leagues/${id}/teams/${team.id}`}
-                className="rounded-xl border border-white/10 bg-card p-4 flex items-center gap-3 hover:border-accent/50"
+                className="hover-lift rounded-xl border border-white/10 bg-card p-4 flex items-center gap-3 hover:border-accent/50"
               >
                 <TeamBadge
                   abbr={team.abbr}
@@ -749,7 +750,7 @@ export default async function PublicLeaguePage({
                   {standings.map((row, i) => (
                     <tr
                       key={row.teamId}
-                      className={`border-t border-white/5 ${
+                      className={`border-t border-white/5 hover:bg-accent/5 transition-colors ${
                         zonesOn && i < league.promotedCount
                           ? "border-l-2 border-l-accent"
                           : zonesOn &&

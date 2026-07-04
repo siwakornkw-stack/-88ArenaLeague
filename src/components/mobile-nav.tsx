@@ -9,7 +9,7 @@ export type MobileNavItem = {
 
 export function MobileNav({ items }: { items: MobileNavItem[] }) {
   return (
-    <nav className="md:hidden sticky bottom-0 border-t border-white/10 bg-card flex justify-around py-2">
+    <nav className="md:hidden sticky bottom-0 z-50 border-t border-white/10 bg-card/85 backdrop-blur-md flex justify-around py-2">
       {items.map((item) => (
         <Link
           key={item.label}

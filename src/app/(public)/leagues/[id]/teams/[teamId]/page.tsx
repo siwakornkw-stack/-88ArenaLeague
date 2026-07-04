@@ -165,7 +165,8 @@ export default async function PublicTeamPage({
         </Link>
       </div>
 
-      <div className="bg-gradient-to-r from-[#12240F] to-background px-6 md:px-16 py-8 flex items-center gap-5">
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#12240F] to-background px-6 md:px-16 py-8 flex items-center gap-5">
+        <div className="glow-blob w-72 h-72 -top-20 right-10" />
         <TeamBadge
           abbr={team.abbr}
           color={team.color}
