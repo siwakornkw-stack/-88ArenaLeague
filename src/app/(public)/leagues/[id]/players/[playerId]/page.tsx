@@ -50,12 +50,21 @@ export default async function PublicPlayerPage({
       </div>
 
       <div className="bg-gradient-to-r from-[#12240F] to-background px-6 md:px-16 py-8 flex items-center gap-5">
-        <span
-          className="w-16 h-16 rounded-full shrink-0 grid place-items-center font-display italic font-black text-2xl border-2 border-white/20"
-          style={{ backgroundColor: player.team.color }}
-        >
-          {player.number}
-        </span>
+        {player.photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={player.photoUrl}
+            alt={player.name}
+            className="w-16 h-16 rounded-full shrink-0 object-cover border-2 border-white/20"
+          />
+        ) : (
+          <span
+            className="w-16 h-16 rounded-full shrink-0 grid place-items-center font-display italic font-black text-2xl border-2 border-white/20"
+            style={{ backgroundColor: player.team.color }}
+          >
+            {player.number}
+          </span>
+        )}
         <div>
           <h1 className="font-display italic font-black text-2xl md:text-4xl text-foreground">
             {player.name}

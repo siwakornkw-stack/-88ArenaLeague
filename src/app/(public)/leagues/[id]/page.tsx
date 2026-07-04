@@ -44,10 +44,10 @@ export default async function PublicLeaguePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; round?: string }>;
+  searchParams: Promise<{ tab?: string; round?: string; team?: string }>;
 }) {
   const { id } = await params;
-  const { tab = "standings", round } = await searchParams;
+  const { tab = "standings", round, team } = await searchParams;
   const roundFilter = Number(round) || null;
 
   const league = await prisma.league.findUnique({
@@ -61,6 +61,8 @@ export default async function PublicLeaguePage({
 
   const h = await headers();
   const pageUrl = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "league-manager-app.vercel.app"}/leagues/${id}`;
+
+  const teamFilter = team && league.teams.some((t) => t.id === team) ? team : null;
 
   const matches = await prisma.match.findMany({
     where: { leagueId: id },
@@ -716,7 +718,7 @@ export default async function PublicLeaguePage({
           </div>
         ) : (
           <div className="space-y-6">
-            <form method="get" className="flex items-center gap-2">
+            <form method="get" className="flex flex-wrap items-center gap-2">
               <input type="hidden" name="tab" value="fixtures" />
               <select
                 name="round"
@@ -730,19 +732,38 @@ export default async function PublicLeaguePage({
                   </option>
                 ))}
               </select>
+              <select
+                name="team"
+                defaultValue={teamFilter ?? ""}
+                className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              >
+                <option value="">ทุกทีม</option>
+                {league.teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
               <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
                 ดู
               </button>
             </form>
             {Array.from(matchesByRound.entries())
               .filter(([round]) => roundFilter === null || round === roundFilter)
-              .map(([round, roundMatches]) => (
+              .map(([round, roundMatches]) => {
+                const shown = teamFilter
+                  ? roundMatches.filter(
+                      (m) => m.homeTeamId === teamFilter || m.awayTeamId === teamFilter
+                    )
+                  : roundMatches;
+                if (shown.length === 0) return null;
+                return (
               <div key={round}>
                 <h3 className="text-sm text-foreground/50 mb-2">
                   {STAGE_LABEL[roundMatches[0].stage] ?? `นัดที่ ${round}`}
                 </h3>
                 <div className="space-y-2">
-                  {roundMatches.map((m) => (
+                  {shown.map((m) => (
                     <Link
                       key={m.id}
                       href={`/matches/${m.id}`}
@@ -759,7 +780,8 @@ export default async function PublicLeaguePage({
                   ))}
                 </div>
               </div>
-            ))}
+                );
+              })}
           </div>
         )}
       </div>

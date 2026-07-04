@@ -311,6 +311,12 @@ export default async function MyTeamPage({
                   required
                   className="w-14 rounded-md bg-black/30 border border-white/10 px-2 py-1 text-xs"
                 />
+                <input
+                  type="file"
+                  name="photo"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="w-24 text-[10px] text-foreground/40 file:mr-1 file:rounded file:border-0 file:bg-white/10 file:px-1.5 file:py-0.5 file:text-[10px] file:text-foreground"
+                />
                 <button type="submit" className="text-xs text-foreground/50 hover:text-accent">
                   บันทึก
                 </button>
@@ -404,6 +410,18 @@ export default async function MyTeamPage({
               name="position"
               required
               className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-foreground/70" htmlFor="photo">
+              รูปนักเตะ (ไม่บังคับ)
+            </label>
+            <input
+              id="photo"
+              name="photo"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="w-full text-xs text-foreground/50 file:mr-2 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-foreground"
             />
           </div>
           <button type="submit" className="w-full rounded-md bg-accent text-black font-semibold py-2 text-sm">

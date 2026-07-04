@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { put } from "@vercel/blob";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import { uploadImage } from "@/lib/blobUpload";
 import { LINEUP_SIZE } from "@/lib/constants";
 
 const MAX_LOGO_BYTES = 1024 * 1024;
@@ -125,7 +126,10 @@ export async function addPlayer(teamId: string, formData: FormData) {
   const duplicate = await prisma.player.findFirst({ where: { teamId, number } });
   if (duplicate) throw new Error("มีนักเตะเบอร์นี้อยู่แล้ว");
 
-  await prisma.player.create({ data: { teamId, name, number, position } });
+  const photoUrl = await uploadImage(`player-photos/${teamId}`, formData.get("photo"));
+  await prisma.player.create({
+    data: { teamId, name, number, position, ...(photoUrl ? { photoUrl } : {}) },
+  });
   revalidatePath("/teams/mine");
 }
 
@@ -146,7 +150,11 @@ export async function updatePlayerInfo(playerId: string, formData: FormData) {
     if (duplicate) throw new Error("มีนักเตะเบอร์นี้อยู่แล้ว");
   }
 
-  await prisma.player.update({ where: { id: playerId }, data: { name, number, position } });
+  const photoUrl = await uploadImage(`player-photos/${player.teamId}`, formData.get("photo"));
+  await prisma.player.update({
+    where: { id: playerId },
+    data: { name, number, position, ...(photoUrl ? { photoUrl } : {}) },
+  });
   revalidatePath("/teams/mine");
 }
 

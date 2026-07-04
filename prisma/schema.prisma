@@ -123,6 +123,7 @@ model Player {
   name      String
   number    Int
   position  String
+  photoUrl  String?
   status    PlayerStatus @default(ACTIVE)
   team      Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
   teamId    String
@@ -183,6 +184,15 @@ model MatchEvent {
   relatedPlayer   Player? @relation("RelatedPlayerEvents", fields: [relatedPlayerId], references: [id])
   relatedPlayerId String?
   createdAt DateTime  @default(now())
+}
+
+model AdminLog {
+  id        String   @id @default(cuid())
+  userId    String
+  userName  String
+  action    String
+  detail    String
+  createdAt DateTime @default(now())
 }
 
 model MatchLineup {

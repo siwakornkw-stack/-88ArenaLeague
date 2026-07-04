@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { roundRobin, buildKickoffDates } from "@/lib/schedule";
 import { computeStandings } from "@/lib/standings";
 import { uploadImage } from "@/lib/blobUpload";
+import { logAdmin } from "@/lib/audit";
 import { getSession } from "@/lib/session";
 
 export async function generateSchedule(leagueId: string, dayOfWeek: number, start: string) {
@@ -43,6 +44,7 @@ export async function generateSchedule(leagueId: string, dayOfWeek: number, star
     prisma.league.update({ where: { id: leagueId }, data: { status: "SCHEDULED" } }),
   ]);
 
+  await logAdmin(session, "สร้างตารางแข่ง", `${league.name} · ${fixtures.length} แมตช์`);
   revalidatePath(`/admin/leagues/${leagueId}`);
 }
 
@@ -56,7 +58,11 @@ export async function finishSeason(leagueId: string) {
   ]);
   if (total === 0 || unfinished > 0) throw new Error("ยังมีแมตช์ที่ไม่จบการแข่งขัน");
 
-  await prisma.league.update({ where: { id: leagueId }, data: { status: "FINISHED" } });
+  const league = await prisma.league.update({
+    where: { id: leagueId },
+    data: { status: "FINISHED" },
+  });
+  await logAdmin(session, "ปิดฤดูกาล", league.name);
   revalidatePath(`/admin/leagues/${leagueId}`);
 }
 
@@ -102,6 +108,7 @@ export async function generatePlayoffs(leagueId: string) {
       },
     ],
   });
+  await logAdmin(session, "สร้างเพลย์ออฟ", `ลีก ${leagueId} · รอบรองชนะเลิศ`);
   revalidatePath(`/admin/leagues/${leagueId}`);
   revalidatePath(`/leagues/${leagueId}`);
 }
@@ -146,6 +153,7 @@ export async function generateFinal(leagueId: string) {
       kickoffAt: finalAt,
     },
   });
+  await logAdmin(session, "สร้างนัดชิงชนะเลิศ", `ลีก ${leagueId}`);
   revalidatePath(`/admin/leagues/${leagueId}`);
   revalidatePath(`/leagues/${leagueId}`);
 }
@@ -211,6 +219,7 @@ export async function duplicateLeague(leagueId: string) {
     },
   });
 
+  await logAdmin(session, "คัดลอกลีก", `${league.name} → ฤดูกาล ${copy.seasonYear}`);
   redirect(`/admin/leagues/${copy.id}`);
 }
 
@@ -289,6 +298,7 @@ export async function deleteLeague(leagueId: string) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
 
-  await prisma.league.delete({ where: { id: leagueId } });
+  const league = await prisma.league.delete({ where: { id: leagueId } });
+  await logAdmin(session, "ลบลีก", league.name);
   redirect("/dashboard");
 }

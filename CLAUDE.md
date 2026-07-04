@@ -24,6 +24,8 @@ Thai-language football league management app, branded **88ArenaLeague**. Round-r
 - `OWN_GOAL` events carry `side` = the team whose player scored it, but the goal counts for the OPPOSITE side — both `addGoal` and `deleteEvent` invert the side when adjusting the score. Top scorers count only type `GOAL`.
 - `Match.stage` (`LEAGUE`/`SEMI_FINAL`/`FINAL`): `computeStandings` and league charts count LEAGUE matches only; scorers/assists/discipline include playoffs. Knockout draws are settled by better league seed (see `generateFinal`). Champion banner prefers the FINAL winner over the table leader.
 - Recording a RED_CARD with a player auto-sets that player's status to BANNED (manager lifts it manually on `/teams/mine`).
+- Key SUPER_ADMIN actions write an `AdminLog` row via `logAdmin()` in `src/lib/audit.ts`; the dashboard shows the last 10.
+- League and match pages ship `opengraph-image.tsx` (next/og). Satori needs a Thai font: `src/assets/fonts/Kanit-Bold.ttf` is read with `readFile(process.cwd() + ...)` — keep that file, or shares lose their preview images.
 
 ## Routing
 

@@ -33,7 +33,7 @@ export default async function DashboardPage() {
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const endOfDay = new Date(startOfDay.getTime() + 86400000);
 
-  const [leagues, todayMatches, attentionMatches] = await Promise.all([
+  const [leagues, todayMatches, attentionMatches, adminLogs] = await Promise.all([
     prisma.league.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -59,6 +59,7 @@ export default async function DashboardPage() {
       orderBy: { kickoffAt: "asc" },
       take: 8,
     }),
+    prisma.adminLog.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
   ]);
 
   const tasks = [
@@ -205,6 +206,24 @@ export default async function DashboardPage() {
           <p className="text-foreground/50 text-sm">ยังไม่มีลีก สร้างลีกแรกของคุณด้านล่าง</p>
         )}
       </div>
+
+      {adminLogs.length > 0 && (
+        <div className="rounded-lg bg-card border border-white/10 p-5">
+          <h2 className="font-semibold mb-3">ประวัติการทำงานล่าสุด</h2>
+          <div className="space-y-1.5">
+            {adminLogs.map((log) => (
+              <div key={log.id} className="flex items-baseline gap-3 text-sm">
+                <span className="text-xs text-foreground/40 w-32 shrink-0">
+                  {log.createdAt.toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}
+                </span>
+                <span className="text-foreground/70 shrink-0">{log.userName}</span>
+                <span className="text-accent shrink-0">{log.action}</span>
+                <span className="text-foreground/50 truncate">{log.detail}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="rounded-lg bg-card border border-white/10 p-5 max-w-sm">
         <h2 className="font-semibold mb-4">สร้างลีกใหม่</h2>

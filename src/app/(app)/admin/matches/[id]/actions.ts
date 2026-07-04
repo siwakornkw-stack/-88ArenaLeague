@@ -3,11 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { computeLiveMinute } from "@/lib/matchClock";
+import { logAdmin } from "@/lib/audit";
 import { getSession } from "@/lib/session";
 
 async function assertSuperAdmin() {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
+  return session;
 }
 
 async function getMatchStatus(matchId: string) {
@@ -258,13 +260,18 @@ export async function updateMatchInfo(matchId: string, formData: FormData) {
 }
 
 export async function reopenMatch(matchId: string) {
-  await assertSuperAdmin();
+  const session = await assertSuperAdmin();
   if ((await getMatchStatus(matchId)) !== "FINISHED") throw new Error("Match is not finished");
 
+  const match = await prisma.match.findUniqueOrThrow({
+    where: { id: matchId },
+    include: { homeTeam: true, awayTeam: true },
+  });
   await prisma.$transaction([
     prisma.matchEvent.deleteMany({ where: { matchId, type: "FULL_TIME" } }),
     prisma.match.update({ where: { id: matchId }, data: { status: "LIVE", minute: 0 } }),
   ]);
+  await logAdmin(session, "เปิดแมตช์ใหม่", `${match.homeTeam.name} vs ${match.awayTeam.name}`);
   revalidatePath(`/admin/matches/${matchId}`);
 }
 
@@ -280,7 +287,7 @@ export async function updateMvp(matchId: string, formData: FormData) {
 }
 
 export async function endMatch(matchId: string) {
-  await assertSuperAdmin();
+  const session = await assertSuperAdmin();
   if ((await getMatchStatus(matchId)) !== "LIVE") throw new Error("Match is not live");
 
   const kickoffEvent = await prisma.matchEvent.findFirst({
@@ -288,11 +295,20 @@ export async function endMatch(matchId: string) {
   });
   const finalMinute = kickoffEvent ? computeLiveMinute(kickoffEvent.createdAt) : 0;
 
+  const match = await prisma.match.findUniqueOrThrow({
+    where: { id: matchId },
+    include: { homeTeam: true, awayTeam: true },
+  });
   await prisma.$transaction([
     prisma.match.update({ where: { id: matchId }, data: { status: "FINISHED", minute: finalMinute } }),
     prisma.matchEvent.create({
       data: { matchId, minute: finalMinute, label: "จบการแข่งขัน", type: "FULL_TIME", side: "NEUTRAL" },
     }),
   ]);
+  await logAdmin(
+    session,
+    "จบการแข่งขัน",
+    `${match.homeTeam.name} ${match.homeScore}-${match.awayScore} ${match.awayTeam.name}`
+  );
   revalidatePath(`/admin/matches/${matchId}`);
 }

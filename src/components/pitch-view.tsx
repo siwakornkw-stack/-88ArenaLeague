@@ -1,4 +1,10 @@
-type PitchPlayer = { id: string; name: string; number: number; position: string };
+type PitchPlayer = {
+  id: string;
+  name: string;
+  number: number;
+  position: string;
+  photoUrl?: string | null;
+};
 
 function positionGroup(position: string): "GK" | "DF" | "MF" | "FW" {
   const p = position.toUpperCase();
@@ -35,12 +41,21 @@ export function PitchView({
           <div key={g} className="relative flex flex-wrap justify-center gap-x-4 gap-y-2 min-h-10">
             {groups[g].map((p) => (
               <div key={p.id} className="flex flex-col items-center w-14">
-                <span
-                  className="w-8 h-8 rounded-full grid place-items-center font-display font-bold text-xs border border-white/25"
-                  style={{ backgroundColor: color }}
-                >
-                  {p.number}
-                </span>
+                {p.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={p.photoUrl}
+                    alt={p.name}
+                    className="w-8 h-8 rounded-full object-cover border border-white/25"
+                  />
+                ) : (
+                  <span
+                    className="w-8 h-8 rounded-full grid place-items-center font-display font-bold text-xs border border-white/25"
+                    style={{ backgroundColor: color }}
+                  >
+                    {p.number}
+                  </span>
+                )}
                 <span className="mt-1 text-[10px] text-foreground/80 text-center leading-tight truncate w-full">
                   {p.name}
                 </span>
