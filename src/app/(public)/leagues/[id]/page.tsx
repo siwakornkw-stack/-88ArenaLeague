@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { computeStandings, computeStandingsUpTo } from "@/lib/standings";
+import {
+  computeStandings,
+  computeStandingsUpTo,
+  computeHomeAwayStandings,
+} from "@/lib/standings";
 import { getTopScorers, getTopAssists, getTopMvps } from "@/lib/topScorers";
 import { TeamBadge } from "@/components/team-badge";
 import { getDiscipline } from "@/lib/discipline";
@@ -44,11 +48,18 @@ export default async function PublicLeaguePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; round?: string; team?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    round?: string;
+    team?: string;
+    asof?: string;
+    side?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { tab = "standings", round, team } = await searchParams;
+  const { tab = "standings", round, team, asof, side } = await searchParams;
   const roundFilter = Number(round) || null;
+  const sideView = side === "home" ? "HOME" : side === "away" ? "AWAY" : null;
 
   const league = await prisma.league.findUnique({
     where: { id },
@@ -79,8 +90,25 @@ export default async function PublicLeaguePage({
   const currentRound = matches.find((m) => m.status !== "FINISHED")?.round ?? totalRounds;
   const upcomingFixtures = matchesByRound.get(currentRound) ?? [];
 
+  const finishedLeagueMatches = matches.filter(
+    (m) => m.stage === "LEAGUE" && m.status === "FINISHED"
+  );
+  const maxFinishedRound = finishedLeagueMatches.reduce((max, m) => Math.max(max, m.round), 0);
+  const asofRaw = Number(asof) || null;
+  const asofRound =
+    tab === "standings" && !sideView && asofRaw && asofRaw >= 1 && asofRaw < maxFinishedRound
+      ? asofRaw
+      : null;
+
   const isFinished = league.status === "FINISHED";
-  const standings = tab === "standings" || isFinished ? await computeStandings(id) : [];
+  const standings =
+    tab === "standings" || isFinished
+      ? sideView && tab === "standings"
+        ? await computeHomeAwayStandings(id, sideView)
+        : asofRound
+          ? await computeStandingsUpTo(id, asofRound + 1)
+          : await computeStandings(id)
+      : [];
   const topScorers = tab === "standings" || isFinished ? await getTopScorers(id, 5) : [];
   const discipline = tab === "discipline" ? await getDiscipline(id) : null;
   const topAssists = tab === "standings" ? await getTopAssists(id, 5) : [];
@@ -99,9 +127,6 @@ export default async function PublicLeaguePage({
         }
       : null;
 
-  const finishedLeagueMatches = matches.filter(
-    (m) => m.stage === "LEAGUE" && m.status === "FINISHED"
-  );
   const crossScore = new Map<string, (typeof matches)[number]>();
   for (const m of finishedLeagueMatches) crossScore.set(`${m.homeTeamId}:${m.awayTeamId}`, m);
 
@@ -146,8 +171,9 @@ export default async function PublicLeaguePage({
     }
   }
 
+  const zonesOn = !sideView && !asofRound;
   const movement = new Map<string, number>();
-  if (tab === "standings" && finishedLeagueMatches.length > 0) {
+  if (tab === "standings" && !sideView && !asofRound && finishedLeagueMatches.length > 0) {
     const lastRound = finishedLeagueMatches.reduce((max, m) => Math.max(max, m.round), 0);
     if (lastRound >= 2) {
       const prev = await computeStandingsUpTo(id, lastRound);
@@ -174,7 +200,7 @@ export default async function PublicLeaguePage({
       ? (standings.find((r) => r.teamId === finalMatch.homeTeamId || r.teamId === finalMatch.awayTeamId)?.teamName ?? finalWinner.name)
       : finalWinner.name;
     championNote = `ชนะนัดชิง ${finalMatch.homeScore}-${finalMatch.awayScore}`;
-  } else if (isFinished && standings[0]) {
+  } else if (isFinished && !sideView && !asofRound && standings[0]) {
     championName = standings[0].teamName;
     championNote = `${standings[0].points} แต้ม · ชนะ ${standings[0].won} จาก ${standings[0].played} นัด`;
   }
@@ -521,6 +547,55 @@ export default async function PublicLeaguePage({
         ) : matches.length === 0 ? (
           <p className="text-foreground/50 text-sm">ยังไม่มีตารางแข่งสำหรับลีกนี้</p>
         ) : tab === "standings" ? (
+          <>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              {[
+                { label: "รวม", href: `/leagues/${id}?tab=standings`, active: !sideView },
+                {
+                  label: "เหย้า",
+                  href: `/leagues/${id}?tab=standings&side=home`,
+                  active: sideView === "HOME",
+                },
+                {
+                  label: "เยือน",
+                  href: `/leagues/${id}?tab=standings&side=away`,
+                  active: sideView === "AWAY",
+                },
+              ].map((t) => (
+                <Link
+                  key={t.label}
+                  href={t.href}
+                  className={`rounded-full px-3 py-1 text-xs ${
+                    t.active ? "bg-accent text-black font-semibold" : "bg-white/5 text-foreground/60"
+                  }`}
+                >
+                  {t.label}
+                </Link>
+              ))}
+              {!sideView && maxFinishedRound >= 2 && (
+                <form method="get" className="flex items-center gap-2 ml-auto">
+                  <input type="hidden" name="tab" value="standings" />
+                  <select
+                    name="asof"
+                    defaultValue={asofRound ?? ""}
+                    className="rounded-md bg-black/30 border border-white/10 px-2 py-1 text-xs outline-none focus:border-accent"
+                  >
+                    <option value="">ตารางปัจจุบัน</option>
+                    {Array.from({ length: maxFinishedRound - 1 }, (_, i) => i + 1).map((r) => (
+                      <option key={r} value={r}>
+                        หลังนัดที่ {r}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="submit" className="rounded-md bg-white/10 px-3 py-1 text-xs">
+                    ดู
+                  </button>
+                </form>
+              )}
+              {asofRound && (
+                <span className="text-xs text-accent">ตารางหลังจบนัดที่ {asofRound}</span>
+              )}
+            </div>
           <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-6">
             <div className="rounded-xl border border-white/10 bg-card overflow-x-auto">
               <table className="w-full text-sm min-w-[560px]">
@@ -542,9 +617,11 @@ export default async function PublicLeaguePage({
                     <tr
                       key={row.teamId}
                       className={`border-t border-white/5 ${
-                        i < league.promotedCount
+                        zonesOn && i < league.promotedCount
                           ? "border-l-2 border-l-accent"
-                          : league.relegatedCount > 0 && i >= standings.length - league.relegatedCount
+                          : zonesOn &&
+                              league.relegatedCount > 0 &&
+                              i >= standings.length - league.relegatedCount
                             ? "border-l-2 border-l-red-500"
                             : ""
                       }`}
@@ -589,15 +666,18 @@ export default async function PublicLeaguePage({
                 </tbody>
               </table>
               <div className="flex flex-wrap gap-5 px-4 py-3 text-xs text-foreground/45 border-t border-white/5 min-w-[560px]">
-                {league.promotedCount > 0 && (
+                {zonesOn && league.promotedCount > 0 && (
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-sm bg-accent inline-block" /> เข้ารอบแชมเปียนส์
                   </span>
                 )}
-                {league.relegatedCount > 0 && (
+                {zonesOn && league.relegatedCount > 0 && (
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> ตกชั้น
                   </span>
+                )}
+                {sideView && (
+                  <span>{sideView === "HOME" ? "เฉพาะผลงานเจ้าบ้าน" : "เฉพาะผลงานทีมเยือน"}</span>
                 )}
               </div>
             </div>
@@ -716,6 +796,7 @@ export default async function PublicLeaguePage({
               </div>
             )}
           </div>
+          </>
         ) : (
           <div className="space-y-6">
             <form method="get" className="flex flex-wrap items-center gap-2">

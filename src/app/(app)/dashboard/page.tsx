@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { computeLiveMinute } from "@/lib/matchClock";
-import { createLeague } from "./actions";
+import { createLeague, createAdmin, resetUserPassword } from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "ฉบับร่าง",
@@ -33,7 +33,7 @@ export default async function DashboardPage() {
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const endOfDay = new Date(startOfDay.getTime() + 86400000);
 
-  const [leagues, todayMatches, attentionMatches, adminLogs] = await Promise.all([
+  const [leagues, todayMatches, attentionMatches, adminLogs, users] = await Promise.all([
     prisma.league.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -60,6 +60,10 @@ export default async function DashboardPage() {
       take: 8,
     }),
     prisma.adminLog.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
+    prisma.user.findMany({
+      include: { managedTeams: { select: { name: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
   ]);
 
   const tasks = [
@@ -205,6 +209,73 @@ export default async function DashboardPage() {
         {leagues.length === 0 && (
           <p className="text-foreground/50 text-sm">ยังไม่มีลีก สร้างลีกแรกของคุณด้านล่าง</p>
         )}
+      </div>
+
+      <div className="rounded-lg bg-card border border-white/10 p-5 space-y-4">
+        <h2 className="font-semibold">ผู้ใช้ระบบ</h2>
+        <div className="space-y-2">
+          {users.map((u) => (
+            <div
+              key={u.id}
+              className="flex flex-wrap items-center gap-3 rounded-md bg-white/5 px-3 py-2 text-sm"
+            >
+              <div className="flex-1 min-w-40">
+                <span className="font-semibold">{u.name}</span>{" "}
+                <span className="text-foreground/50 text-xs">{u.email}</span>
+              </div>
+              <span className="text-xs rounded-full bg-white/10 px-2 py-0.5 text-foreground/60">
+                {u.role === "SUPER_ADMIN"
+                  ? "แอดมิน"
+                  : `ผู้จัดการทีม${u.managedTeams[0] ? ` · ${u.managedTeams[0].name}` : ""}`}
+              </span>
+              <form
+                action={resetUserPassword.bind(null, u.id)}
+                className="flex items-center gap-1"
+              >
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  placeholder="รหัสใหม่"
+                  className="w-28 rounded-md bg-black/30 border border-white/10 px-2 py-1 text-xs"
+                />
+                <button type="submit" className="text-xs text-foreground/50 hover:text-accent">
+                  รีเซ็ต
+                </button>
+              </form>
+            </div>
+          ))}
+        </div>
+        <form action={createAdmin} className="flex flex-wrap items-end gap-2 border-t border-white/10 pt-4">
+          <input
+            name="name"
+            required
+            placeholder="ชื่อแอดมินใหม่"
+            className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <input
+            name="email"
+            type="email"
+            required
+            placeholder="อีเมล"
+            className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <input
+            name="password"
+            type="password"
+            required
+            minLength={8}
+            placeholder="รหัสผ่าน (8+)"
+            className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-accent text-black font-semibold px-4 py-2 text-sm"
+          >
+            เพิ่มแอดมิน
+          </button>
+        </form>
       </div>
 
       {adminLogs.length > 0 && (

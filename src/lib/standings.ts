@@ -137,6 +137,71 @@ export async function computeStandings(leagueId: string): Promise<StandingRow[]>
   return buildTable(teams, finishedMatches);
 }
 
+// home-only or away-only table: each team is credited only for matches on that side
+export async function computeHomeAwayStandings(
+  leagueId: string,
+  side: "HOME" | "AWAY"
+): Promise<StandingRow[]> {
+  const teams = await prisma.team.findMany({ where: { leagueId } });
+  const matches = await prisma.match.findMany({
+    where: { leagueId, status: "FINISHED", stage: "LEAGUE" },
+    orderBy: { kickoffAt: "desc" },
+  });
+
+  const rows = new Map<string, StandingRow>(
+    teams.map((t) => [
+      t.id,
+      {
+        teamId: t.id,
+        teamName: t.name,
+        teamAbbr: t.abbr,
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        goalDiff: 0,
+        points: 0,
+        form: [],
+      },
+    ])
+  );
+
+  for (const m of matches) {
+    const teamId = side === "HOME" ? m.homeTeamId : m.awayTeamId;
+    const row = rows.get(teamId);
+    if (!row) continue;
+    const gf = side === "HOME" ? m.homeScore : m.awayScore;
+    const ga = side === "HOME" ? m.awayScore : m.homeScore;
+
+    row.played++;
+    row.goalsFor += gf;
+    row.goalsAgainst += ga;
+    let result: "W" | "D" | "L";
+    if (gf > ga) {
+      row.won++;
+      row.points += 3;
+      result = "W";
+    } else if (gf < ga) {
+      row.lost++;
+      result = "L";
+    } else {
+      row.drawn++;
+      row.points++;
+      result = "D";
+    }
+    if (row.form.length < 5) row.form.push(result);
+  }
+
+  const standings = Array.from(rows.values()).map((r) => ({
+    ...r,
+    goalDiff: r.goalsFor - r.goalsAgainst,
+  }));
+  standings.sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor);
+  return standings;
+}
+
 // table as it stood before the given round (for position-movement arrows)
 export async function computeStandingsUpTo(
   leagueId: string,

@@ -57,7 +57,7 @@ export default async function MyTeamPage({
     );
   }
 
-  const [nextMatch, standings, cleanSheets, appsGrouped, eventsGrouped] = await Promise.all([
+  const [nextMatch, standings, cleanSheets, appsGrouped, eventsGrouped, teamMatches] = await Promise.all([
     prisma.match.findFirst({
       where: {
         status: "SCHEDULED",
@@ -89,6 +89,11 @@ export default async function MyTeamPage({
       by: ["playerId", "type"],
       where: { playerId: { not: null }, type: { in: ["GOAL", "YELLOW_CARD"] }, player: { teamId: team.id } },
       _count: { playerId: true },
+    }),
+    prisma.match.findMany({
+      where: { OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }] },
+      include: { homeTeam: true, awayTeam: true },
+      orderBy: [{ round: "asc" }, { kickoffAt: "asc" }],
     }),
   ]);
 
@@ -196,6 +201,60 @@ export default async function MyTeamPage({
                 {FORM_LABEL[f].t}
               </span>
             ))}
+          </div>
+        </div>
+      )}
+
+      {teamMatches.length > 0 && (
+        <div className="rounded-lg bg-card border border-white/10 p-5">
+          <h2 className="font-semibold mb-3">โปรแกรมและผลของทีม</h2>
+          <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+            {teamMatches.map((m) => {
+              const finished = m.status === "FINISHED";
+              const isHome = m.homeTeamId === team.id;
+              const gf = isHome ? m.homeScore : m.awayScore;
+              const ga = isHome ? m.awayScore : m.homeScore;
+              const res = !finished ? null : gf > ga ? "ช" : gf < ga ? "พ" : "ส";
+              const resClass =
+                res === "ช"
+                  ? "bg-accent text-black"
+                  : res === "พ"
+                    ? "bg-red-500 text-white"
+                    : "bg-white/15 text-foreground";
+              return (
+                <Link
+                  key={m.id}
+                  href={`/matches/${m.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="grid grid-cols-[28px_1fr_64px_1fr] items-center gap-2 rounded-md bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+                >
+                  <span className="text-xs text-foreground/40">{m.round}</span>
+                  <span className="truncate text-right">{m.homeTeam.name}</span>
+                  <span className="text-center">
+                    {finished || m.status === "LIVE" ? (
+                      <span className="font-display font-bold">
+                        {m.homeScore}-{m.awayScore}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-foreground/50">
+                        {m.kickoffAt.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="truncate">{m.awayTeam.name}</span>
+                    {res && (
+                      <span
+                        className={`w-4 h-4 rounded text-[9px] font-bold grid place-items-center shrink-0 ${resClass}`}
+                      >
+                        {res}
+                      </span>
+                    )}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

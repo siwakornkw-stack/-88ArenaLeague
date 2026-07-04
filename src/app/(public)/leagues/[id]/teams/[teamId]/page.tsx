@@ -163,6 +163,16 @@ export default async function PublicTeamPage({
                 <span className="w-8 font-display font-bold text-accent">{p.number}</span>
                 <span className="flex-1">{p.name}</span>
                 <span className="w-14 text-foreground/50 text-xs">{p.position}</span>
+                {p.status === "INJURED" && (
+                  <span className="text-[10px] rounded-full bg-yellow-400/10 text-yellow-400 px-2 py-0.5 shrink-0">
+                    บาดเจ็บ
+                  </span>
+                )}
+                {p.status === "BANNED" && (
+                  <span className="text-[10px] rounded-full bg-red-500/10 text-red-400 px-2 py-0.5 shrink-0">
+                    แบน
+                  </span>
+                )}
                 <span className="w-10 text-center text-foreground/70">
                   {appsByPlayer.get(p.id) ?? 0}
                 </span>
