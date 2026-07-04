@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
 import { getTopScorers } from "@/lib/topScorers";
+import { getDiscipline } from "@/lib/discipline";
 import { MobileNav } from "@/components/mobile-nav";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -51,6 +52,7 @@ export default async function PublicLeaguePage({
 
   const standings = tab === "standings" ? await computeStandings(id) : [];
   const topScorers = tab === "standings" ? await getTopScorers(id, 5) : [];
+  const discipline = tab === "discipline" ? await getDiscipline(id) : null;
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -97,14 +99,23 @@ export default async function PublicLeaguePage({
           >
             ทีม
           </Link>
+          <Link
+            href={`/leagues/${id}?tab=discipline`}
+            className={`px-4 py-2 text-sm font-display font-semibold ${
+              tab === "discipline" ? "border-b-2 border-accent text-accent" : "text-foreground/60"
+            }`}
+          >
+            วินัย
+          </Link>
         </div>
 
         {tab === "teams" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {league.teams.map((team) => (
-              <div
+              <Link
                 key={team.id}
-                className="rounded-xl border border-white/10 bg-card p-4 flex items-center gap-3"
+                href={`/leagues/${id}/teams/${team.id}`}
+                className="rounded-xl border border-white/10 bg-card p-4 flex items-center gap-3 hover:border-accent/50"
               >
                 <span
                   className="w-10 h-10 rounded-full shrink-0 grid place-items-center font-display font-bold text-xs"
@@ -116,11 +127,56 @@ export default async function PublicLeaguePage({
                   <div className="font-display font-semibold">{team.name}</div>
                   <div className="text-xs text-foreground/45">{team._count.players} นักเตะ</div>
                 </div>
-              </div>
+              </Link>
             ))}
             {league.teams.length === 0 && (
               <p className="text-foreground/50 text-sm">ยังไม่มีทีมในลีกนี้</p>
             )}
+          </div>
+        ) : tab === "discipline" && discipline ? (
+          <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
+            <div className="rounded-xl border border-white/10 bg-card overflow-x-auto">
+              <table className="w-full text-sm min-w-[360px]">
+                <thead className="text-foreground/45 text-xs">
+                  <tr>
+                    <th className="text-left py-3 px-4">ทีม</th>
+                    <th className="text-center">🟨 เหลือง</th>
+                    <th className="text-center">🟥 แดง</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {discipline.teams.map((row) => (
+                    <tr key={row.teamId} className="border-t border-white/5">
+                      <td className="py-3 px-4 font-display font-semibold">{row.teamName}</td>
+                      <td className="text-center text-yellow-400">{row.yellow}</td>
+                      <td className="text-center text-red-400">{row.red}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-card p-5">
+              <h3 className="font-display font-bold mb-3">นักเตะโดนใบโทษสูงสุด</h3>
+              <div className="flex flex-col gap-3">
+                {discipline.players.map((p, i) => (
+                  <div key={p.playerId} className="flex items-center gap-3 text-sm">
+                    <span className="w-5 font-display italic font-extrabold text-foreground/50">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1">
+                      <div className="font-display font-semibold">{p.playerName}</div>
+                      <div className="text-xs text-foreground/45">{p.teamName}</div>
+                    </div>
+                    <span className="text-yellow-400">🟨 {p.yellow}</span>
+                    <span className="text-red-400">🟥 {p.red}</span>
+                  </div>
+                ))}
+                {discipline.players.length === 0 && (
+                  <p className="text-foreground/50 text-sm">ยังไม่มีใบเหลือง-แดงในลีกนี้</p>
+                )}
+              </div>
+            </div>
           </div>
         ) : matches.length === 0 ? (
           <p className="text-foreground/50 text-sm">ยังไม่มีตารางแข่งสำหรับลีกนี้</p>

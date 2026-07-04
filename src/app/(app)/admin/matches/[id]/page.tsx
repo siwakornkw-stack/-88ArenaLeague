@@ -3,7 +3,16 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { computeLiveMinute } from "@/lib/matchClock";
 import { MatchTimeline } from "@/components/match-timeline";
-import { kickOff, addGoal, addCard, endMatch, updateStats, updateVenue } from "./actions";
+import {
+  kickOff,
+  addGoal,
+  addCard,
+  endMatch,
+  updateStats,
+  updateVenue,
+  halfTime,
+  deleteEvent,
+} from "./actions";
 
 const STAT_FIELDS = [
   { key: "Possession", label: "ครองบอล %" },
@@ -50,6 +59,9 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
   const endMatchWithId = endMatch.bind(null, id);
   const updateStatsWithId = updateStats.bind(null, id);
   const updateVenueWithId = updateVenue.bind(null, id);
+  const halfTimeWithId = halfTime.bind(null, id);
+  const deleteEventWithId = deleteEvent.bind(null, id);
+  const hasHalfTime = match.events.some((e) => e.type === "HALF_TIME");
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -117,11 +129,20 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
       )}
 
       {match.status === "LIVE" && (
-        <form action={endMatchWithId}>
-          <button type="submit" className="rounded-md bg-white/10 px-5 py-2 text-sm">
-            จบการแข่งขัน
-          </button>
-        </form>
+        <div className="flex gap-3">
+          {!hasHalfTime && (
+            <form action={halfTimeWithId}>
+              <button type="submit" className="rounded-md bg-white/10 px-5 py-2 text-sm">
+                ⏸ พักครึ่ง
+              </button>
+            </form>
+          )}
+          <form action={endMatchWithId}>
+            <button type="submit" className="rounded-md bg-white/10 px-5 py-2 text-sm">
+              จบการแข่งขัน
+            </button>
+          </form>
+        </div>
       )}
 
       {match.status !== "SCHEDULED" && (
@@ -157,7 +178,7 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
 
       <div>
         <h2 className="font-semibold mb-3">ไทม์ไลน์</h2>
-        <MatchTimeline events={match.events} />
+        <MatchTimeline events={match.events} deleteAction={deleteEventWithId} />
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
 import { roundRobin, buildKickoffDates } from "@/lib/schedule";
-import { generateSchedule } from "./actions";
+import { generateSchedule, finishSeason } from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "ฉบับร่าง",
@@ -83,12 +83,26 @@ export default async function LeagueDetailPage({
             {STATUS_LABEL[league.status]}
           </p>
         </div>
-        <Link
-          href={`/admin/leagues/${id}/teams`}
-          className="rounded-md border border-white/15 px-4 py-2 text-sm text-foreground/80 hover:border-accent/50 hover:text-accent"
-        >
-          จัดการทีม
-        </Link>
+        <div className="flex items-center gap-3">
+          {league.status !== "FINISHED" &&
+            matches.length > 0 &&
+            matches.every((m) => m.status === "FINISHED") && (
+              <form action={finishSeason.bind(null, id)}>
+                <button
+                  type="submit"
+                  className="rounded-md bg-accent text-black font-semibold px-4 py-2 text-sm"
+                >
+                  🏁 ปิดฤดูกาล
+                </button>
+              </form>
+            )}
+          <Link
+            href={`/admin/leagues/${id}/teams`}
+            className="rounded-md border border-white/15 px-4 py-2 text-sm text-foreground/80 hover:border-accent/50 hover:text-accent"
+          >
+            จัดการทีม
+          </Link>
+        </div>
       </div>
 
       {matches.length === 0 ? (

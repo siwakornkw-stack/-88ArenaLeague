@@ -25,7 +25,7 @@ Thai-language football league management app, branded **88ArenaLeague**. Round-r
 
 Two route groups share the root layout — same URL space, so paths must never collide between them:
 
-- `(public)` — no auth, no auth check in code. Serves `/`, `/leagues/[id]` (standings/fixtures/top scorers), `/matches/[id]` (read-only scoreboard/stats/timeline/lineups). Entry point for anonymous visitors.
+- `(public)` — no auth, no auth check in code. Serves `/`, `/leagues/[id]` (standings/fixtures/top scorers/teams/discipline tabs), `/leagues/[id]/teams/[teamId]` (team profile: roster stats, results, fixtures), `/matches/[id]` (read-only scoreboard/stats/timeline/lineups). Entry point for anonymous visitors.
 - `(app)` — gated by `src/proxy.ts` (redirects to `/login` if no session). Admin/management pages live under `/admin/leagues/[id]` (schedule generation, standings), `/admin/leagues/[id]/teams` (team/manager CRUD), and `/admin/matches/[id]` (kickoff/goals/cards/stats entry), plus `/dashboard` (SUPER_ADMIN) and `/teams/mine` (TEAM_MANAGER).
 
 `src/proxy.ts` matcher: `/dashboard/:path*`, `/admin/:path*`, `/teams/:path*`, `/login`. Anything not matched (including `/leagues/*` and `/matches/*`) is public by default.

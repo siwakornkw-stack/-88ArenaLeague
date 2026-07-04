@@ -8,7 +8,36 @@ type TimelineEvent = {
   side: string;
 };
 
-export function MatchTimeline({ events }: { events: TimelineEvent[] }) {
+const DELETABLE_EVENT_TYPES = new Set(["GOAL", "YELLOW_CARD", "RED_CARD"]);
+
+function DeleteButton({
+  eventId,
+  deleteAction,
+}: {
+  eventId: string;
+  deleteAction: (formData: FormData) => Promise<void>;
+}) {
+  return (
+    <form action={deleteAction} className="inline">
+      <input type="hidden" name="eventId" value={eventId} />
+      <button
+        type="submit"
+        title="ลบเหตุการณ์นี้"
+        className="text-foreground/30 hover:text-red-400 text-xs px-1"
+      >
+        ✕
+      </button>
+    </form>
+  );
+}
+
+export function MatchTimeline({
+  events,
+  deleteAction,
+}: {
+  events: TimelineEvent[];
+  deleteAction?: (formData: FormData) => Promise<void>;
+}) {
   if (events.length === 0) {
     return <p className="text-foreground/50 text-sm">ยังไม่มีเหตุการณ์</p>;
   }
@@ -29,6 +58,9 @@ export function MatchTimeline({ events }: { events: TimelineEvent[] }) {
             <div className="text-right text-sm">
               {ev.side === "HOME" && (
                 <span>
+                  {deleteAction && DELETABLE_EVENT_TYPES.has(ev.type) && (
+                    <DeleteButton eventId={ev.id} deleteAction={deleteAction} />
+                  )}
                   {ev.label} <span className="text-base">{EVENT_ICON[ev.type]}</span>
                 </span>
               )}
@@ -40,6 +72,9 @@ export function MatchTimeline({ events }: { events: TimelineEvent[] }) {
               {ev.side === "AWAY" && (
                 <span>
                   <span className="text-base">{EVENT_ICON[ev.type]}</span> {ev.label}
+                  {deleteAction && DELETABLE_EVENT_TYPES.has(ev.type) && (
+                    <DeleteButton eventId={ev.id} deleteAction={deleteAction} />
+                  )}
                 </span>
               )}
             </div>

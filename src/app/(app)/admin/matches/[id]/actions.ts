@@ -110,6 +110,57 @@ export async function updateStats(matchId: string, formData: FormData) {
   revalidatePath(`/admin/matches/${matchId}`);
 }
 
+export async function halfTime(matchId: string) {
+  await assertSuperAdmin();
+  if ((await getMatchStatus(matchId)) !== "LIVE") throw new Error("Match is not live");
+
+  const existing = await prisma.matchEvent.findFirst({ where: { matchId, type: "HALF_TIME" } });
+  if (existing) throw new Error("Half time already recorded");
+
+  const [match, kickoffEvent] = await Promise.all([
+    prisma.match.findUniqueOrThrow({ where: { id: matchId } }),
+    prisma.matchEvent.findFirst({ where: { matchId, type: "KICK_OFF" } }),
+  ]);
+  const minute = kickoffEvent ? computeLiveMinute(kickoffEvent.createdAt) : 0;
+
+  await prisma.matchEvent.create({
+    data: {
+      matchId,
+      minute,
+      label: `พักครึ่ง ${match.homeScore}-${match.awayScore}`,
+      type: "HALF_TIME",
+      side: "NEUTRAL",
+    },
+  });
+  revalidatePath(`/admin/matches/${matchId}`);
+}
+
+const DELETABLE_EVENT_TYPES = ["GOAL", "YELLOW_CARD", "RED_CARD"];
+
+export async function deleteEvent(matchId: string, formData: FormData) {
+  await assertSuperAdmin();
+
+  const eventId = String(formData.get("eventId") ?? "");
+  const event = await prisma.matchEvent.findUniqueOrThrow({ where: { id: eventId } });
+  if (event.matchId !== matchId) throw new Error("Invalid event");
+  if (!DELETABLE_EVENT_TYPES.includes(event.type)) throw new Error("Cannot delete this event");
+
+  if (event.type === "GOAL" && (event.side === "HOME" || event.side === "AWAY")) {
+    const match = await prisma.match.findUniqueOrThrow({ where: { id: matchId } });
+    const data =
+      event.side === "HOME"
+        ? { homeScore: Math.max(0, match.homeScore - 1) }
+        : { awayScore: Math.max(0, match.awayScore - 1) };
+    await prisma.$transaction([
+      prisma.matchEvent.delete({ where: { id: eventId } }),
+      prisma.match.update({ where: { id: matchId }, data }),
+    ]);
+  } else {
+    await prisma.matchEvent.delete({ where: { id: eventId } });
+  }
+  revalidatePath(`/admin/matches/${matchId}`);
+}
+
 export async function updateVenue(matchId: string, formData: FormData) {
   await assertSuperAdmin();
   const venue = String(formData.get("venue") ?? "").trim();

@@ -39,3 +39,17 @@ export async function generateSchedule(leagueId: string, dayOfWeek: number) {
 
   revalidatePath(`/admin/leagues/${leagueId}`);
 }
+
+export async function finishSeason(leagueId: string) {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
+
+  const [total, unfinished] = await Promise.all([
+    prisma.match.count({ where: { leagueId } }),
+    prisma.match.count({ where: { leagueId, status: { not: "FINISHED" } } }),
+  ]);
+  if (total === 0 || unfinished > 0) throw new Error("ยังมีแมตช์ที่ไม่จบการแข่งขัน");
+
+  await prisma.league.update({ where: { id: leagueId }, data: { status: "FINISHED" } });
+  revalidatePath(`/admin/leagues/${leagueId}`);
+}
