@@ -4,6 +4,8 @@ import { getFeaturedLeagues } from "@/lib/featuredLeagues";
 import { computeLiveMinute } from "@/lib/matchClock";
 import { MobileNav } from "@/components/mobile-nav";
 
+export const dynamic = "force-dynamic";
+
 const FEATURES = [
   { icon: "⚙", title: "ตารางแข่งอัตโนมัติ", desc: "สร้างโปรแกรมพบกันหมดในคลิกเดียว จัดสนามและเวลาให้เอง" },
   { icon: "⚡", title: "ผลสดเรียลไทม์", desc: "บันทึกประตู ใบเหลือง-แดง จากมือถือข้างสนาม อัปเดตทุกหน้าอัตโนมัติ" },

@@ -10,6 +10,8 @@ async function assertSuperAdmin() {
   if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
 }
 
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
 export async function createTeam(leagueId: string, formData: FormData) {
   await assertSuperAdmin();
 
@@ -19,7 +21,7 @@ export async function createTeam(leagueId: string, formData: FormData) {
   if (!name || !abbr) return;
 
   await prisma.team.create({
-    data: { name, abbr, leagueId, ...(color ? { color } : {}) },
+    data: { name, abbr, leagueId, ...(HEX_COLOR.test(color) ? { color } : {}) },
   });
   revalidatePath(`/admin/leagues/${leagueId}/teams`);
 }
@@ -34,7 +36,7 @@ export async function updateTeam(teamId: string, formData: FormData) {
 
   const team = await prisma.team.update({
     where: { id: teamId },
-    data: { name, abbr, color },
+    data: { name, abbr, ...(HEX_COLOR.test(color) ? { color } : {}) },
   });
   revalidatePath(`/admin/leagues/${team.leagueId}/teams`);
 }

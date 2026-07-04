@@ -14,6 +14,9 @@ export async function generateSchedule(leagueId: string, dayOfWeek: number) {
     include: { teams: true },
   });
 
+  const existing = await prisma.match.count({ where: { leagueId } });
+  if (existing > 0) throw new Error("Schedule already exists");
+
   const fixtures = roundRobin(
     league.teams.map((t) => t.id),
     league.legs

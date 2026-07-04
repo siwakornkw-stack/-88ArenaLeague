@@ -18,8 +18,14 @@ function isLockedOut(email: string) {
 function recordFailure(email: string) {
   const now = Date.now();
   const rec = attempts.get(email);
-  if (!rec || rec.resetAt <= now) attempts.set(email, { count: 1, resetAt: now + WINDOW_MS });
-  else rec.count++;
+  if (!rec || rec.resetAt <= now) {
+    attempts.set(email, { count: 1, resetAt: now + WINDOW_MS });
+    if (attempts.size > 1000) {
+      for (const [key, value] of attempts) if (value.resetAt <= now) attempts.delete(key);
+    }
+  } else {
+    rec.count++;
+  }
 }
 
 export async function login(_prevState: LoginState, formData: FormData): Promise<LoginState> {

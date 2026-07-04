@@ -10,6 +10,14 @@ async function assertSuperAdmin() {
   if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
 }
 
+async function getMatchStatus(matchId: string) {
+  const match = await prisma.match.findUniqueOrThrow({
+    where: { id: matchId },
+    select: { status: true },
+  });
+  return match.status;
+}
+
 function getSide(formData: FormData) {
   const side = String(formData.get("side"));
   if (side !== "HOME" && side !== "AWAY") throw new Error("Invalid side");
@@ -27,6 +35,8 @@ function getMinute(formData: FormData) {
 
 export async function kickOff(matchId: string) {
   await assertSuperAdmin();
+  if ((await getMatchStatus(matchId)) !== "SCHEDULED") throw new Error("Match already started");
+
   await prisma.$transaction([
     prisma.match.update({ where: { id: matchId }, data: { status: "LIVE" } }),
     prisma.matchEvent.create({
@@ -38,6 +48,8 @@ export async function kickOff(matchId: string) {
 
 export async function addGoal(matchId: string, formData: FormData) {
   await assertSuperAdmin();
+  if ((await getMatchStatus(matchId)) !== "LIVE") throw new Error("Match is not live");
+
   const side = getSide(formData);
   const playerId = getPlayerId(formData);
   const minute = getMinute(formData);
@@ -56,6 +68,8 @@ export async function addGoal(matchId: string, formData: FormData) {
 
 export async function addCard(matchId: string, formData: FormData) {
   await assertSuperAdmin();
+  if ((await getMatchStatus(matchId)) !== "LIVE") throw new Error("Match is not live");
+
   const side = getSide(formData);
   const playerId = getPlayerId(formData);
   const minute = getMinute(formData);
@@ -70,6 +84,8 @@ export async function addCard(matchId: string, formData: FormData) {
 
 export async function updateStats(matchId: string, formData: FormData) {
   await assertSuperAdmin();
+  if ((await getMatchStatus(matchId)) === "SCHEDULED") throw new Error("Match has not started");
+
   const num = (key: string) => Number(formData.get(key)) || 0;
 
   await prisma.match.update({
@@ -102,6 +118,8 @@ export async function updateVenue(matchId: string, formData: FormData) {
 
 export async function endMatch(matchId: string) {
   await assertSuperAdmin();
+  if ((await getMatchStatus(matchId)) !== "LIVE") throw new Error("Match is not live");
+
   const kickoffEvent = await prisma.matchEvent.findFirst({
     where: { matchId, type: "KICK_OFF" },
   });

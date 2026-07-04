@@ -50,6 +50,9 @@ export async function addPlayer(teamId: string, formData: FormData) {
   const position = String(formData.get("position") ?? "").trim();
   if (!name || !position || !Number.isInteger(number)) throw new Error("Invalid player data");
 
+  const duplicate = await prisma.player.findFirst({ where: { teamId, number } });
+  if (duplicate) throw new Error("มีนักเตะเบอร์นี้อยู่แล้ว");
+
   await prisma.player.create({ data: { teamId, name, number, position } });
   revalidatePath("/teams/mine");
 }
@@ -72,13 +75,18 @@ export async function deletePlayer(playerId: string) {
   revalidatePath("/teams/mine");
 }
 
+const LINEUP_SIZE = 12;
+
 export async function setLineup(matchId: string, formData: FormData) {
   const teamId = await getManagedTeamIdForMatch(matchId);
 
   const submittedIds = formData.getAll("playerId").map(String);
-  const ownPlayers = await prisma.player.findMany({ where: { teamId }, select: { id: true } });
+  const ownPlayers = await prisma.player.findMany({
+    where: { teamId, status: "ACTIVE" },
+    select: { id: true },
+  });
   const ownPlayerIds = new Set(ownPlayers.map((p) => p.id));
-  const playerIds = submittedIds.filter((id) => ownPlayerIds.has(id));
+  const playerIds = submittedIds.filter((id) => ownPlayerIds.has(id)).slice(0, LINEUP_SIZE);
 
   await prisma.$transaction([
     prisma.matchLineup.deleteMany({ where: { matchId, player: { teamId } } }),
