@@ -300,6 +300,9 @@ export default async function Home() {
           <Link href="/champions" className="hover:text-accent">
             หอเกียรติยศ
           </Link>
+          <Link href="/help" className="hover:text-accent">
+            วิธีใช้งาน
+          </Link>
           <Link href="/login" className="hover:text-accent">
             เข้าสู่ระบบ
           </Link>

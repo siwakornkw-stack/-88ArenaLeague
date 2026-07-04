@@ -7,11 +7,13 @@ const NAV_BY_ROLE: Record<SessionPayload["role"], { href: string; label: string;
     { href: "/dashboard", label: "ภาพรวม", icon: "▦" },
     { href: "/admin/logs", label: "ประวัติระบบ", icon: "🕘" },
     { href: "/account", label: "บัญชี", icon: "👤" },
+    { href: "/help#admin", label: "วิธีใช้งาน", icon: "📖" },
     { href: "/", label: "ดูเว็บสาธารณะ", icon: "🌐" },
   ],
   TEAM_MANAGER: [
     { href: "/teams/mine", label: "ทีมของฉัน", icon: "👥" },
     { href: "/account", label: "บัญชี", icon: "👤" },
+    { href: "/help#manager", label: "วิธีใช้งาน", icon: "📖" },
     { href: "/", label: "ดูเว็บสาธารณะ", icon: "🌐" },
   ],
 };

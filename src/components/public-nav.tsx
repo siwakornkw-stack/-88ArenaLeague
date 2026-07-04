@@ -5,6 +5,7 @@ const NAV_LINKS = [
   { href: "/leagues", label: "ลีกทั้งหมด" },
   { href: "/search", label: "ค้นหา" },
   { href: "/champions", label: "หอเกียรติยศ" },
+  { href: "/help", label: "วิธีใช้" },
 ];
 
 export function PublicNav() {
