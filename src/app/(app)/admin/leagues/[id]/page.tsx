@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
 import { roundRobin, buildKickoffDates } from "@/lib/schedule";
@@ -27,6 +28,9 @@ export default async function LeagueDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ tab?: string; day?: string }>;
 }) {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") redirect("/teams/mine");
+
   const { id } = await params;
   const { tab = "fixtures", day } = await searchParams;
   const dayOfWeek = day !== undefined ? Number(day) || 0 : null;

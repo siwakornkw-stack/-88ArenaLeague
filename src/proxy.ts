@@ -20,6 +20,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  const adminOnly = pathname.startsWith("/admin") || pathname.startsWith("/dashboard");
+  if (adminOnly && session.role !== "SUPER_ADMIN") {
+    return NextResponse.redirect(new URL("/teams/mine", request.url));
+  }
+
   return NextResponse.next();
 }
 

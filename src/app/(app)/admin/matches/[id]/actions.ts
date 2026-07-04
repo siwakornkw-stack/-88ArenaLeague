@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { computeLiveMinute } from "@/lib/matchClock";
+import { getSession } from "@/lib/session";
+
+async function assertSuperAdmin() {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
+}
 
 function getSide(formData: FormData) {
   const side = String(formData.get("side"));
@@ -20,6 +26,7 @@ function getMinute(formData: FormData) {
 }
 
 export async function kickOff(matchId: string) {
+  await assertSuperAdmin();
   await prisma.$transaction([
     prisma.match.update({ where: { id: matchId }, data: { status: "LIVE" } }),
     prisma.matchEvent.create({
@@ -30,6 +37,7 @@ export async function kickOff(matchId: string) {
 }
 
 export async function addGoal(matchId: string, formData: FormData) {
+  await assertSuperAdmin();
   const side = getSide(formData);
   const playerId = getPlayerId(formData);
   const minute = getMinute(formData);
@@ -47,6 +55,7 @@ export async function addGoal(matchId: string, formData: FormData) {
 }
 
 export async function addCard(matchId: string, formData: FormData) {
+  await assertSuperAdmin();
   const side = getSide(formData);
   const playerId = getPlayerId(formData);
   const minute = getMinute(formData);
@@ -60,6 +69,7 @@ export async function addCard(matchId: string, formData: FormData) {
 }
 
 export async function updateStats(matchId: string, formData: FormData) {
+  await assertSuperAdmin();
   const num = (key: string) => Number(formData.get(key)) || 0;
 
   await prisma.match.update({
@@ -81,6 +91,7 @@ export async function updateStats(matchId: string, formData: FormData) {
 }
 
 export async function updateVenue(matchId: string, formData: FormData) {
+  await assertSuperAdmin();
   const venue = String(formData.get("venue") ?? "").trim();
   await prisma.match.update({
     where: { id: matchId },
@@ -90,6 +101,7 @@ export async function updateVenue(matchId: string, formData: FormData) {
 }
 
 export async function endMatch(matchId: string) {
+  await assertSuperAdmin();
   const kickoffEvent = await prisma.matchEvent.findFirst({
     where: { matchId, type: "KICK_OFF" },
   });

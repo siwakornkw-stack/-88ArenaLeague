@@ -2,8 +2,13 @@ import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import type { Role } from "@/generated/prisma/client";
 
-const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
 const SESSION_COOKIE = "session";
+
+function getSecret() {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error("AUTH_SECRET is not set");
+  return new TextEncoder().encode(secret);
+}
 
 export function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
@@ -24,12 +29,12 @@ export async function signSession(payload: SessionPayload) {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(secret);
+    .sign(getSecret());
 }
 
 export async function verifySession(token: string) {
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, getSecret());
     return payload as unknown as SessionPayload;
   } catch {
     return null;

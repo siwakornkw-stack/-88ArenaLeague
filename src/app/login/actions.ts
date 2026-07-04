@@ -7,14 +7,36 @@ import { verifyPassword, signSession, SESSION_COOKIE_NAME } from "@/lib/auth";
 
 export type LoginState = { error?: string };
 
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 15 * 60 * 1000;
+const attempts = new Map<string, { count: number; resetAt: number }>();
+
+function isLockedOut(email: string) {
+  const rec = attempts.get(email);
+  return !!rec && rec.resetAt > Date.now() && rec.count >= MAX_ATTEMPTS;
+}
+function recordFailure(email: string) {
+  const now = Date.now();
+  const rec = attempts.get(email);
+  if (!rec || rec.resetAt <= now) attempts.set(email, { count: 1, resetAt: now + WINDOW_MS });
+  else rec.count++;
+}
+
 export async function login(_prevState: LoginState, formData: FormData): Promise<LoginState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
+  if (isLockedOut(email)) {
+    return { error: "พยายามเข้าสู่ระบบหลายครั้งเกินไป ลองใหม่ในภายหลัง" };
+  }
+
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    recordFailure(email);
     return { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
   }
+
+  attempts.delete(email);
 
   const token = await signSession({ userId: user.id, role: user.role, name: user.name });
   const cookieStore = await cookies();

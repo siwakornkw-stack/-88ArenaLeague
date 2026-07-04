@@ -53,4 +53,4 @@ Vercel project `league-manager-app`, scope `siwakornkw-stacks-projects`, aliased
 
 `npx prisma db seed` (`prisma/seed.ts`) is destructive: it wipes all league/team/player/match/event/lineup rows (users are kept, upserted) then rebuilds a deterministic demo dataset via a seeded PRNG — 4 leagues, played + live + scheduled rounds, goal/card events, lineups, injured/banned player statuses, and venues. `DATABASE_URL` is the same Neon DB used by prod, so seeding overwrites production league data.
 
-Seed accounts: `admin@leaguehub.dev` / `admin1234` (SUPER_ADMIN), `manager@leaguehub.dev` / `manager1234` (TEAM_MANAGER).
+Seeding requires `SEED_ADMIN_PASSWORD` and `SEED_MANAGER_PASSWORD` in the environment (never commit real credentials); it upserts `admin@leaguehub.dev` (SUPER_ADMIN) and `manager@leaguehub.dev` (TEAM_MANAGER) with those passwords. `prisma/rotate-creds.ts` rotates just those two accounts' passwords without wiping league data.

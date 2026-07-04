@@ -327,9 +327,14 @@ const LEAGUE3_TEAMS: [string, string][] = [
 ];
 
 async function main() {
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  const managerPassword = process.env.SEED_MANAGER_PASSWORD;
+  if (!adminPassword || !managerPassword) {
+    throw new Error("Set SEED_ADMIN_PASSWORD and SEED_MANAGER_PASSWORD before seeding");
+  }
   const [adminHash, managerHash] = await Promise.all([
-    bcrypt.hash("admin1234", 10),
-    bcrypt.hash("manager1234", 10),
+    bcrypt.hash(adminPassword, 10),
+    bcrypt.hash(managerPassword, 10),
   ]);
 
   await prisma.user.upsert({

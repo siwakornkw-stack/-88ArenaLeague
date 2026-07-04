@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { computeLiveMinute } from "@/lib/matchClock";
 import { MatchTimeline } from "@/components/match-timeline";
@@ -13,6 +14,9 @@ const STAT_FIELDS = [
 ] as const;
 
 export default async function MatchLivePage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") redirect("/teams/mine");
+
   const { id } = await params;
 
   const match = await prisma.match.findUnique({
