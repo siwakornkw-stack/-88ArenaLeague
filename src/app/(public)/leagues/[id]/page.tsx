@@ -24,10 +24,11 @@ export default async function PublicLeaguePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; round?: string }>;
 }) {
   const { id } = await params;
-  const { tab = "standings" } = await searchParams;
+  const { tab = "standings", round } = await searchParams;
+  const roundFilter = Number(round) || null;
 
   const league = await prisma.league.findUnique({
     where: { id },
@@ -50,9 +51,12 @@ export default async function PublicLeaguePage({
   const currentRound = matches.find((m) => m.status !== "FINISHED")?.round ?? totalRounds;
   const upcomingFixtures = matchesByRound.get(currentRound) ?? [];
 
-  const standings = tab === "standings" ? await computeStandings(id) : [];
-  const topScorers = tab === "standings" ? await getTopScorers(id, 5) : [];
+  const isFinished = league.status === "FINISHED";
+  const standings = tab === "standings" || isFinished ? await computeStandings(id) : [];
+  const topScorers = tab === "standings" || isFinished ? await getTopScorers(id, 5) : [];
   const discipline = tab === "discipline" ? await getDiscipline(id) : null;
+  const champion = isFinished ? (standings[0] ?? null) : null;
+  const seasonTopScorer = isFinished ? (topScorers[0] ?? null) : null;
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -72,6 +76,28 @@ export default async function PublicLeaguePage({
           {totalRounds > 0 && <> · นัดที่ {currentRound} จาก {totalRounds}</>}
         </p>
       </div>
+
+      {champion && (
+        <div className="mx-6 md:mx-16 mt-6 rounded-2xl border border-accent/40 bg-gradient-to-r from-[#1a2e12] to-card p-5 flex flex-wrap items-center gap-6">
+          <span className="text-4xl">🏆</span>
+          <div>
+            <div className="text-xs text-foreground/50">แชมป์ฤดูกาล {league.seasonYear}</div>
+            <div className="font-display italic font-extrabold text-2xl text-accent">
+              {champion.teamName}
+            </div>
+            <div className="text-xs text-foreground/60">
+              {champion.points} แต้ม · ชนะ {champion.won} จาก {champion.played} นัด
+            </div>
+          </div>
+          {seasonTopScorer && (
+            <div className="ml-auto text-right">
+              <div className="text-xs text-foreground/50">ดาวซัลโวฤดูกาล</div>
+              <div className="font-display font-bold">{seasonTopScorer.playerName}</div>
+              <div className="text-xs text-accent">{seasonTopScorer.goals} ประตู</div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="px-6 md:px-16 py-8 flex-1">
         <div className="flex gap-2 border-b border-white/10 mb-6">
@@ -293,7 +319,27 @@ export default async function PublicLeaguePage({
           </div>
         ) : (
           <div className="space-y-6">
-            {Array.from(matchesByRound.entries()).map(([round, roundMatches]) => (
+            <form method="get" className="flex items-center gap-2">
+              <input type="hidden" name="tab" value="fixtures" />
+              <select
+                name="round"
+                defaultValue={roundFilter ?? ""}
+                className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              >
+                <option value="">ทุกนัด</option>
+                {Array.from(matchesByRound.keys()).map((r) => (
+                  <option key={r} value={r}>
+                    นัดที่ {r}
+                  </option>
+                ))}
+              </select>
+              <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
+                ดู
+              </button>
+            </form>
+            {Array.from(matchesByRound.entries())
+              .filter(([round]) => roundFilter === null || round === roundFilter)
+              .map(([round, roundMatches]) => (
               <div key={round}>
                 <h3 className="text-sm text-foreground/50 mb-2">นัดที่ {round}</h3>
                 <div className="space-y-2">

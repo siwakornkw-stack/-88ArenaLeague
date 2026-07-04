@@ -138,9 +138,10 @@ export default async function PublicTeamPage({
               <span className="w-8 text-center">🟨</span>
             </div>
             {team.players.map((p) => (
-              <div
+              <Link
                 key={p.id}
-                className="flex items-center gap-3 px-5 py-2.5 text-sm border-t border-white/5"
+                href={`/leagues/${id}/players/${p.id}`}
+                className="flex items-center gap-3 px-5 py-2.5 text-sm border-t border-white/5 hover:bg-white/5"
               >
                 <span className="w-8 font-display font-bold text-accent">{p.number}</span>
                 <span className="flex-1">{p.name}</span>
@@ -152,7 +153,7 @@ export default async function PublicTeamPage({
                 <span className="w-8 text-center text-yellow-400">
                   {yellowsByPlayer.get(p.id) ?? 0}
                 </span>
-              </div>
+              </Link>
             ))}
             {team.players.length === 0 && (
               <p className="text-foreground/50 text-sm px-5 py-4">ยังไม่มีนักเตะ</p>

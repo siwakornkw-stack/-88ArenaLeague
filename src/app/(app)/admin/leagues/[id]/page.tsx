@@ -4,7 +4,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
 import { roundRobin, buildKickoffDates } from "@/lib/schedule";
-import { generateSchedule, finishSeason } from "./actions";
+import { generateSchedule, finishSeason, updateLeague, deleteLeague } from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "ฉบับร่าง",
@@ -26,14 +26,15 @@ export default async function LeagueDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; day?: string }>;
+  searchParams: Promise<{ tab?: string; day?: string; round?: string; delete?: string }>;
 }) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") redirect("/teams/mine");
 
   const { id } = await params;
-  const { tab = "fixtures", day } = await searchParams;
+  const { tab = "fixtures", day, round, delete: confirmDelete } = await searchParams;
   const dayOfWeek = day !== undefined ? Number(day) || 0 : null;
+  const roundFilter = Number(round) || null;
 
   const league = await prisma.league.findUnique({
     where: { id },
@@ -244,7 +245,27 @@ export default async function LeagueDetailPage({
             </table>
           ) : (
             <div className="space-y-6">
-              {Array.from(matchesByRound.entries()).map(([round, roundMatches]) => (
+              <form method="get" className="flex items-center gap-2">
+                <input type="hidden" name="tab" value="fixtures" />
+                <select
+                  name="round"
+                  defaultValue={roundFilter ?? ""}
+                  className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+                >
+                  <option value="">ทุกนัด</option>
+                  {Array.from(matchesByRound.keys()).map((r) => (
+                    <option key={r} value={r}>
+                      นัดที่ {r}
+                    </option>
+                  ))}
+                </select>
+                <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
+                  ดู
+                </button>
+              </form>
+              {Array.from(matchesByRound.entries())
+                .filter(([r]) => roundFilter === null || r === roundFilter)
+                .map(([round, roundMatches]) => (
                 <div key={round}>
                   <h3 className="text-sm text-foreground/50 mb-2">นัดที่ {round}</h3>
                   <div className="space-y-2">
@@ -270,6 +291,76 @@ export default async function LeagueDetailPage({
           )}
         </>
       )}
+
+      <div className="rounded-lg bg-card border border-white/10 p-5 max-w-sm space-y-4">
+        <h2 className="font-semibold">ตั้งค่าลีก</h2>
+        <form action={updateLeague.bind(null, id)} className="space-y-3">
+          <div className="space-y-1">
+            <label className="text-sm text-foreground/70" htmlFor="league-name">
+              ชื่อลีก
+            </label>
+            <input
+              id="league-name"
+              name="name"
+              required
+              defaultValue={league.name}
+              className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-foreground/70" htmlFor="league-season">
+              ฤดูกาล (ปี)
+            </label>
+            <input
+              id="league-season"
+              name="seasonYear"
+              type="number"
+              required
+              defaultValue={league.seasonYear}
+              className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+          <button
+            type="submit"
+            className="rounded-md bg-accent text-black font-semibold px-4 py-2 text-sm"
+          >
+            บันทึก
+          </button>
+        </form>
+
+        <div className="border-t border-white/10 pt-4">
+          {confirmDelete ? (
+            <div className="space-y-3">
+              <p className="text-sm text-red-400">
+                ลบลีกนี้ถาวร? ทีม นักเตะ แมตช์ และสถิติทั้งหมดจะถูกลบไปด้วย
+              </p>
+              <div className="flex gap-2">
+                <form action={deleteLeague.bind(null, id)}>
+                  <button
+                    type="submit"
+                    className="rounded-md bg-red-500 text-white font-semibold px-4 py-2 text-sm"
+                  >
+                    ยืนยันลบถาวร
+                  </button>
+                </form>
+                <Link
+                  href={`/admin/leagues/${id}`}
+                  className="rounded-md bg-white/10 px-4 py-2 text-sm"
+                >
+                  ยกเลิก
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <Link
+              href={`/admin/leagues/${id}?delete=1`}
+              className="text-sm text-red-400 hover:underline"
+            >
+              ลบลีกนี้
+            </Link>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
