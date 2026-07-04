@@ -30,7 +30,7 @@ const FEATURES = [
 ];
 
 export default async function Home() {
-  const [{ featuredLeagues, leagueCount, teamCount, playerCount, matchCount }, liveMatches] =
+  const [{ featuredLeagues, leagueCount, teamCount, playerCount, matchCount }, liveMatches, recentResults] =
     await Promise.all([
       getCachedLandingStats(),
       prisma.match.findMany({
@@ -41,6 +41,12 @@ export default async function Home() {
           league: true,
           events: { where: { type: "KICK_OFF" } },
         },
+        take: 5,
+      }),
+      prisma.match.findMany({
+        where: { status: "FINISHED" },
+        include: { homeTeam: true, awayTeam: true, league: true },
+        orderBy: { kickoffAt: "desc" },
         take: 5,
       }),
     ]);
@@ -107,6 +113,32 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      {recentResults.length > 0 && (
+        <section className="px-6 md:px-16 py-10 border-b border-white/5">
+          <h2 className="font-display italic font-extrabold text-xl text-foreground mb-5">
+            ผลการแข่งขัน<span className="text-accent">ล่าสุด</span>
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            {recentResults.map((m) => (
+              <Link
+                key={m.id}
+                href={`/matches/${m.id}`}
+                className="rounded-xl border border-white/10 bg-card p-3 hover:border-accent/50"
+              >
+                <div className="text-[10px] text-foreground/40 mb-1.5">{m.league.name}</div>
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="truncate">{m.homeTeam.name}</span>
+                  <span className="font-display font-bold shrink-0">
+                    {m.homeScore}-{m.awayScore}
+                  </span>
+                  <span className="truncate text-right">{m.awayTeam.name}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section id="leagues" className="px-6 md:px-16 py-14 scroll-mt-20">
         <div className="flex items-baseline justify-between mb-8">

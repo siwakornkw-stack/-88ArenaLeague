@@ -81,7 +81,48 @@ function buildTable(teams: TeamLite[], finishedMatches: MatchLite[]): StandingRo
 
   standings.sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor);
 
-  return standings;
+  return applyHeadToHead(standings, finishedMatches);
+}
+
+// teams level on points are re-ordered by their mutual results (points, then GD in
+// those games), falling back to overall GD/GF
+function applyHeadToHead(standings: StandingRow[], matches: MatchLite[]): StandingRow[] {
+  const out: StandingRow[] = [];
+  let i = 0;
+  while (i < standings.length) {
+    let j = i;
+    while (j < standings.length && standings[j].points === standings[i].points) j++;
+    const group = standings.slice(i, j);
+
+    if (group.length > 1) {
+      const ids = new Set(group.map((g) => g.teamId));
+      const mini = new Map(group.map((g) => [g.teamId, { pts: 0, gd: 0 }]));
+      for (const m of matches) {
+        if (!ids.has(m.homeTeamId) || !ids.has(m.awayTeamId)) continue;
+        const home = mini.get(m.homeTeamId)!;
+        const away = mini.get(m.awayTeamId)!;
+        home.gd += m.homeScore - m.awayScore;
+        away.gd += m.awayScore - m.homeScore;
+        if (m.homeScore > m.awayScore) home.pts += 3;
+        else if (m.homeScore < m.awayScore) away.pts += 3;
+        else {
+          home.pts++;
+          away.pts++;
+        }
+      }
+      group.sort(
+        (a, b) =>
+          mini.get(b.teamId)!.pts - mini.get(a.teamId)!.pts ||
+          mini.get(b.teamId)!.gd - mini.get(a.teamId)!.gd ||
+          b.goalDiff - a.goalDiff ||
+          b.goalsFor - a.goalsFor
+      );
+    }
+
+    out.push(...group);
+    i = j;
+  }
+  return out;
 }
 
 export async function computeStandings(leagueId: string): Promise<StandingRow[]> {

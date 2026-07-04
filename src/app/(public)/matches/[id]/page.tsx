@@ -37,6 +37,25 @@ const STAT_FIELDS = [
   { key: "Fouls", label: "ฟาวล์" },
 ] as const;
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const match = await prisma.match.findUnique({
+    where: { id },
+    include: { homeTeam: true, awayTeam: true, league: true },
+  });
+  if (!match) return {};
+  const score =
+    match.status === "SCHEDULED" ? "vs" : `${match.homeScore}-${match.awayScore}`;
+  const title = `${match.homeTeam.name} ${score} ${match.awayTeam.name} · ${match.league.name}`;
+  const description =
+    match.status === "LIVE"
+      ? `กำลังแข่งขันสด · ${match.league.name} นัดที่ ${match.round}`
+      : match.status === "FINISHED"
+        ? `ผลการแข่งขัน · ${match.league.name} นัดที่ ${match.round}`
+        : `${match.kickoffAt.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })} · ${match.league.name}`;
+  return { title, description, openGraph: { title, description } };
+}
+
 export default async function PublicMatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -72,6 +91,7 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
   const kickOffEvent = match.events.find((e) => e.type === "KICK_OFF");
   const liveMinute =
     match.status === "LIVE" && kickOffEvent ? computeLiveMinute(kickOffEvent.createdAt) : match.minute;
+  const hasHalfTime = match.events.some((e) => e.type === "HALF_TIME");
 
   const standings = await getCachedStandings(match.leagueId);
   const homeRank = standings.findIndex((r) => r.teamId === match.homeTeamId) + 1;
@@ -125,7 +145,8 @@ export default async function PublicMatchPage({ params }: { params: Promise<{ id
         <div className="flex items-center justify-center gap-3 text-xs font-display font-semibold mb-4">
           {match.status === "LIVE" ? (
             <span className="flex items-center gap-1 text-accent">
-              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" /> LIVE {liveMinute}&apos;
+              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" /> LIVE ·{" "}
+              {hasHalfTime ? "ครึ่งหลัง" : "ครึ่งแรก"} {liveMinute}&apos;
             </span>
           ) : (
             <span className="text-foreground/50">{STATUS_LABEL[match.status]}</span>

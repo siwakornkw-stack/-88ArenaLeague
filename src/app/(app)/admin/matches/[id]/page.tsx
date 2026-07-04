@@ -14,6 +14,7 @@ import {
   updateMatchInfo,
   updateMvp,
   halfTime,
+  reopenMatch,
   deleteEvent,
 } from "./actions";
 
@@ -113,7 +114,9 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
           <span className="font-semibold flex-1">{match.awayTeam.name}</span>
         </div>
         {match.status === "LIVE" && (
-          <p className="text-center text-xs text-accent">LIVE {liveMinute}&apos;</p>
+          <p className="text-center text-xs text-accent">
+            LIVE · {hasHalfTime ? "ครึ่งหลัง" : "ครึ่งแรก"} {liveMinute}&apos;
+          </p>
         )}
       </div>
 
@@ -225,6 +228,14 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             </button>
           </form>
         </div>
+      )}
+
+      {match.status === "FINISHED" && (
+        <form action={reopenMatch.bind(null, id)}>
+          <button type="submit" className="rounded-md bg-white/10 px-5 py-2 text-sm">
+            ↩ เปิดแมตช์อีกครั้ง (แก้ผล)
+          </button>
+        </form>
       )}
 
       {match.status === "FINISHED" && (

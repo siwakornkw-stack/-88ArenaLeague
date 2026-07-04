@@ -16,6 +16,16 @@ const STAGE_LABEL: Record<string, string> = {
   FINAL: "นัดชิงชนะเลิศ",
 };
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const league = await prisma.league.findUnique({ where: { id } });
+  if (!league) return {};
+  const title = `${league.name} ฤดูกาล ${league.seasonYear} · 88ArenaLeague`;
+  const description =
+    league.description ?? `ตารางคะแนน โปรแกรมแข่ง และผลบอลสดของ ${league.name}`;
+  return { title, description, openGraph: { title, description } };
+}
+
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "ฉบับร่าง",
   SCHEDULED: "จัดตารางแล้ว",

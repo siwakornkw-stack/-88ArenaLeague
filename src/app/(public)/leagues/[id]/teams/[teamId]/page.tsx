@@ -11,6 +11,22 @@ const FORM_LABEL: Record<"W" | "D" | "L", { t: string; className: string }> = {
   L: { t: "พ", className: "bg-red-500 text-white" },
 };
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string; teamId: string }>;
+}) {
+  const { id, teamId } = await params;
+  const team = await prisma.team.findFirst({
+    where: { id: teamId, leagueId: id },
+    include: { league: true },
+  });
+  if (!team) return {};
+  const title = `${team.name} · ${team.league.name}`;
+  const description = `สถิติทีม รายชื่อนักเตะ และผลการแข่งขันของ ${team.name}`;
+  return { title, description, openGraph: { title, description } };
+}
+
 export default async function PublicTeamPage({
   params,
 }: {

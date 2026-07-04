@@ -44,15 +44,23 @@ export default async function LeagueDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; day?: string; round?: string; delete?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    day?: string;
+    start?: string;
+    round?: string;
+    delete?: string;
+  }>;
 }) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") redirect("/teams/mine");
 
   const { id } = await params;
-  const { tab = "fixtures", day, round, delete: confirmDelete } = await searchParams;
+  const { tab = "fixtures", day, start, round, delete: confirmDelete } = await searchParams;
   const dayOfWeek = day !== undefined ? Number(day) || 0 : null;
   const roundFilter = Number(round) || null;
+  const startDateRaw = start ? new Date(`${start}T00:00`) : null;
+  const startFrom = startDateRaw && !isNaN(startDateRaw.getTime()) ? startDateRaw : undefined;
 
   const league = await prisma.league.findUnique({
     where: { id },
@@ -77,7 +85,7 @@ export default async function LeagueDetailPage({
   }
 
   const standings = tab === "standings" ? await computeStandings(id) : [];
-  const generateWithId = generateSchedule.bind(null, id, dayOfWeek ?? 0);
+  const generateWithId = generateSchedule.bind(null, id, dayOfWeek ?? 0, start ?? "");
 
   const leagueStageMatches = matches.filter((m) => m.stage === "LEAGUE");
   const allLeagueFinished =
@@ -91,7 +99,7 @@ export default async function LeagueDetailPage({
     const teamNameById = new Map(league.teams.map((t) => [t.id, t.name]));
     const fixtures = roundRobin(league.teams.map((t) => t.id), league.legs);
     const totalRounds = Math.max(...fixtures.map((f) => f.round));
-    previewDates = buildKickoffDates(totalRounds, dayOfWeek);
+    previewDates = buildKickoffDates(totalRounds, dayOfWeek, startFrom);
     previewByRound = new Map();
     for (const f of fixtures) {
       if (!previewByRound.has(f.round)) previewByRound.set(f.round, []);
@@ -149,8 +157,8 @@ export default async function LeagueDetailPage({
                 สร้างตารางแบบพบกันหมดจากทีมทั้งหมด {league.teams.length} ทีม
               </p>
 
-              <form method="get" className="flex items-end gap-2">
-                <div className="flex-1 space-y-1">
+              <form method="get" className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-36 space-y-1">
                   <label className="text-sm text-foreground/70" htmlFor="day">
                     วันแข่งขันประจำสัปดาห์
                   </label>
@@ -166,6 +174,18 @@ export default async function LeagueDetailPage({
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm text-foreground/70" htmlFor="start">
+                    เริ่มตั้งแต่วันที่
+                  </label>
+                  <input
+                    id="start"
+                    name="start"
+                    type="date"
+                    defaultValue={start ?? ""}
+                    className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+                  />
                 </div>
                 <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
                   แสดงตัวอย่าง

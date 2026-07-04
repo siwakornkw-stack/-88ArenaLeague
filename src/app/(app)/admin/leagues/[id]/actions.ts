@@ -8,7 +8,7 @@ import { computeStandings } from "@/lib/standings";
 import { uploadImage } from "@/lib/blobUpload";
 import { getSession } from "@/lib/session";
 
-export async function generateSchedule(leagueId: string, dayOfWeek: number) {
+export async function generateSchedule(leagueId: string, dayOfWeek: number, start: string) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
 
@@ -20,12 +20,15 @@ export async function generateSchedule(leagueId: string, dayOfWeek: number) {
   const existing = await prisma.match.count({ where: { leagueId } });
   if (existing > 0) throw new Error("Schedule already exists");
 
+  const startDate = start ? new Date(`${start}T00:00`) : null;
+  const startFrom = startDate && !isNaN(startDate.getTime()) ? startDate : undefined;
+
   const fixtures = roundRobin(
     league.teams.map((t) => t.id),
     league.legs
   );
   const totalRounds = Math.max(...fixtures.map((f) => f.round));
-  const kickoffDates = buildKickoffDates(totalRounds, dayOfWeek);
+  const kickoffDates = buildKickoffDates(totalRounds, dayOfWeek, startFrom);
 
   await prisma.$transaction([
     prisma.match.createMany({

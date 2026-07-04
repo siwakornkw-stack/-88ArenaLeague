@@ -32,9 +32,14 @@ export function roundRobin(teamIds: string[], legs: number): ScheduleMatch[] {
   return matches;
 }
 
-export function buildKickoffDates(totalRounds: number, dayOfWeek: number): Date[] {
-  const first = new Date();
-  const diff = (dayOfWeek - first.getDay() + 7) % 7 || 7;
+export function buildKickoffDates(
+  totalRounds: number,
+  dayOfWeek: number,
+  startFrom?: Date
+): Date[] {
+  const first = startFrom ? new Date(startFrom) : new Date();
+  let diff = (dayOfWeek - first.getDay() + 7) % 7;
+  if (!startFrom && diff === 0) diff = 7;
   first.setDate(first.getDate() + diff);
   first.setHours(9, 30, 0, 0);
 

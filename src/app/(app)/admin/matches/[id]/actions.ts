@@ -257,6 +257,17 @@ export async function updateMatchInfo(matchId: string, formData: FormData) {
   revalidatePath(`/admin/matches/${matchId}`);
 }
 
+export async function reopenMatch(matchId: string) {
+  await assertSuperAdmin();
+  if ((await getMatchStatus(matchId)) !== "FINISHED") throw new Error("Match is not finished");
+
+  await prisma.$transaction([
+    prisma.matchEvent.deleteMany({ where: { matchId, type: "FULL_TIME" } }),
+    prisma.match.update({ where: { id: matchId }, data: { status: "LIVE", minute: 0 } }),
+  ]);
+  revalidatePath(`/admin/matches/${matchId}`);
+}
+
 export async function updateMvp(matchId: string, formData: FormData) {
   await assertSuperAdmin();
   if ((await getMatchStatus(matchId)) !== "FINISHED") throw new Error("Match is not finished");
