@@ -126,8 +126,22 @@ export default async function PublicLeaguePage({
   const topAssists = tab === "standings" ? await getTopAssists(id, 5) : [];
   const news =
     tab === "news"
-      ? await prisma.leagueNews.findMany({ where: { leagueId: id }, orderBy: { createdAt: "desc" } })
+      ? await prisma.leagueNews.findMany({
+          where: { leagueId: id },
+          orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
+        })
       : [];
+  const goalMinutes =
+    tab === "stats"
+      ? await prisma.matchEvent.findMany({
+          where: { type: "GOAL", match: { leagueId: id, stage: "LEAGUE" } },
+          select: { minute: true },
+        })
+      : [];
+  const heatBuckets = [0, 0, 0, 0, 0, 0];
+  for (const g of goalMinutes) {
+    heatBuckets[Math.min(5, Math.floor(Math.max(0, g.minute - 1) / 15))]++;
+  }
   const charts = tab === "stats" ? await getLeagueCharts(id) : null;
   const playerBoards =
     tab === "players"
@@ -315,6 +329,12 @@ export default async function PublicLeaguePage({
                 className="rounded-md border border-white/25 px-3 py-2 text-xs text-foreground/70 hover:border-accent/50 hover:text-accent"
               >
                 ⬇ CSV ผลแข่ง
+              </a>
+              <a
+                href={`/leagues/${id}/export/players`}
+                className="rounded-md border border-white/25 px-3 py-2 text-xs text-foreground/70 hover:border-accent/50 hover:text-accent"
+              >
+                ⬇ CSV นักเตะ
               </a>
             </div>
           )}
@@ -693,6 +713,15 @@ export default async function PublicLeaguePage({
                     values={charts.teamGoals.map((t) => t.goals)}
                   />
                 </div>
+                {goalMinutes.length > 0 && (
+                  <div className="rounded-xl border border-white/10 bg-card p-5 lg:col-span-2">
+                    <h3 className="font-display font-bold mb-3">ช่วงนาทีเกิดประตูทั้งลีก</h3>
+                    <GoalsBarChart
+                      rounds={["1-15", "16-30", "31-45", "46-60", "61-75", "76+"]}
+                      values={heatBuckets}
+                    />
+                  </div>
+                )}
               </div>
               {records.length > 0 && (
                 <div>
@@ -717,7 +746,10 @@ export default async function PublicLeaguePage({
             {news.map((n) => (
               <div key={n.id} className="rounded-xl border border-white/10 bg-card p-5">
                 <div className="flex items-baseline justify-between gap-3">
-                  <h3 className="font-display font-bold">{n.title}</h3>
+                  <h3 className="font-display font-bold">
+                    {n.pinned && <span className="text-accent mr-1">📌</span>}
+                    {n.title}
+                  </h3>
                   <span className="text-xs text-foreground/45 shrink-0">
                     {n.createdAt.toLocaleDateString("th-TH", { dateStyle: "medium" })}
                   </span>
@@ -796,6 +828,7 @@ export default async function PublicLeaguePage({
                     <th className="text-center">เสีย</th>
                     <th className="text-center">+/-</th>
                     <th className="text-center">แต้ม</th>
+                    <th className="text-center">แต้ม/นัด</th>
                     <th className="text-center">ฟอร์ม</th>
                   </tr>
                 </thead>
@@ -844,6 +877,9 @@ export default async function PublicLeaguePage({
                       </td>
                       <td className="text-center font-display italic font-extrabold text-accent">
                         {row.points}
+                      </td>
+                      <td className="text-center text-foreground/50 text-xs">
+                        {row.played > 0 ? (row.points / row.played).toFixed(2) : "-"}
                       </td>
                       <td>
                         <div className="flex gap-1 justify-center py-1">

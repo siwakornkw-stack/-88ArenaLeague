@@ -76,6 +76,17 @@ export default async function PublicPlayerPage({
   const yellows = events.filter((e) => e.type === "YELLOW_CARD").length;
   const reds = events.filter((e) => e.type === "RED_CARD").length;
 
+  const scorerRank =
+    goals > 0
+      ? (
+          await prisma.matchEvent.groupBy({
+            by: ["playerId"],
+            where: { type: "GOAL", playerId: { not: null }, match: { leagueId: id } },
+            _count: { playerId: true },
+          })
+        ).filter((g) => g._count.playerId > goals).length + 1
+      : null;
+
   const h = await headers();
   const pageUrl = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "league-manager-app.vercel.app"}/leagues/${id}/players/${playerId}`;
 
@@ -116,12 +127,19 @@ export default async function PublicPlayerPage({
         <div>
           <h1 className="font-display italic font-black text-2xl md:text-4xl text-foreground">
             {player.name}
+            {player.nickname && (
+              <span className="text-foreground/50 text-xl md:text-2xl"> ({player.nickname})</span>
+            )}
           </h1>
           <p className="mt-1 text-sm text-foreground/55 flex items-center gap-2">
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${POSITION_COLOR[posKey]}`}>
               {player.position}
             </span>
             {player.team.name} · {player.team.league.name}
+            {player.birthYear && <> · อายุ {new Date().getFullYear() - player.birthYear} ปี</>}
+            {scorerRank && scorerRank <= 10 && (
+              <span className="text-accent"> · ดาวซัลโวอันดับ {scorerRank} ของลีก</span>
+            )}
           </p>
           <div className="mt-2 flex items-center gap-3">
             {player.status === "BANNED" && (

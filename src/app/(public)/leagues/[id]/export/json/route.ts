@@ -3,8 +3,9 @@ import { computeStandings } from "@/lib/standings";
 import { getTopScorers } from "@/lib/topScorers";
 import { getDiscipline } from "@/lib/discipline";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const deep = new URL(req.url).searchParams.get("deep") === "1";
 
   const league = await prisma.league.findUnique({
     where: { id },
@@ -16,7 +17,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     computeStandings(id),
     prisma.match.findMany({
       where: { leagueId: id },
-      include: { homeTeam: true, awayTeam: true },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+        ...(deep ? { events: { include: { player: true, relatedPlayer: true } } } : {}),
+      },
       orderBy: [{ round: "asc" }, { kickoffAt: "asc" }],
     }),
     getTopScorers(id, 20),
@@ -56,6 +61,27 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       away: m.awayTeam.name,
       homeScore: m.homeScore,
       awayScore: m.awayScore,
+      ...(deep && "events" in m
+        ? {
+            events: (
+              m as unknown as {
+                events: {
+                  minute: number;
+                  type: string;
+                  side: string;
+                  player: { name: string } | null;
+                  relatedPlayer: { name: string } | null;
+                }[];
+              }
+            ).events.map((e) => ({
+              minute: e.minute,
+              type: e.type,
+              side: e.side,
+              player: e.player?.name ?? null,
+              relatedPlayer: e.relatedPlayer?.name ?? null,
+            })),
+          }
+        : {}),
     })),
   });
 }

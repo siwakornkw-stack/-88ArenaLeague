@@ -18,6 +18,7 @@ import {
   deleteEvent,
   quickStat,
   updateEventMinute,
+  swapSides,
 } from "./actions";
 
 const STAT_FIELDS = [
@@ -239,6 +240,17 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
           />
         </div>
         <div className="space-y-1">
+          <label className="text-sm text-foreground/70" htmlFor="refereeName">
+            ผู้ตัดสิน
+          </label>
+          <input
+            id="refereeName"
+            name="refereeName"
+            defaultValue={match.refereeName ?? ""}
+            className="w-36 rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+        </div>
+        <div className="space-y-1">
           <label className="text-sm text-foreground/70" htmlFor="spectators">
             ผู้ชม
           </label>
@@ -257,14 +269,21 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
       </form>
 
       {match.status === "SCHEDULED" && (
-        <form action={kickOffWithId}>
-          <button
-            type="submit"
-            className="rounded-md bg-accent text-black font-semibold px-5 py-2 text-sm"
-          >
-            เริ่มการแข่งขัน
-          </button>
-        </form>
+        <div className="flex gap-3">
+          <form action={kickOffWithId}>
+            <button
+              type="submit"
+              className="rounded-md bg-accent text-black font-semibold px-5 py-2 text-sm"
+            >
+              เริ่มการแข่งขัน
+            </button>
+          </form>
+          <form action={swapSides.bind(null, id)}>
+            <button type="submit" className="rounded-md bg-white/10 px-5 py-2 text-sm">
+              ⇄ สลับเหย้า-เยือน
+            </button>
+          </form>
+        </div>
       )}
 
       {match.status === "LIVE" && (
@@ -459,6 +478,7 @@ function MatchActionForms({
           <option value="NORMAL">ปกติ</option>
           <option value="PENALTY">จุดโทษ</option>
           <option value="OWN_GOAL">เข้าตัวเอง</option>
+          <option value="PENALTY_MISSED">จุดโทษพลาด</option>
         </select>
         <button type="submit" className="rounded-md bg-accent text-black text-xs px-3 py-2">
           ประตู

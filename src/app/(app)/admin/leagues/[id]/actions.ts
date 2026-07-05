@@ -30,6 +30,7 @@ export async function generateSchedule(leagueId: string, dayOfWeek: number, star
   );
   const totalRounds = Math.max(...fixtures.map((f) => f.round));
   const kickoffDates = buildKickoffDates(totalRounds, dayOfWeek, startFrom);
+  const homeVenueByTeam = new Map(league.teams.map((t) => [t.id, t.homeVenue]));
 
   await prisma.$transaction([
     prisma.match.createMany({
@@ -39,6 +40,7 @@ export async function generateSchedule(leagueId: string, dayOfWeek: number, star
         homeTeamId: f.homeTeamId,
         awayTeamId: f.awayTeamId,
         kickoffAt: kickoffDates[f.round - 1],
+        venue: homeVenueByTeam.get(f.homeTeamId) ?? null,
       })),
     }),
     prisma.league.update({ where: { id: leagueId }, data: { status: "SCHEDULED" } }),
@@ -158,6 +160,30 @@ export async function generateFinal(leagueId: string) {
   revalidatePath(`/leagues/${leagueId}`);
 }
 
+export async function shiftSeason(leagueId: string, formData: FormData) {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
+
+  const days = Math.round(Number(formData.get("days")) || 0);
+  if (days === 0 || Math.abs(days) > 365) return;
+
+  const scheduled = await prisma.match.findMany({
+    where: { leagueId, status: "SCHEDULED" },
+    select: { id: true, kickoffAt: true },
+  });
+  await prisma.$transaction(
+    scheduled.map((m) =>
+      prisma.match.update({
+        where: { id: m.id },
+        data: { kickoffAt: new Date(m.kickoffAt.getTime() + days * 86400000) },
+      })
+    )
+  );
+  await logAdmin(session, "เลื่อนฤดูกาล", `ลีก ${leagueId} · ${days > 0 ? "+" : ""}${days} วัน · ${scheduled.length} แมตช์`);
+  revalidatePath(`/admin/leagues/${leagueId}`);
+  revalidatePath(`/leagues/${leagueId}`);
+}
+
 export async function deleteSchedule(leagueId: string) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
@@ -198,6 +224,7 @@ export async function updateLeague(leagueId: string, formData: FormData) {
       description: description || null,
       promotedCount: clampZone("promotedCount"),
       relegatedCount: clampZone("relegatedCount"),
+      registrationOpen: formData.get("registrationOpen") === "on",
     },
   });
   revalidatePath(`/admin/leagues/${leagueId}`);
@@ -248,9 +275,10 @@ export async function createNews(leagueId: string, formData: FormData) {
 
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
+  const pinned = formData.get("pinned") === "on";
   if (!title || !body) return;
 
-  await prisma.leagueNews.create({ data: { leagueId, title, body } });
+  await prisma.leagueNews.create({ data: { leagueId, title, body, pinned } });
   revalidatePath(`/admin/leagues/${leagueId}`);
   revalidatePath(`/leagues/${leagueId}`);
 }
@@ -264,9 +292,10 @@ export async function updateNews(leagueId: string, newsId: string, formData: For
 
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
+  const pinned = formData.get("pinned") === "on";
   if (!title || !body) return;
 
-  await prisma.leagueNews.update({ where: { id: newsId }, data: { title, body } });
+  await prisma.leagueNews.update({ where: { id: newsId }, data: { title, body, pinned } });
   revalidatePath(`/admin/leagues/${leagueId}`);
   revalidatePath(`/leagues/${leagueId}`);
 }

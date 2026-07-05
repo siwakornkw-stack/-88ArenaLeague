@@ -6,21 +6,33 @@ import { MobileNav } from "@/components/mobile-nav";
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; league?: string }>;
 }) {
-  const { q = "" } = await searchParams;
+  const { q = "", league: leagueParam = "" } = await searchParams;
   const query = q.trim();
+  const allLeagues = await prisma.league.findMany({
+    where: { status: { not: "DRAFT" } },
+    select: { id: true, name: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const leagueScope = allLeagues.some((l) => l.id === leagueParam) ? leagueParam : null;
 
   const [teams, players, leagues, venueMatches] =
     query.length >= 2
       ? await Promise.all([
           prisma.team.findMany({
-            where: { name: { contains: query, mode: "insensitive" } },
+            where: {
+              name: { contains: query, mode: "insensitive" },
+              ...(leagueScope ? { leagueId: leagueScope } : {}),
+            },
             include: { league: true, _count: { select: { players: true } } },
             take: 20,
           }),
           prisma.player.findMany({
-            where: { name: { contains: query, mode: "insensitive" } },
+            where: {
+              name: { contains: query, mode: "insensitive" },
+              ...(leagueScope ? { team: { leagueId: leagueScope } } : {}),
+            },
             include: { team: { include: { league: true } } },
             take: 20,
           }),
@@ -51,13 +63,25 @@ export default async function SearchPage({
         <h1 className="font-display italic font-black text-2xl md:text-4xl text-foreground">
           ค้นหา<span className="text-accent">ทีมและนักเตะ</span>
         </h1>
-        <form method="get" className="mt-4 flex gap-2 max-w-md">
+        <form method="get" className="mt-4 flex flex-wrap gap-2 max-w-xl">
           <input
             name="q"
             defaultValue={query}
             placeholder="พิมพ์ชื่อทีมหรือนักเตะ (อย่างน้อย 2 ตัวอักษร)"
-            className="flex-1 rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+            className="flex-1 min-w-48 rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
           />
+          <select
+            name="league"
+            defaultValue={leagueScope ?? ""}
+            className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          >
+            <option value="">ทุกลีก</option>
+            {allLeagues.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
           <button type="submit" className="rounded-md bg-accent text-black font-semibold px-5 py-2 text-sm">
             ค้นหา
           </button>

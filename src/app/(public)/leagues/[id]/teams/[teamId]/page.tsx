@@ -180,7 +180,36 @@ export default async function PublicTeamPage({
           <p className="mt-1 text-sm text-foreground/55">
             {team.league.name}
             {rank > 0 && row && <> · อันดับ {rank} · {row.points} แต้ม</>}
+            {team.foundedYear && <> · ก่อตั้ง {team.foundedYear}</>}
+            {team.coachName && <> · โค้ช {team.coachName}</>}
           </p>
+          {(() => {
+            const form = row?.form ?? [];
+            let winStreak = 0;
+            for (const f of form) {
+              if (f === "W") winStreak++;
+              else break;
+            }
+            let unbeaten = 0;
+            for (const f of form) {
+              if (f !== "L") unbeaten++;
+              else break;
+            }
+            return (
+              <div className="mt-1.5 flex gap-2">
+                {winStreak >= 2 && (
+                  <span className="text-[10px] rounded-full bg-accent/15 text-accent px-2 py-0.5">
+                    🔥 ชนะติด {winStreak} นัด
+                  </span>
+                )}
+                {unbeaten >= 3 && winStreak < unbeaten && (
+                  <span className="text-[10px] rounded-full bg-white/10 text-foreground/70 px-2 py-0.5">
+                    🛡 ไม่แพ้ {unbeaten} นัดติด
+                  </span>
+                )}
+              </div>
+            );
+          })()}
           {row && row.form.length > 0 && (
             <div className="flex gap-1 mt-2">
               {row.form.map((f, i) => (

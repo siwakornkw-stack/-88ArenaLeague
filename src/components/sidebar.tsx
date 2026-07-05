@@ -5,6 +5,7 @@ import { logout } from "@/app/login/actions";
 const NAV_BY_ROLE: Record<SessionPayload["role"], { href: string; label: string; icon: string }[]> = {
   SUPER_ADMIN: [
     { href: "/dashboard", label: "ภาพรวม", icon: "▦" },
+    { href: "/admin/today", label: "แมตช์วันนี้", icon: "📆" },
     { href: "/admin/logs", label: "ประวัติระบบ", icon: "🕘" },
     { href: "/account", label: "บัญชี", icon: "👤" },
     { href: "/help#admin", label: "วิธีใช้งาน", icon: "📖" },

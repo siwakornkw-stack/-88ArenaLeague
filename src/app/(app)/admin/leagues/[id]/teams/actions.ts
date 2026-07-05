@@ -79,6 +79,29 @@ export async function deleteTeam(teamId: string) {
   revalidatePath(`/admin/leagues/${team.leagueId}/teams`);
 }
 
+export async function bulkCreateTeams(leagueId: string, formData: FormData) {
+  await assertSuperAdmin();
+
+  const raw = String(formData.get("bulk") ?? "");
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(0, 40);
+
+  const data = lines.map((line) => {
+    const [name, abbr] = line.split(",").map((s) => s?.trim() ?? "");
+    return {
+      leagueId,
+      name,
+      abbr: (abbr || name.slice(0, 3)).toUpperCase().slice(0, 4),
+    };
+  }).filter((t) => t.name);
+
+  if (data.length > 0) await prisma.team.createMany({ data });
+  revalidatePath(`/admin/leagues/${leagueId}/teams`);
+}
+
 export async function transferPlayer(leagueId: string, formData: FormData) {
   await assertSuperAdmin();
 

@@ -12,6 +12,7 @@ export type FeaturedLeague = {
   leaderName: string | null;
   leaderPoints: number;
   top3: { name: string; points: number }[];
+  registrationOpen: boolean;
 };
 
 export async function getFeaturedLeagues(limit = 3): Promise<FeaturedLeague[]> {
@@ -47,6 +48,7 @@ export async function getFeaturedLeagues(limit = 3): Promise<FeaturedLeague[]> {
         leaderName: leader?.teamName ?? null,
         leaderPoints: leader?.points ?? 0,
         top3: standings.slice(0, 3).map((r) => ({ name: r.teamName, points: r.points })),
+        registrationOpen: league.registrationOpen,
       };
     })
   );

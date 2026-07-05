@@ -70,6 +70,9 @@ export async function updateMyTeam(teamId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const abbr = String(formData.get("abbr") ?? "").trim();
   const color = String(formData.get("color") ?? "").trim();
+  const coachName = String(formData.get("coachName") ?? "").trim();
+  const homeVenue = String(formData.get("homeVenue") ?? "").trim();
+  const foundedYearRaw = Number(formData.get("foundedYear"));
   if (!name || !abbr) return;
 
   const logoUrl = await maybeUploadLogo(teamId, formData);
@@ -78,6 +81,9 @@ export async function updateMyTeam(teamId: string, formData: FormData) {
     data: {
       name,
       abbr,
+      coachName: coachName || null,
+      homeVenue: homeVenue || null,
+      foundedYear: Number.isInteger(foundedYearRaw) && foundedYearRaw > 1900 ? foundedYearRaw : null,
       ...(HEX_COLOR.test(color) ? { color } : {}),
       ...(logoUrl ? { logoUrl } : {}),
     },
@@ -126,9 +132,19 @@ export async function addPlayer(teamId: string, formData: FormData) {
   const duplicate = await prisma.player.findFirst({ where: { teamId, number } });
   if (duplicate) throw new Error("มีนักเตะเบอร์นี้อยู่แล้ว");
 
+  const nickname = String(formData.get("nickname") ?? "").trim();
+  const birthYearRaw = Number(formData.get("birthYear"));
   const photoUrl = await uploadImage(`player-photos/${teamId}`, formData.get("photo"));
   await prisma.player.create({
-    data: { teamId, name, number, position, ...(photoUrl ? { photoUrl } : {}) },
+    data: {
+      teamId,
+      name,
+      number,
+      position,
+      nickname: nickname || null,
+      birthYear: Number.isInteger(birthYearRaw) && birthYearRaw > 1900 ? birthYearRaw : null,
+      ...(photoUrl ? { photoUrl } : {}),
+    },
   });
   revalidatePath("/teams/mine");
 }

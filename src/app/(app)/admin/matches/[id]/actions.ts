@@ -60,6 +60,14 @@ export async function addGoal(matchId: string, formData: FormData) {
   const assistRaw = formData.get("assistPlayerId");
   const assistPlayerId = assistRaw ? String(assistRaw) : null;
 
+  if (goalType === "PENALTY_MISSED") {
+    await prisma.matchEvent.create({
+      data: { matchId, minute, label: "จุดโทษพลาด", type: "PENALTY_MISSED", side, playerId },
+    });
+    revalidatePath(`/admin/matches/${matchId}`);
+    return;
+  }
+
   const isOwnGoal = goalType === "OWN_GOAL";
   // an own goal by `side`'s player scores for the opposite side
   const scoringSide = isOwnGoal ? (side === "HOME" ? "AWAY" : "HOME") : side;
@@ -223,7 +231,14 @@ export async function halfTime(matchId: string) {
   revalidatePath(`/admin/matches/${matchId}`);
 }
 
-const DELETABLE_EVENT_TYPES = ["GOAL", "OWN_GOAL", "YELLOW_CARD", "RED_CARD", "SUBSTITUTION"];
+const DELETABLE_EVENT_TYPES = [
+  "GOAL",
+  "OWN_GOAL",
+  "PENALTY_MISSED",
+  "YELLOW_CARD",
+  "RED_CARD",
+  "SUBSTITUTION",
+];
 
 export async function deleteEvent(matchId: string, formData: FormData) {
   await assertSuperAdmin();
@@ -272,6 +287,7 @@ export async function updateMatchInfo(matchId: string, formData: FormData) {
   const kickoffRaw = String(formData.get("kickoffAt") ?? "").trim();
   const streamRaw = String(formData.get("streamUrl") ?? "").trim();
   const spectatorsRaw = String(formData.get("spectators") ?? "").trim();
+  const refereeName = String(formData.get("refereeName") ?? "").trim();
 
   const match = await prisma.match.findUniqueOrThrow({ where: { id: matchId } });
   const data: {
@@ -279,10 +295,12 @@ export async function updateMatchInfo(matchId: string, formData: FormData) {
     kickoffAt?: Date;
     streamUrl: string | null;
     spectators: number | null;
+    refereeName: string | null;
   } = {
     venue: venue || null,
     streamUrl: /^https?:\/\//.test(streamRaw) ? streamRaw : null,
     spectators: spectatorsRaw ? Math.max(0, Math.round(Number(spectatorsRaw) || 0)) : null,
+    refereeName: refereeName || null,
   };
 
   if (kickoffRaw && match.status === "SCHEDULED") {
@@ -291,6 +309,18 @@ export async function updateMatchInfo(matchId: string, formData: FormData) {
   }
 
   await prisma.match.update({ where: { id: matchId }, data });
+  revalidatePath(`/admin/matches/${matchId}`);
+}
+
+export async function swapSides(matchId: string) {
+  await assertSuperAdmin();
+  const match = await prisma.match.findUniqueOrThrow({ where: { id: matchId } });
+  if (match.status !== "SCHEDULED") throw new Error("Swap allowed only before kickoff");
+
+  await prisma.match.update({
+    where: { id: matchId },
+    data: { homeTeamId: match.awayTeamId, awayTeamId: match.homeTeamId },
+  });
   revalidatePath(`/admin/matches/${matchId}`);
 }
 

@@ -6,10 +6,23 @@ import { MobileNav } from "@/components/mobile-nav";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChampionsPage() {
+export default async function ChampionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>;
+}) {
+  const { year } = await searchParams;
+  const yearFilter = Number(year) || null;
+
   const leagues = await prisma.league.findMany({
-    where: { status: "FINISHED" },
+    where: { status: "FINISHED", ...(yearFilter ? { seasonYear: yearFilter } : {}) },
     orderBy: [{ seasonYear: "desc" }, { createdAt: "desc" }],
+  });
+  const allYears = await prisma.league.findMany({
+    where: { status: "FINISHED" },
+    select: { seasonYear: true },
+    distinct: ["seasonYear"],
+    orderBy: { seasonYear: "desc" },
   });
 
   const entries = await Promise.all(
@@ -49,6 +62,25 @@ export default async function ChampionsPage() {
           หอ<span className="text-accent">เกียรติยศ</span>
         </h1>
         <p className="mt-1 text-sm text-foreground/55">แชมป์และดาวซัลโวของทุกฤดูกาลที่จบแล้ว</p>
+        {allYears.length > 1 && (
+          <form method="get" className="mt-4 flex items-center gap-2">
+            <select
+              name="year"
+              defaultValue={yearFilter ?? ""}
+              className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+            >
+              <option value="">ทุกปี</option>
+              {allYears.map((y) => (
+                <option key={y.seasonYear} value={y.seasonYear}>
+                  ฤดูกาล {y.seasonYear}
+                </option>
+              ))}
+            </select>
+            <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
+              ดู
+            </button>
+          </form>
+        )}
       </div>
 
       <div className="px-6 md:px-16 py-8 flex-1 space-y-8">

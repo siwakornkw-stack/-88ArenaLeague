@@ -44,6 +44,7 @@ enum EventType {
   KICK_OFF
   GOAL
   OWN_GOAL
+  PENALTY_MISSED
   YELLOW_CARD
   RED_CARD
   SUBSTITUTION
@@ -63,6 +64,7 @@ model User {
   passwordHash String
   name         String
   role         Role
+  lastLoginAt  DateTime?
   managedTeams Team[]   @relation("TeamManagers")
   createdAt    DateTime @default(now())
 }
@@ -76,6 +78,7 @@ model League {
   description String?
   promotedCount  Int     @default(2)
   relegatedCount Int     @default(2)
+  registrationOpen Boolean @default(false)
   status    LeagueStatus @default(DRAFT)
   createdAt DateTime     @default(now())
   teams     Team[]
@@ -100,6 +103,7 @@ model LeagueNews {
   leagueId  String
   title     String
   body      String
+  pinned    Boolean  @default(false)
   createdAt DateTime @default(now())
 }
 
@@ -109,6 +113,9 @@ model Team {
   abbr      String
   color     String   @default("#2E5CB8")
   logoUrl   String?
+  foundedYear Int?
+  coachName   String?
+  homeVenue   String?
   league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   leagueId  String
   managers  User[]   @relation("TeamManagers")
@@ -124,6 +131,8 @@ model Player {
   number    Int
   position  String
   photoUrl  String?
+  nickname  String?
+  birthYear Int?
   status    PlayerStatus @default(ACTIVE)
   team      Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
   teamId    String
@@ -149,6 +158,7 @@ model Match {
   venue      String?
   streamUrl  String?
   spectators Int?
+  refereeName String?
   status     MatchStatus   @default(SCHEDULED)
   stage      MatchStage    @default(LEAGUE)
   homeScore  Int           @default(0)

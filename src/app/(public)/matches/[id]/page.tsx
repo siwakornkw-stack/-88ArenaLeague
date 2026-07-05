@@ -122,6 +122,18 @@ export default async function PublicMatchPage({
   const prevId = sibIdx > 0 ? siblings[sibIdx - 1].id : null;
   const nextId = sibIdx >= 0 && sibIdx < siblings.length - 1 ? siblings[sibIdx + 1].id : null;
 
+  const dayStart = new Date(match.kickoffAt);
+  dayStart.setHours(0, 0, 0, 0);
+  const sameDayMatches = await prisma.match.findMany({
+    where: {
+      id: { not: id },
+      kickoffAt: { gte: dayStart, lt: new Date(dayStart.getTime() + 86400000) },
+    },
+    include: { homeTeam: true, awayTeam: true, league: true },
+    orderBy: { kickoffAt: "asc" },
+    take: 4,
+  });
+
   const goalCount = match.events.filter((e) => e.type === "GOAL" || e.type === "OWN_GOAL").length;
   const yellowCount = match.events.filter((e) => e.type === "YELLOW_CARD").length;
   const redCount = match.events.filter((e) => e.type === "RED_CARD").length;
@@ -165,9 +177,12 @@ export default async function PublicMatchPage({
     <div className="flex flex-1 flex-col">
       {match.status === "LIVE" && <meta httpEquiv="refresh" content="60" />}
       <div className="px-6 md:px-16 py-4 text-sm flex items-center justify-between gap-3 flex-wrap">
-        <Link href={`/leagues/${match.leagueId}`} className="text-foreground/60 hover:text-accent">
-          ← {match.league.name}
-        </Link>
+        <span className="text-foreground/60">
+          <Link href={`/leagues/${match.leagueId}`} className="hover:text-accent">
+            {match.league.name}
+          </Link>{" "}
+          <span className="text-foreground/30">›</span> นัดที่ {match.round}
+        </span>
         <ShareLinks
           url={pageUrl}
           text={`${match.homeTeam.name} ${match.status === "SCHEDULED" ? "vs" : `${match.homeScore}-${match.awayScore}`} ${match.awayTeam.name} · ${match.league.name}`}
@@ -254,6 +269,7 @@ export default async function PublicMatchPage({
             </>
           )}
           {match.spectators != null && match.spectators > 0 && <> · ผู้ชม {match.spectators}</>}
+          {match.refereeName && <> · 🧑‍⚖️ {match.refereeName}</>}
         </p>
         {match.status === "SCHEDULED" &&
           (() => {
@@ -412,6 +428,32 @@ export default async function PublicMatchPage({
             />
           </div>
         </div>
+
+        {sameDayMatches.length > 0 && (
+          <div>
+            <h2 className="font-display font-bold mb-4">แมตช์อื่นวันเดียวกัน</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {sameDayMatches.map((m) => (
+                <Link
+                  key={m.id}
+                  href={`/matches/${m.id}`}
+                  className="rounded-xl border border-white/10 bg-card p-3 text-sm hover:border-accent/50"
+                >
+                  <div className="text-[10px] text-foreground/40 mb-1">{m.league.name}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate">{m.homeTeam.name}</span>
+                    <span className="font-display font-bold shrink-0">
+                      {m.status === "SCHEDULED"
+                        ? m.kickoffAt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })
+                        : `${m.homeScore}-${m.awayScore}`}
+                    </span>
+                    <span className="truncate text-right">{m.awayTeam.name}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between text-sm">
           {prevId ? (

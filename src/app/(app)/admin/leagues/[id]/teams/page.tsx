@@ -9,6 +9,7 @@ import {
   createTeamManager,
   removeManager,
   transferPlayer,
+  bulkCreateTeams,
 } from "./actions";
 
 export default async function LeagueTeamsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -222,6 +223,26 @@ export default async function LeagueTeamsPage({ params }: { params: Promise<{ id
           </form>
         </div>
       )}
+
+      <div className="rounded-lg bg-card border border-white/10 p-5 max-w-sm">
+        <h2 className="font-semibold mb-2">เพิ่มทีมเป็นชุด</h2>
+        <p className="text-xs text-foreground/50 mb-3">บรรทัดละทีม: ชื่อทีม,ตัวย่อ (ตัวย่อไม่ใส่ก็ได้)</p>
+        <form action={bulkCreateTeams.bind(null, id)} className="space-y-3">
+          <textarea
+            name="bulk"
+            required
+            rows={5}
+            placeholder={"สิงห์บุรี ยูไนเต็ด,SU\nราชสีห์"}
+            className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent font-mono"
+          />
+          <button
+            type="submit"
+            className="w-full rounded-md bg-accent text-black font-semibold py-2 text-sm"
+          >
+            เพิ่มทีมทั้งหมด
+          </button>
+        </form>
+      </div>
 
       <div className="rounded-lg bg-card border border-white/10 p-5 max-w-sm">
         <h2 className="font-semibold mb-4">เพิ่มทีม</h2>

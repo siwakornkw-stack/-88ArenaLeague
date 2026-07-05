@@ -139,3 +139,24 @@ button:active {
   transform: translateY(-3px);
   box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
 }
+
+/* print-friendly: keep tables, drop chrome */
+@media print {
+  header,
+  nav,
+  aside,
+  form,
+  button,
+  .glow-blob,
+  .animate-marquee {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  a {
+    color: #000;
+    text-decoration: none;
+  }
+}

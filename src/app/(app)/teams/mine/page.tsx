@@ -261,7 +261,10 @@ export default async function MyTeamPage({
                 href={`/leagues/${team.leagueId}/calendar?team=${team.id}`}
                 className="text-xs text-foreground/60 hover:text-accent"
               >
-                📅 โหลดปฏิทินทีม (.ics)
+                📅 ปฏิทิน (.ics)
+              </a>
+              <a href="/teams/mine/export" className="text-xs text-foreground/60 hover:text-accent">
+                ⬇ รายชื่อ CSV
               </a>
               <ShareLinks url={publicTeamUrl} text={team.name} />
             </span>
@@ -366,6 +369,18 @@ export default async function MyTeamPage({
           </form>
         </div>
       )}
+
+      {(() => {
+        const atRisk = team.players.filter(
+          (p) => p.status === "ACTIVE" && (yellowsByPlayer.get(p.id) ?? 0) >= 3
+        );
+        return atRisk.length > 0 ? (
+          <div className="rounded-md bg-yellow-400/10 border border-yellow-400/30 px-4 py-2 text-sm text-yellow-400">
+            ⚠ ใบเหลืองสะสมเสี่ยงแบน:{" "}
+            {atRisk.map((p) => `${p.name} (${yellowsByPlayer.get(p.id)})`).join(", ")}
+          </div>
+        ) : null;
+      })()}
 
       {imported !== undefined && (
         <p className="rounded-md bg-accent/10 border border-accent/30 px-4 py-2 text-sm text-accent">
@@ -543,6 +558,29 @@ export default async function MyTeamPage({
               required
               className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
             />
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1 space-y-1">
+              <label className="text-sm text-foreground/70" htmlFor="nickname">
+                ชื่อเล่น
+              </label>
+              <input
+                id="nickname"
+                name="nickname"
+                className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
+            <div className="w-28 space-y-1">
+              <label className="text-sm text-foreground/70" htmlFor="birthYear">
+                ปีเกิด (ค.ศ.)
+              </label>
+              <input
+                id="birthYear"
+                name="birthYear"
+                type="number"
+                className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
           </div>
           <div className="space-y-1">
             <label className="text-sm text-foreground/70" htmlFor="photo">

@@ -19,6 +19,7 @@ import {
   deleteSponsor,
   deleteSchedule,
   updateNews,
+  shiftSeason,
 } from "./actions";
 
 const STAGE_LABEL: Record<string, string> = {
@@ -466,6 +467,9 @@ export default async function LeagueDetailPage({
             placeholder="เนื้อหา"
             className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
           />
+          <label className="flex items-center gap-2 text-xs text-foreground/60">
+            <input type="checkbox" name="pinned" /> 📌 ปักหมุดประกาศนี้
+          </label>
           <button
             type="submit"
             className="rounded-md bg-accent text-black font-semibold px-4 py-2 text-sm"
@@ -500,6 +504,9 @@ export default async function LeagueDetailPage({
                   rows={2}
                   className="w-full rounded-md bg-black/30 border border-white/10 px-2 py-1.5 text-sm outline-none focus:border-accent"
                 />
+                <label className="flex items-center gap-2 text-xs text-foreground/60">
+                  <input type="checkbox" name="pinned" defaultChecked={n.pinned} /> 📌 ปักหมุด
+                </label>
                 <button type="submit" className="rounded-md bg-white/10 px-3 py-1 text-xs">
                   บันทึกแก้ไข
                 </button>
@@ -606,6 +613,14 @@ export default async function LeagueDetailPage({
               className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </div>
+          <label className="flex items-center gap-2 text-sm text-foreground/70">
+            <input
+              type="checkbox"
+              name="registrationOpen"
+              defaultChecked={league.registrationOpen}
+            />
+            เปิดรับสมัครทีม (โชว์ป้ายบนหน้า public)
+          </label>
           <div className="flex gap-3">
             <div className="flex-1 space-y-1">
               <label className="text-sm text-foreground/70" htmlFor="league-promoted">
@@ -641,6 +656,24 @@ export default async function LeagueDetailPage({
             บันทึก
           </button>
         </form>
+
+        {matches.some((m) => m.status === "SCHEDULED") && (
+          <div className="border-t border-white/10 pt-4">
+            <form action={shiftSeason.bind(null, id)} className="flex items-center gap-2 text-sm">
+              <span className="text-foreground/70">เลื่อนนัดที่เหลือทั้งหมด</span>
+              <input
+                type="number"
+                name="days"
+                defaultValue={7}
+                className="w-20 rounded-md bg-black/30 border border-white/10 px-2 py-1.5 text-sm"
+              />
+              <span className="text-foreground/50">วัน</span>
+              <button type="submit" className="rounded-md bg-white/10 px-3 py-1.5 text-xs">
+                เลื่อน
+              </button>
+            </form>
+          </div>
+        )}
 
         {matches.length > 0 && matches.every((m) => m.status === "SCHEDULED") && (
           <div className="border-t border-white/10 pt-4">

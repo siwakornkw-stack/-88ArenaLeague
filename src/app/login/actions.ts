@@ -43,6 +43,7 @@ export async function login(_prevState: LoginState, formData: FormData): Promise
   }
 
   attempts.delete(email);
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
   const token = await signSession({ userId: user.id, role: user.role, name: user.name });
   const cookieStore = await cookies();

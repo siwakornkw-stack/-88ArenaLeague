@@ -11,7 +11,14 @@ function LeagueCard({ lg }: { lg: FeaturedLeague }) {
       href={`/leagues/${lg.id}`}
       className="hover-lift rounded-2xl border border-white/10 bg-card p-5 hover:border-accent/50"
     >
-      <div className="font-display italic font-extrabold text-xl text-foreground">{lg.name}</div>
+      <div className="font-display italic font-extrabold text-xl text-foreground">
+        {lg.name}
+        {lg.registrationOpen && (
+          <span className="ml-2 align-middle text-[10px] font-sans not-italic font-semibold rounded-full bg-yellow-400/15 text-yellow-400 px-2 py-0.5">
+            เปิดรับสมัคร
+          </span>
+        )}
+      </div>
       <div className="mt-1 text-xs text-foreground/45">{lg.type}</div>
       <div className="mt-3 flex flex-wrap gap-4 text-xs text-foreground/60">
         <span>⚽ {lg.teams} ทีม</span>

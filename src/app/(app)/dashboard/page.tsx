@@ -298,6 +298,11 @@ export default async function DashboardPage() {
                   ? "แอดมิน"
                   : `ผู้จัดการทีม${u.managedTeams[0] ? ` · ${u.managedTeams[0].name}` : ""}`}
               </span>
+              <span className="text-[10px] text-foreground/40">
+                {u.lastLoginAt
+                  ? `ล็อกอินล่าสุด ${u.lastLoginAt.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}`
+                  : "ยังไม่เคยล็อกอิน"}
+              </span>
               <form
                 action={resetUserPassword.bind(null, u.id)}
                 className="flex items-center gap-1"
