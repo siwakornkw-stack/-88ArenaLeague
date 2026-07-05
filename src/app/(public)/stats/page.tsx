@@ -13,7 +13,7 @@ export default async function GlobalStatsPage() {
   const [finished, leagues, topScorers, yellowCount, redCount, scorerIds] = await Promise.all([
     prisma.match.findMany({
       where: { status: "FINISHED", league: { hidden: false } },
-      select: { homeScore: true, awayScore: true, leagueId: true, spectators: true },
+      select: { id: true, homeScore: true, awayScore: true, leagueId: true, spectators: true },
     }),
     prisma.league.findMany({
       where: { status: { not: "DRAFT" }, hidden: false },
@@ -39,6 +39,37 @@ export default async function GlobalStatsPage() {
     }),
   ]);
 
+  const [topAssists, topMvps, highestMatch] = await Promise.all([
+    prisma.matchEvent.groupBy({
+      by: ["relatedPlayerId"],
+      where: {
+        type: "GOAL",
+        relatedPlayerId: { not: null },
+        match: { league: { hidden: false } },
+      },
+      _count: { relatedPlayerId: true },
+      orderBy: { _count: { relatedPlayerId: "desc" } },
+      take: 5,
+    }),
+    prisma.match.groupBy({
+      by: ["mvpPlayerId"],
+      where: { mvpPlayerId: { not: null }, league: { hidden: false } },
+      _count: { mvpPlayerId: true },
+      orderBy: { _count: { mvpPlayerId: "desc" } },
+      take: 5,
+    }),
+    finished.length > 0
+      ? prisma.match.findUnique({
+          where: {
+            id: finished.reduce((a, b) =>
+              b.homeScore + b.awayScore > a.homeScore + a.awayScore ? b : a
+            ).id,
+          },
+          include: { homeTeam: true, awayTeam: true, league: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
   const totalGoals = finished.reduce((s, m) => s + m.homeScore + m.awayScore, 0);
   const totalSpectators = finished.reduce((s, m) => s + (m.spectators ?? 0), 0);
 
@@ -52,7 +83,15 @@ export default async function GlobalStatsPage() {
     .sort((a, b) => b.avg - a.avg);
 
   const scorerPlayers = await prisma.player.findMany({
-    where: { id: { in: topScorers.map((g) => g.playerId!) } },
+    where: {
+      id: {
+        in: [
+          ...topScorers.map((g) => g.playerId!),
+          ...topAssists.map((g) => g.relatedPlayerId!),
+          ...topMvps.map((g) => g.mvpPlayerId!),
+        ],
+      },
+    },
     include: { team: { include: { league: true } } },
   });
   const byId = new Map(scorerPlayers.map((p) => [p.id, p]));
@@ -135,6 +174,87 @@ export default async function GlobalStatsPage() {
                   <span className="font-display font-bold text-accent">{l.avg.toFixed(1)}</span>
                 </Link>
               ))}
+            </div>
+          </div>
+
+          {highestMatch && (
+            <Link
+              href={`/matches/${highestMatch.id}`}
+              className="lg:col-span-2 rounded-xl border border-accent/30 bg-card p-5 hover:border-accent/60"
+            >
+              <div className="text-xs text-foreground/50 mb-1">🎇 แมตช์ประตูเยอะสุดในระบบ</div>
+              <div className="font-display font-bold">
+                {highestMatch.homeTeam.name} {highestMatch.homeScore}-{highestMatch.awayScore}{" "}
+                {highestMatch.awayTeam.name}
+              </div>
+              <div className="text-xs text-foreground/45 mt-1">
+                {highestMatch.league.name} ·{" "}
+                {highestMatch.homeScore + highestMatch.awayScore} ประตู
+              </div>
+            </Link>
+          )}
+
+          <div className="rounded-xl border border-white/10 bg-card p-5">
+            <h2 className="font-display font-bold mb-3">แอสซิสต์สูงสุดข้ามลีก</h2>
+            <div className="space-y-3 text-sm">
+              {topAssists.map((g, i) => {
+                const p = byId.get(g.relatedPlayerId!);
+                if (!p) return null;
+                return (
+                  <Link
+                    key={g.relatedPlayerId}
+                    href={`/leagues/${p.team.leagueId}/players/${p.id}`}
+                    className="flex items-center gap-3 hover:text-accent"
+                  >
+                    <span className="w-5 font-display italic font-extrabold text-foreground/50">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1">
+                      <div className="font-display font-semibold">{p.name}</div>
+                      <div className="text-xs text-foreground/45">
+                        {p.team.name} · {p.team.league.name}
+                      </div>
+                    </div>
+                    <span className="font-display italic font-extrabold text-accent text-lg">
+                      {g._count.relatedPlayerId}
+                    </span>
+                  </Link>
+                );
+              })}
+              {topAssists.length === 0 && (
+                <p className="text-foreground/50">ยังไม่มีข้อมูลแอสซิสต์</p>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-card p-5">
+            <h2 className="font-display font-bold mb-3">MVP สูงสุดข้ามลีก</h2>
+            <div className="space-y-3 text-sm">
+              {topMvps.map((g, i) => {
+                const p = byId.get(g.mvpPlayerId!);
+                if (!p) return null;
+                return (
+                  <Link
+                    key={g.mvpPlayerId}
+                    href={`/leagues/${p.team.leagueId}/players/${p.id}`}
+                    className="flex items-center gap-3 hover:text-accent"
+                  >
+                    <span className="w-5 font-display italic font-extrabold text-foreground/50">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1">
+                      <div className="font-display font-semibold">{p.name}</div>
+                      <div className="text-xs text-foreground/45">
+                        {p.team.name} · {p.team.league.name}
+                      </div>
+                    </div>
+                    <span className="font-display italic font-extrabold text-accent text-lg">
+                      {g._count.mvpPlayerId}
+                    </span>
+                  </Link>
+                );
+              })}
+              {topMvps.length === 0 && <p className="text-foreground/50">ยังไม่มีข้อมูล MVP</p>}
             </div>
           </div>
 

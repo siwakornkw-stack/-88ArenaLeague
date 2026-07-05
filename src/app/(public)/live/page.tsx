@@ -44,6 +44,19 @@ export default async function LivePage() {
 
   const todayGoals = todayPlayed.reduce((s, m) => s + m.homeScore + m.awayScore, 0);
 
+  const todayFinished = await prisma.match.findMany({
+    where: { status: "FINISHED", kickoffAt: { gte: dayStart, lt: dayEnd } },
+    include: { homeTeam: true, awayTeam: true, league: true },
+    orderBy: { kickoffAt: "desc" },
+    take: 10,
+  });
+
+  const liveByLeague = new Map<string, typeof live>();
+  for (const m of live) {
+    if (!liveByLeague.has(m.league.name)) liveByLeague.set(m.league.name, []);
+    liveByLeague.get(m.league.name)!.push(m);
+  }
+
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
     { icon: "🔴", label: "สด", href: "/live", active: true },
@@ -64,29 +77,57 @@ export default async function LivePage() {
       </div>
 
       <div className="px-6 md:px-16 py-8 flex-1 space-y-10">
-        {live.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {live.map((m) => (
-              <Link
-                key={m.id}
-                href={`/matches/${m.id}`}
-                className="hover-lift rounded-xl border border-red-500/30 bg-card p-4 live-glow"
-              >
-                <div className="flex items-center justify-between text-[10px] mb-2">
-                  <span className="text-foreground/40">{m.league.name}</span>
-                  <span className="text-red-400">
-                    ● {m.events[0] ? computeLiveMinute(m.events[0].createdAt) : 0}&apos;
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm">{m.homeTeam.name}</span>
-                  <span className="font-display italic font-black text-2xl text-accent shrink-0">
+        {live.length > 0 &&
+          [...liveByLeague.entries()].map(([leagueName, ms]) => (
+            <div key={leagueName}>
+              <h2 className="font-display font-bold mb-3 text-sm text-foreground/70">
+                {leagueName} <span className="text-red-400">({ms.length})</span>
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {ms.map((m) => (
+                  <Link
+                    key={m.id}
+                    href={`/matches/${m.id}`}
+                    className="hover-lift rounded-xl border border-red-500/30 bg-card p-4 live-glow"
+                  >
+                    <div className="flex items-center justify-between text-[10px] mb-2">
+                      <span className="text-foreground/40">{m.league.name}</span>
+                      <span className="text-red-400">
+                        ● {m.events[0] ? computeLiveMinute(m.events[0].createdAt) : 0}&apos;
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm">{m.homeTeam.name}</span>
+                      <span className="font-display italic font-black text-2xl text-accent shrink-0">
+                        {m.homeScore}-{m.awayScore}
+                      </span>
+                      <span className="truncate text-sm text-right">{m.awayTeam.name}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+
+        {todayFinished.length > 0 && (
+          <div>
+            <h2 className="font-display font-bold mb-4">จบไปแล้ววันนี้ ({todayFinished.length})</h2>
+            <div className="flex flex-col gap-2 max-w-2xl">
+              {todayFinished.map((m) => (
+                <Link
+                  key={m.id}
+                  href={`/matches/${m.id}`}
+                  className="grid grid-cols-[1fr_56px_1fr_auto] items-center gap-2 rounded-lg bg-card border border-white/10 px-3 py-2 text-sm hover:border-accent/50"
+                >
+                  <span className="text-right truncate">{m.homeTeam.name}</span>
+                  <span className="text-center font-display font-bold">
                     {m.homeScore}-{m.awayScore}
                   </span>
-                  <span className="truncate text-sm text-right">{m.awayTeam.name}</span>
-                </div>
-              </Link>
-            ))}
+                  <span className="truncate">{m.awayTeam.name}</span>
+                  <span className="text-[10px] text-foreground/40">{m.league.name}</span>
+                </Link>
+              ))}
+            </div>
           </div>
         )}
 

@@ -110,6 +110,27 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
   ).length;
   const awayLineupCount = match.lineups.length - homeLineupCount;
 
+  const formOf = async (teamId: string) => {
+    const last = await prisma.match.findMany({
+      where: {
+        status: "FINISHED",
+        id: { not: id },
+        OR: [{ homeTeamId: teamId }, { awayTeamId: teamId }],
+      },
+      orderBy: { kickoffAt: "desc" },
+      take: 3,
+    });
+    return last.map((m) => {
+      const gf = m.homeTeamId === teamId ? m.homeScore : m.awayScore;
+      const ga = m.homeTeamId === teamId ? m.awayScore : m.homeScore;
+      return gf > ga ? "ช" : gf < ga ? "พ" : "ส";
+    });
+  };
+  const [homeRecentForm, awayRecentForm] = await Promise.all([
+    formOf(match.homeTeamId),
+    formOf(match.awayTeamId),
+  ]);
+
   return (
     <div className="max-w-3xl space-y-8">
       <div className="flex items-center justify-between text-sm">
@@ -200,6 +221,12 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
           รายชื่อส่งแล้ว: {match.homeTeam.name} {homeLineupCount} คน · {match.awayTeam.name}{" "}
           {awayLineupCount} คน
         </p>
+        {(homeRecentForm.length > 0 || awayRecentForm.length > 0) && (
+          <p className="text-center text-xs text-foreground/35">
+            ฟอร์ม 3 นัด: {match.homeTeam.abbr} [{homeRecentForm.join(" ") || "-"}] ·{" "}
+            {match.awayTeam.abbr} [{awayRecentForm.join(" ") || "-"}]
+          </p>
+        )}
       </div>
 
       {match.status === "LIVE" && (

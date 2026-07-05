@@ -366,6 +366,17 @@ export default async function LeagueDetailPage({
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                     <h3 className="text-sm text-foreground/50">
                       {STAGE_LABEL[roundMatches[0].stage] ?? `นัดที่ ${round}`}
+                      <span
+                        className={`ml-2 text-xs ${
+                          roundMatches.every((m) => m.status === "FINISHED")
+                            ? "text-accent"
+                            : "text-foreground/35"
+                        }`}
+                      >
+                        ({roundMatches.filter((m) => m.status === "FINISHED").length}/
+                        {roundMatches.length}
+                        {roundMatches.every((m) => m.status === "FINISHED") && " ✓"})
+                      </span>
                     </h3>
                     {roundMatches.some((m) => m.status === "SCHEDULED") && (
                       <form action={rescheduleRound.bind(null, id)} className="flex items-center gap-1">

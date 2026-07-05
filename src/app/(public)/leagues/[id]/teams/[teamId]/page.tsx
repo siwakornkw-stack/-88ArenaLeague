@@ -248,8 +248,92 @@ export default async function PublicTeamPage({
               value={row.played > 0 ? (row.goalsFor / row.played).toFixed(1) : "-"}
               label="ประตูเฉลี่ย/นัด"
             />
+            {(() => {
+              const atkRank =
+                [...standings].sort((a, b) => b.goalsFor - a.goalsFor).findIndex(
+                  (r) => r.teamId === teamId
+                ) + 1;
+              const defRank =
+                [...standings].sort((a, b) => a.goalsAgainst - b.goalsAgainst).findIndex(
+                  (r) => r.teamId === teamId
+                ) + 1;
+              return (
+                <>
+                  <Stat value={`#${atkRank}`} label="อันดับเกมรุก" />
+                  <Stat value={`#${defRank}`} label="อันดับเกมรับ" />
+                </>
+              );
+            })()}
+            {(() => {
+              const homePts = splits.HOME.won * 3 + splits.HOME.drawn;
+              const awayPts = splits.AWAY.won * 3 + splits.AWAY.drawn;
+              const total = homePts + awayPts;
+              return total > 0 ? (
+                <Stat value={`${Math.round((homePts / total) * 100)}%`} label="แต้มเก็บในบ้าน" />
+              ) : null;
+            })()}
           </div>
         )}
+
+        {allFinished.length > 0 &&
+          (() => {
+            const withDiff = allFinished.map((m) => {
+              const isHome = m.homeTeamId === teamId;
+              const gf = isHome ? m.homeScore : m.awayScore;
+              const ga = isHome ? m.awayScore : m.homeScore;
+              return { m, diff: gf - ga };
+            });
+            const best = withDiff.reduce((a, b) => (b.diff > a.diff ? b : a));
+            const worst = withDiff.reduce((a, b) => (b.diff < a.diff ? b : a));
+            const label = (x: (typeof withDiff)[number]) =>
+              `${x.m.homeTeam.name} ${x.m.homeScore}-${x.m.awayScore} ${x.m.awayTeam.name}`;
+            return best.diff > 0 || worst.diff < 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                {best.diff > 0 && (
+                  <Link
+                    href={`/matches/${best.m.id}`}
+                    className="rounded-xl border border-accent/30 bg-card p-4 text-sm hover:border-accent/60"
+                  >
+                    <div className="text-xs text-foreground/50 mb-1">🏅 ชนะขาดสุด</div>
+                    <div className="font-display font-bold">{label(best)}</div>
+                  </Link>
+                )}
+                {worst.diff < 0 && (
+                  <Link
+                    href={`/matches/${worst.m.id}`}
+                    className="rounded-xl border border-red-500/30 bg-card p-4 text-sm hover:border-red-500/60"
+                  >
+                    <div className="text-xs text-foreground/50 mb-1">💔 แพ้หนักสุด</div>
+                    <div className="font-display font-bold">{label(worst)}</div>
+                  </Link>
+                )}
+              </div>
+            ) : null;
+          })()}
+
+        {standings.length >= 4 &&
+          allFinished.length > 0 &&
+          (() => {
+            const half = Math.ceil(standings.length / 2);
+            const topHalf = new Set(standings.slice(0, half).map((r) => r.teamId));
+            const rec = { top: { w: 0, d: 0, l: 0 }, bottom: { w: 0, d: 0, l: 0 } };
+            for (const m of allFinished) {
+              if (m.stage !== "LEAGUE") continue;
+              const oppId = m.homeTeamId === teamId ? m.awayTeamId : m.homeTeamId;
+              const gf = m.homeTeamId === teamId ? m.homeScore : m.awayScore;
+              const ga = m.homeTeamId === teamId ? m.awayScore : m.homeScore;
+              const bucket = topHalf.has(oppId) ? rec.top : rec.bottom;
+              if (gf > ga) bucket.w++;
+              else if (gf < ga) bucket.l++;
+              else bucket.d++;
+            }
+            return (
+              <p className="text-xs text-foreground/50">
+                ผลงานกับครึ่งบนตาราง: {rec.top.w}-{rec.top.d}-{rec.top.l} · กับครึ่งล่าง:{" "}
+                {rec.bottom.w}-{rec.bottom.d}-{rec.bottom.l} (ชนะ-เสมอ-แพ้)
+              </p>
+            );
+          })()}
 
         {leagueOnly.length > 0 && (
           <p className="text-sm text-foreground/60">

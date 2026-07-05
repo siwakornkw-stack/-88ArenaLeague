@@ -64,6 +64,19 @@ export default async function Home() {
       prisma.league.count({ where: { status: "FINISHED", hidden: false } }),
     ]);
 
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const [todayCount, goalSum] = await Promise.all([
+    prisma.match.count({
+      where: { kickoffAt: { gte: dayStart, lt: new Date(dayStart.getTime() + 86400000) } },
+    }),
+    prisma.match.aggregate({
+      where: { status: "FINISHED" },
+      _sum: { homeScore: true, awayScore: true },
+    }),
+  ]);
+  const totalGoals = (goalSum._sum.homeScore ?? 0) + (goalSum._sum.awayScore ?? 0);
+
   const topStandings = featuredLeagues[0] ? await getCachedTopStandings(featuredLeagues[0].id) : [];
   const featuredSponsors = featuredLeagues[0]
     ? await prisma.leagueSponsor.findMany({
@@ -106,6 +119,15 @@ export default async function Home() {
               </Link>
             ))}
           </div>
+        </div>
+      )}
+
+      {todayCount > 0 && liveMatches.length === 0 && (
+        <div className="border-b border-white/10 px-6 md:px-16 py-2 text-xs text-foreground/60 flex items-center gap-2">
+          📅 วันนี้มี <b className="text-foreground">{todayCount}</b> แมตช์
+          <Link href="/live" className="text-accent hover:underline">
+            ดูโปรแกรมสด →
+          </Link>
         </div>
       )}
 
@@ -363,7 +385,8 @@ export default async function Home() {
           </Link>
         </nav>
         <span className="text-foreground/40 text-xs">
-          © 2026 88ArenaLeague — อัปเดตล่าสุด{" "}
+          {leagueCount} ลีก · {matchCount} แมตช์ · ⚽ {totalGoals.toLocaleString()} ประตู · © 2026
+          88ArenaLeague — อัปเดตล่าสุด{" "}
           {new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })} น.
         </span>
       </footer>

@@ -90,6 +90,10 @@ export default async function LeagueTeamsPage({ params }: { params: Promise<{ id
                     บันทึก
                   </button>
                 </form>
+                <span className="text-[10px] text-foreground/40 shrink-0">
+                  {team._count.players} นักเตะ · {team._count.homeMatches + team._count.awayMatches}{" "}
+                  นัด
+                </span>
                 <form action={deleteTeam.bind(null, team.id)}>
                   <button
                     type="submit"

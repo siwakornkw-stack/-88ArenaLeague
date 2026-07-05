@@ -254,6 +254,26 @@ export default async function PublicLeaguePage({
     if (fastest) {
       records.push({ label: "ประตูเร็วสุดของลีก", value: `นาทีที่ ${fastest.minute}` });
     }
+    const scorelines = new Map<string, number>();
+    for (const m of finishedLeagueMatches) {
+      const key = `${Math.max(m.homeScore, m.awayScore)}-${Math.min(m.homeScore, m.awayScore)}`;
+      scorelines.set(key, (scorelines.get(key) ?? 0) + 1);
+    }
+    const hitScore = [...scorelines.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (hitScore && hitScore[1] > 1) {
+      records.push({
+        label: "สกอร์ยอดฮิต",
+        value: hitScore[0],
+        sub: `เกิดขึ้น ${hitScore[1]} นัด`,
+      });
+    }
+    const lateGoals = goalMinutes.filter((g) => g.minute >= 90).length;
+    if (lateGoals > 0) {
+      records.push({
+        label: "ประตูช่วงทดเวลา (90+)",
+        value: `${lateGoals} ประตู`,
+      });
+    }
   }
 
   const hatTricks =
@@ -635,6 +655,19 @@ export default async function PublicLeaguePage({
           </div>
         ) : tab === "discipline" && discipline ? (
           <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
+            <div className="space-y-3">
+            {(() => {
+              const totalY = discipline.teams.reduce((s, t) => s + t.yellow, 0);
+              const totalR = discipline.teams.reduce((s, t) => s + t.red, 0);
+              const played = finishedLeagueMatches.length;
+              return (
+                <p className="text-xs text-foreground/50">
+                  รวมทั้งลีก: <span className="text-yellow-400">🟨 {totalY}</span> ·{" "}
+                  <span className="text-red-400">🟥 {totalR}</span>
+                  {played > 0 && <> · เฉลี่ย {((totalY + totalR) / played).toFixed(1)} ใบ/นัด</>}
+                </p>
+              );
+            })()}
             <div className="rounded-xl border border-white/10 bg-card overflow-x-auto">
               <table className="w-full text-sm min-w-[360px]">
                 <thead className="text-foreground/45 text-xs">
@@ -668,6 +701,7 @@ export default async function PublicLeaguePage({
                   ))}
                 </tbody>
               </table>
+            </div>
             </div>
 
             <div className="space-y-6">
@@ -826,6 +860,26 @@ export default async function PublicLeaguePage({
               unit="ครั้ง"
               rows={playerBoards.contributions}
             />
+            {(() => {
+              const assistIds = new Set(playerBoards.assists.map((p) => p.playerId));
+              const allRound = playerBoards.scorers.filter((p) => assistIds.has(p.playerId));
+              return allRound.length > 0 ? (
+                <div className="rounded-xl border border-accent/30 bg-card p-5 lg:col-span-2">
+                  <h3 className="font-display font-bold mb-2">🎯 แข้งครบเครื่อง</h3>
+                  <p className="text-xs text-foreground/45 mb-2">
+                    ติดทั้งตารางดาวซัลโวและดาวแอสซิสต์
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    {allRound.map((p) => (
+                      <span key={p.playerId} className="rounded-full bg-white/5 px-3 py-1">
+                        {p.playerName}{" "}
+                        <span className="text-xs text-foreground/45">({p.teamName})</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
           </div>
         ) : tab === "stats" ? (
@@ -864,6 +918,20 @@ export default async function PublicLeaguePage({
                   </div>
                   <div className="text-xs text-foreground/55">นัดเสมอ</div>
                 </div>
+                {finishedLeagueMatches.length > 0 && (
+                  <div>
+                    <div className="font-display italic font-extrabold text-2xl text-accent">
+                      {Math.round(
+                        (finishedLeagueMatches.filter((m) => m.homeScore > 0 && m.awayScore > 0)
+                          .length /
+                          finishedLeagueMatches.length) *
+                          100
+                      )}
+                      %
+                    </div>
+                    <div className="text-xs text-foreground/55">นัดที่ทั้งคู่ยิง (BTTS)</div>
+                  </div>
+                )}
                 <div>
                   <div className="font-display italic font-extrabold text-2xl text-accent">
                     {finishedLeagueMatches.reduce((s, m) => s + m.homeScore, 0)}
@@ -987,6 +1055,16 @@ export default async function PublicLeaguePage({
                   </h3>
                   <span className="text-xs text-foreground/45 shrink-0">
                     {n.createdAt.toLocaleDateString("th-TH", { dateStyle: "medium" })}
+                    {(() => {
+                      const days = Math.floor(
+                        (Date.now() - n.createdAt.getTime()) / 86400000
+                      );
+                      return days >= 1 ? (
+                        <span className="text-foreground/30"> · {days} วันที่แล้ว</span>
+                      ) : (
+                        <span className="text-accent/70"> · วันนี้</span>
+                      );
+                    })()}
                   </span>
                 </div>
                 <p className="mt-2 text-sm text-foreground/70 whitespace-pre-line">{n.body}</p>
@@ -1424,6 +1502,14 @@ export default async function PublicLeaguePage({
               >
                 {gridView ? "☰ มุมมองลิสต์" : "▦ มุมมองตาราง"}
               </Link>
+              {currentRound > 0 && roundFilter === null && (
+                <Link
+                  href={`/leagues/${id}?tab=fixtures&round=${currentRound}`}
+                  className="rounded-md bg-accent/10 border border-accent/30 px-3 py-2 text-xs text-accent hover:bg-accent/15"
+                >
+                  ⏵ ไปนัดปัจจุบัน (นัดที่ {currentRound})
+                </Link>
+              )}
             </form>
             {Array.from(matchesByRound.entries())
               .filter(([round]) => roundFilter === null || round === roundFilter)
@@ -1470,10 +1556,20 @@ export default async function PublicLeaguePage({
                     </div>
                   );
                 }
+                const dates = shown.map((m) => m.kickoffAt.getTime());
+                const dMin = new Date(Math.min(...dates));
+                const dMax = new Date(Math.max(...dates));
+                const fmt = (d: Date) =>
+                  d.toLocaleDateString("th-TH", { day: "numeric", month: "short" });
                 return (
               <div key={round}>
                 <h3 className="text-sm text-foreground/50 mb-2">
                   {STAGE_LABEL[roundMatches[0].stage] ?? `นัดที่ ${round}`}
+                  <span className="ml-2 text-xs text-foreground/35">
+                    {dMin.toDateString() === dMax.toDateString()
+                      ? fmt(dMin)
+                      : `${fmt(dMin)} - ${fmt(dMax)}`}
+                  </span>
                 </h3>
                 <div className="space-y-2">
                   {shown.map((m) => {

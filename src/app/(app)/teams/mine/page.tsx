@@ -202,6 +202,17 @@ export default async function MyTeamPage({
                 · อันดับ {teamRank}
                 {rankDelta > 0 && <span className="text-accent ml-1">▲{rankDelta}</span>}
                 {rankDelta < 0 && <span className="text-red-400 ml-1">▼{-rankDelta}</span>}
+                {(() => {
+                  const above = standings[teamRank - 2];
+                  const below = standings[teamRank];
+                  return (
+                    <span className="text-xs text-foreground/45 ml-2">
+                      {above && <>ตามอันดับบน {above.points - teamStanding.points} แต้ม</>}
+                      {above && below && " · "}
+                      {below && <>นำอันดับล่าง {teamStanding.points - below.points} แต้ม</>}
+                    </span>
+                  );
+                })()}
               </span>
             )}
           </h2>
@@ -332,11 +343,37 @@ export default async function MyTeamPage({
               </span>
             )}
           </div>
-          <p className="text-sm text-foreground/60 mb-4">
+          <p className="text-sm text-foreground/60 mb-1">
             {nextMatch.homeTeam.name} vs {nextMatch.awayTeam.name} ·{" "}
             {nextMatch.kickoffAt.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
             {nextMatch.venue && <> · {nextMatch.venue}</>}
           </p>
+          {(() => {
+            const oppId =
+              nextMatch.homeTeamId === team.id ? nextMatch.awayTeamId : nextMatch.homeTeamId;
+            const prev = teamMatches.filter(
+              (m) =>
+                m.status === "FINISHED" &&
+                (m.homeTeamId === oppId || m.awayTeamId === oppId)
+            );
+            if (prev.length === 0) return <div className="mb-3" />;
+            let w = 0,
+              d = 0,
+              l = 0;
+            for (const m of prev) {
+              const gf = m.homeTeamId === team.id ? m.homeScore : m.awayScore;
+              const ga = m.homeTeamId === team.id ? m.awayScore : m.homeScore;
+              if (gf > ga) w++;
+              else if (gf < ga) l++;
+              else d++;
+            }
+            return (
+              <p className="text-xs text-foreground/45 mb-4">
+                สถิติเจอคู่นี้: ชนะ <b className="text-accent">{w}</b> เสมอ <b>{d}</b> แพ้{" "}
+                <b className="text-red-400">{l}</b>
+              </p>
+            );
+          })()}
           <form action={setLineupWithId} className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
               {eligiblePlayers.map((p) => (
@@ -540,6 +577,11 @@ export default async function MyTeamPage({
                   บันทึก
                 </button>
               </form>
+              {p.birthYear && (
+                <span className="text-[10px] text-foreground/40 shrink-0">
+                  {new Date().getFullYear() - p.birthYear} ปี
+                </span>
+              )}
               <span className="w-10 text-center text-foreground/70">{appsByPlayer.get(p.id) ?? 0}</span>
               <span className="w-10 text-center text-accent">{goalsByPlayer.get(p.id) ?? 0}</span>
               <span className="w-10 text-center text-yellow-400">{yellowsByPlayer.get(p.id) ?? 0}</span>

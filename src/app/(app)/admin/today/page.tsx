@@ -4,13 +4,27 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { computeLiveMinute } from "@/lib/matchClock";
 
-export default async function AdminTodayPage() {
+export default async function AdminTodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ d?: string }>;
+}) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") redirect("/teams/mine");
 
+  const { d } = await searchParams;
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const parsed = d ? new Date(`${d}T00:00`) : null;
+  const base = parsed && !isNaN(parsed.getTime()) ? parsed : now;
+  const startOfDay = new Date(base.getFullYear(), base.getMonth(), base.getDate());
   const endOfDay = new Date(startOfDay.getTime() + 86400000);
+  const isToday = startOfDay.toDateString() === now.toDateString();
+  const toParam = (dt: Date) =>
+    `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(
+      dt.getDate()
+    ).padStart(2, "0")}`;
+  const prevDay = new Date(startOfDay.getTime() - 86400000);
+  const nextDay = new Date(startOfDay.getTime() + 86400000);
 
   const matches = await prisma.match.findMany({
     where: { kickoffAt: { gte: startOfDay, lt: endOfDay } },
@@ -32,9 +46,30 @@ export default async function AdminTodayPage() {
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <h1 className="font-display font-bold text-3xl">แมตช์วันนี้ทุกลีก</h1>
-        <p className="text-foreground/60 mt-1">
-          {now.toLocaleDateString("th-TH", { dateStyle: "full" })} · {matches.length} แมตช์ · ⚽{" "}
+        <h1 className="font-display font-bold text-3xl">
+          แมตช์{isToday ? "วันนี้" : ""}ทุกลีก
+        </h1>
+        <div className="mt-2 flex items-center gap-2 text-sm">
+          <Link
+            href={`/admin/today?d=${toParam(prevDay)}`}
+            className="rounded-md bg-white/10 px-3 py-1 hover:text-accent"
+          >
+            ← วันก่อน
+          </Link>
+          {!isToday && (
+            <Link href="/admin/today" className="rounded-md bg-accent/15 text-accent px-3 py-1">
+              วันนี้
+            </Link>
+          )}
+          <Link
+            href={`/admin/today?d=${toParam(nextDay)}`}
+            className="rounded-md bg-white/10 px-3 py-1 hover:text-accent"
+          >
+            วันถัดไป →
+          </Link>
+        </div>
+        <p className="text-foreground/60 mt-2">
+          {startOfDay.toLocaleDateString("th-TH", { dateStyle: "full" })} · {matches.length} แมตช์ · ⚽{" "}
           {matches.reduce((s, m) => s + m.homeScore + m.awayScore, 0)} ประตู ·{" "}
           <span className="text-red-400">
             ● {matches.filter((m) => m.status === "LIVE").length} สด

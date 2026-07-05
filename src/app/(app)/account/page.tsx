@@ -72,6 +72,15 @@ export default async function AccountPage({
             <span className="text-foreground/50">สมาชิกตั้งแต่:</span>{" "}
             {user.createdAt.toLocaleDateString("th-TH", { dateStyle: "long" })}
           </p>
+          {user.lastLoginAt && (
+            <p>
+              <span className="text-foreground/50">เข้าสู่ระบบล่าสุด:</span>{" "}
+              {user.lastLoginAt.toLocaleString("th-TH", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            </p>
+          )}
         </div>
       )}
 

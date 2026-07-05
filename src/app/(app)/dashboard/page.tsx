@@ -33,12 +33,12 @@ export default async function DashboardPage() {
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const endOfDay = new Date(startOfDay.getTime() + 86400000);
 
-  const [leagues, todayMatches, attentionMatches, adminLogs, users, tomorrowMatches] = await Promise.all([
+  const [leagues, todayMatches, attentionMatches, adminLogs, users, tomorrowMatches, totalEvents] = await Promise.all([
     prisma.league.findMany({
       orderBy: { createdAt: "desc" },
       include: {
         teams: { select: { id: true } },
-        matches: { select: { round: true, status: true, kickoffAt: true } },
+        matches: { select: { round: true, status: true, kickoffAt: true, id: true } },
       },
     }),
     prisma.match.findMany({
@@ -76,6 +76,7 @@ export default async function DashboardPage() {
       include: { homeTeam: true, awayTeam: true, league: true },
       orderBy: { kickoffAt: "asc" },
     }),
+    prisma.matchEvent.count(),
   ]);
 
   const tasks = [
@@ -136,6 +137,12 @@ export default async function DashboardPage() {
         <div>
           <div className="font-display font-extrabold text-2xl text-accent">{users.length}</div>
           <div className="text-xs text-foreground/55">ผู้ใช้ระบบ</div>
+        </div>
+        <div>
+          <div className="font-display font-extrabold text-2xl text-accent">
+            {totalEvents.toLocaleString()}
+          </div>
+          <div className="text-xs text-foreground/55">อีเวนต์ที่บันทึก</div>
         </div>
       </div>
 
@@ -263,6 +270,20 @@ export default async function DashboardPage() {
                       💤 เงียบเกิน 14 วัน
                     </span>
                   )}
+                  {(() => {
+                    const nextKick = league.matches
+                      .filter((m) => m.status === "SCHEDULED" && m.kickoffAt >= now)
+                      .reduce<Date | null>(
+                        (min, m) => (!min || m.kickoffAt < min ? m.kickoffAt : min),
+                        null
+                      );
+                    return nextKick ? (
+                      <span className="text-foreground/45">
+                        ⏰ นัดต่อไป{" "}
+                        {nextKick.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
+                      </span>
+                    ) : null;
+                  })()}
                 </div>
 
                 {totalRounds > 0 && (

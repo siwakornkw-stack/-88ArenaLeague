@@ -62,7 +62,16 @@ export default async function ChampionsPage({
         <h1 className="font-display italic font-black text-2xl md:text-4xl text-foreground">
           หอ<span className="text-accent">เกียรติยศ</span>
         </h1>
-        <p className="mt-1 text-sm text-foreground/55">แชมป์และดาวซัลโวของทุกฤดูกาลที่จบแล้ว</p>
+        <p className="mt-1 text-sm text-foreground/55">
+          แชมป์และดาวซัลโวของทุกฤดูกาลที่จบแล้ว
+          {entries.length > 0 && (
+            <>
+              {" "}
+              · {entries.length} ฤดูกาล ·{" "}
+              {new Set(entries.map((e) => e.championName).filter(Boolean)).size} ทีมที่เคยเป็นแชมป์
+            </>
+          )}
+        </p>
         {allYears.length > 1 && (
           <form method="get" className="mt-4 flex items-center gap-2">
             <select

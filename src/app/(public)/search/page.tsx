@@ -17,7 +17,7 @@ export default async function SearchPage({
   });
   const leagueScope = allLeagues.some((l) => l.id === leagueParam) ? leagueParam : null;
 
-  const [teams, players, leagues, venueMatches, coachTeams] =
+  const [teams, players, leagues, venueMatches, coachTeams, teamMatches] =
     query.length >= 2
       ? await Promise.all([
           prisma.team.findMany({
@@ -56,8 +56,19 @@ export default async function SearchPage({
             include: { league: true },
             take: 10,
           }),
+          prisma.match.findMany({
+            where: {
+              OR: [
+                { homeTeam: { name: { contains: query, mode: "insensitive" } } },
+                { awayTeam: { name: { contains: query, mode: "insensitive" } } },
+              ],
+            },
+            include: { homeTeam: true, awayTeam: true },
+            orderBy: { kickoffAt: "desc" },
+            take: 5,
+          }),
         ])
-      : [[], [], [], [], []];
+      : [[], [], [], [], [], []];
 
   const suggestions = query.length < 2 ? await getFeaturedLeagues(6) : [];
 
@@ -238,6 +249,30 @@ export default async function SearchPage({
                   className="rounded-lg bg-card border border-white/10 px-3 py-2 text-sm hover:border-accent/50"
                 >
                   🧑‍🏫 {t.coachName} — <span className="text-foreground/60">{t.name} · {t.league.name}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {teamMatches.length > 0 && (
+          <div>
+            <h2 className="font-display font-bold mb-3">แมตช์ล่าสุดของทีมที่ค้นหา</h2>
+            <div className="flex flex-col gap-2 max-w-2xl">
+              {teamMatches.map((m) => (
+                <Link
+                  key={m.id}
+                  href={`/matches/${m.id}`}
+                  className="grid grid-cols-[1fr_56px_1fr_auto] items-center gap-2 rounded-lg bg-card border border-white/10 px-3 py-2 text-sm hover:border-accent/50"
+                >
+                  <span className="text-right truncate">{m.homeTeam.name}</span>
+                  <span className="text-center font-display font-bold">
+                    {m.status === "SCHEDULED" ? "vs" : `${m.homeScore}-${m.awayScore}`}
+                  </span>
+                  <span className="truncate">{m.awayTeam.name}</span>
+                  <span className="text-[10px] text-foreground/40">
+                    {m.kickoffAt.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
+                  </span>
                 </Link>
               ))}
             </div>

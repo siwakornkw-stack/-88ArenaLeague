@@ -256,6 +256,42 @@ export default async function PublicPlayerPage({
           ) : null;
         })()}
 
+        {(() => {
+          const venues = new Map<string, number>();
+          for (const e of events) {
+            if (e.type !== "GOAL" || !e.match.venue) continue;
+            venues.set(e.match.venue, (venues.get(e.match.venue) ?? 0) + 1);
+          }
+          const fav = [...venues.entries()].sort((a, b) => b[1] - a[1])[0];
+          return fav && fav[1] >= 2 ? (
+            <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">
+              🏟 สนามที่ยิงบ่อยสุด: <b className="font-display">{fav[0]}</b>{" "}
+              <span className="text-accent font-display font-bold">{fav[1]} ประตู</span>
+            </div>
+          ) : null;
+        })()}
+
+        {(() => {
+          const goalEvents = events.filter((e) => e.type === "GOAL");
+          if (goalEvents.length < 2) return null;
+          const first = goalEvents[goalEvents.length - 1];
+          const last = goalEvents[0];
+          const fmt = (d: Date) => d.toLocaleDateString("th-TH", { dateStyle: "medium" });
+          return (
+            <p className="text-xs text-foreground/45">
+              ⚽ ประตูแรกในลีก {fmt(first.match.kickoffAt)} · ประตูล่าสุด{" "}
+              {fmt(last.match.kickoffAt)}
+            </p>
+          );
+        })()}
+
+        {apps >= 3 && yellows === 0 && reds === 0 && (
+          <div className="rounded-xl border border-accent/30 bg-card p-4 text-sm max-w-md">
+            😇 <b className="font-display">ประวัติขาวสะอาด</b> — ลงสนาม {apps} นัด
+            ไม่เคยโดนใบเหลือง-แดง
+          </div>
+        )}
+
         {topPartners.length > 0 && (
           <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">
             <div className="text-xs text-foreground/50 mb-2">🤝 คู่หูแอสซิสต์ให้บ่อยสุด</div>

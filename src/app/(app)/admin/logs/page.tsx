@@ -110,8 +110,16 @@ export default async function AdminLogsPage({
         <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
           กรอง
         </button>
-        <a href="/admin/logs/export" className="text-xs text-foreground/60 hover:text-accent ml-auto">
-          ⬇ Export CSV
+        <a
+          href={`/admin/logs/export?${new URLSearchParams({
+            ...(actionFilter ? { action: actionFilter } : {}),
+            ...(leagueFilter ? { league: leagueFilter } : {}),
+            ...(from ? { from } : {}),
+            ...(to ? { to } : {}),
+          }).toString()}`}
+          className="text-xs text-foreground/60 hover:text-accent ml-auto"
+        >
+          ⬇ Export CSV (ตามตัวกรอง)
         </a>
       </form>
 

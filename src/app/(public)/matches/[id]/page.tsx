@@ -160,13 +160,45 @@ export default async function PublicMatchPage({
   let h2hHomeWins = 0;
   let h2hDraws = 0;
   let h2hAwayWins = 0;
+  let h2hHomeGoals = 0;
+  let h2hAwayGoals = 0;
   for (const m of h2h) {
     const homeGoals = m.homeTeamId === match.homeTeamId ? m.homeScore : m.awayScore;
     const awayGoals = m.homeTeamId === match.homeTeamId ? m.awayScore : m.homeScore;
+    h2hHomeGoals += homeGoals;
+    h2hAwayGoals += awayGoals;
     if (homeGoals > awayGoals) h2hHomeWins++;
     else if (homeGoals < awayGoals) h2hAwayWins++;
     else h2hDraws++;
   }
+
+  const [homeNextMatch, awayNextMatch, leagueAttendance] = await Promise.all([
+    prisma.match.findFirst({
+      where: {
+        status: "SCHEDULED",
+        id: { not: id },
+        kickoffAt: { gt: match.kickoffAt },
+        OR: [{ homeTeamId: match.homeTeamId }, { awayTeamId: match.homeTeamId }],
+      },
+      include: { homeTeam: true, awayTeam: true },
+      orderBy: { kickoffAt: "asc" },
+    }),
+    prisma.match.findFirst({
+      where: {
+        status: "SCHEDULED",
+        id: { not: id },
+        kickoffAt: { gt: match.kickoffAt },
+        OR: [{ homeTeamId: match.awayTeamId }, { awayTeamId: match.awayTeamId }],
+      },
+      include: { homeTeam: true, awayTeam: true },
+      orderBy: { kickoffAt: "asc" },
+    }),
+    prisma.match.aggregate({
+      where: { leagueId: match.leagueId, status: "FINISHED", spectators: { gt: 0 } },
+      _avg: { spectators: true },
+    }),
+  ]);
+  const avgSpectators = leagueAttendance._avg.spectators ?? 0;
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -274,7 +306,24 @@ export default async function PublicMatchPage({
               </a>
             </>
           )}
-          {match.spectators != null && match.spectators > 0 && <> · ผู้ชม {match.spectators}</>}
+          {match.spectators != null && match.spectators > 0 && (
+            <>
+              {" "}
+              · ผู้ชม {match.spectators}
+              {avgSpectators > 0 && match.status === "FINISHED" && (
+                <span
+                  className={
+                    match.spectators >= avgSpectators ? "text-accent/80" : "text-foreground/35"
+                  }
+                >
+                  {" "}
+                  ({match.spectators >= avgSpectators ? "+" : ""}
+                  {Math.round(((match.spectators - avgSpectators) / avgSpectators) * 100)}%
+                  จากค่าเฉลี่ยลีก)
+                </span>
+              )}
+            </>
+          )}
           {match.refereeName && <> · 🧑‍⚖️ {match.refereeName}</>}
         </p>
         {(() => {
@@ -308,10 +357,48 @@ export default async function PublicMatchPage({
                 match.status === "LIVE" ? "live-glow" : ""
               }`}
             >
-              ▶ ดูถ่ายทอดสด
+              {match.status === "FINISHED" ? "▶ ดูย้อนหลัง" : "▶ ดูถ่ายทอดสด"}
             </a>
           </div>
         )}
+        {match.status !== "SCHEDULED" &&
+          (() => {
+            const goals = match.events.filter(
+              (e) => (e.type === "GOAL" || e.type === "OWN_GOAL") && e.minute != null
+            );
+            if (goals.length === 0) return null;
+            const sideOf = (e: (typeof goals)[number]) =>
+              e.type === "OWN_GOAL" ? (e.side === "HOME" ? "AWAY" : "HOME") : e.side;
+            return (
+              <div className="mt-5 mx-auto max-w-md px-4">
+                <div className="relative h-8">
+                  <div className="absolute left-0 right-0 top-1/2 h-px bg-white/15" />
+                  {goals.map((g) => {
+                    const pct = Math.min(100, ((g.minute ?? 0) / 95) * 100);
+                    const isHome = sideOf(g) === "HOME";
+                    return (
+                      <span
+                        key={g.id}
+                        title={`${g.minute}' ${g.player?.name ?? ""}`}
+                        className={`absolute w-2 h-2 rounded-full -translate-x-1/2 ${
+                          isHome ? "top-1 bg-accent" : "bottom-1 bg-red-400"
+                        }`}
+                        style={{ left: `${pct}%` }}
+                      />
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between text-[9px] text-foreground/30">
+                  <span>0&apos;</span>
+                  <span>45&apos;</span>
+                  <span>90&apos;+</span>
+                </div>
+                <p className="text-center text-[10px] text-foreground/35 mt-0.5">
+                  ● บน = {match.homeTeam.name} · ● ล่าง = {match.awayTeam.name}
+                </p>
+              </div>
+            );
+          })()}
         {match.mvpPlayer && (
           <p className="mt-2 text-center text-xs text-accent">
             ⭐ ผู้เล่นยอดเยี่ยม: {match.mvpPlayer.name}
@@ -509,7 +596,9 @@ export default async function PublicMatchPage({
                       <span className="ml-2 self-center">(มุมมอง {match.homeTeam.name})</span>
                     </div>
                     <p>
-                      เฉลี่ย {(totalGoals / h2h.length).toFixed(1)} ประตู/นัดเมื่อเจอกัน
+                      รวมสกอร์ {match.homeTeam.name} {h2hHomeGoals}-{h2hAwayGoals}{" "}
+                      {match.awayTeam.name} · เฉลี่ย {(totalGoals / h2h.length).toFixed(1)}{" "}
+                      ประตู/นัดเมื่อเจอกัน
                       {streak >= 2 && (
                         <>
                           {" "}
@@ -539,6 +628,45 @@ export default async function PublicMatchPage({
                   </Link>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {(homeNextMatch || awayNextMatch) && (
+          <div>
+            <h2 className="font-display font-bold mb-4">โปรแกรมต่อไปของทั้งคู่</h2>
+            <div className="rounded-xl border border-white/10 bg-card p-5 space-y-2 text-sm">
+              {[
+                { team: match.homeTeam.name, next: homeNextMatch },
+                { team: match.awayTeam.name, next: awayNextMatch },
+              ].map(({ team, next }) =>
+                next ? (
+                  <Link
+                    key={next.id + team}
+                    href={`/matches/${next.id}`}
+                    className="flex flex-wrap items-center gap-2 rounded-lg bg-white/5 px-3 py-2 hover:bg-white/10"
+                  >
+                    <span className="text-xs text-foreground/45 w-32 truncate shrink-0">{team}:</span>
+                    <span className="flex-1 truncate">
+                      {next.homeTeam.name} vs {next.awayTeam.name}
+                    </span>
+                    <span className="text-xs text-foreground/50 shrink-0">
+                      {next.kickoffAt.toLocaleDateString("th-TH", {
+                        day: "numeric",
+                        month: "short",
+                      })}{" "}
+                      {next.kickoffAt.toLocaleTimeString("th-TH", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </Link>
+                ) : (
+                  <p key={team} className="px-3 py-2 text-xs text-foreground/40">
+                    {team}: ไม่มีโปรแกรมถัดไป
+                  </p>
+                )
+              )}
             </div>
           </div>
         )}
