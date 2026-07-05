@@ -104,6 +104,27 @@ export default async function DashboardPage() {
     })),
   ].slice(0, 6);
 
+  const allMatches = leagues.flatMap((lg) => lg.matches);
+  const totalMatches = allMatches.length;
+  const finishedMatches = allMatches.filter((m) => m.status === "FINISHED").length;
+  const seasonPct = totalMatches > 0 ? Math.round((finishedMatches / totalMatches) * 100) : 0;
+
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
+  const sevenDaysAhead = new Date(now.getTime() + 7 * 86400000);
+  const playedThisWeek = allMatches.filter(
+    (m) => m.status === "FINISHED" && m.kickoffAt >= sevenDaysAgo && m.kickoffAt <= now
+  ).length;
+  const upcomingThisWeek = allMatches.filter(
+    (m) => m.status === "SCHEDULED" && m.kickoffAt >= now && m.kickoffAt <= sevenDaysAhead
+  ).length;
+
+  const dormantManagers = users.filter(
+    (u) =>
+      u.role === "TEAM_MANAGER" &&
+      u.isActive &&
+      (!u.lastLoginAt || u.lastLoginAt < new Date(now.getTime() - 30 * 86400000))
+  ).length;
+
   return (
     <div className="max-w-4xl space-y-8">
       <div>
@@ -144,7 +165,32 @@ export default async function DashboardPage() {
           </div>
           <div className="text-xs text-foreground/55">อีเวนต์ที่บันทึก</div>
         </div>
+        <div>
+          <div className="font-display font-extrabold text-2xl text-accent">{playedThisWeek}</div>
+          <div className="text-xs text-foreground/55">แข่งใน 7 วันที่ผ่านมา</div>
+        </div>
+        <div>
+          <div className="font-display font-extrabold text-2xl text-accent">{upcomingThisWeek}</div>
+          <div className="text-xs text-foreground/55">นัดใน 7 วันข้างหน้า</div>
+        </div>
       </div>
+
+      {totalMatches > 0 && (
+        <div className="rounded-lg bg-card border border-white/10 p-5">
+          <h2 className="font-semibold mb-3 flex items-center justify-between">
+            ความคืบหน้าฤดูกาลรวม
+            <span className="text-xs text-foreground/50">
+              {finishedMatches}/{totalMatches} นัดจบแล้ว · {seasonPct}%
+            </span>
+          </h2>
+          <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+            <div
+              className="h-full bg-accent rounded-full"
+              style={{ width: `${seasonPct}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {tasks.length > 0 && (
         <div className="rounded-lg bg-card border border-white/10 p-5">
@@ -324,12 +370,19 @@ export default async function DashboardPage() {
       </div>
 
       <div className="rounded-lg bg-card border border-white/10 p-5 space-y-4">
-        <h2 className="font-semibold">
-          ผู้ใช้ระบบ{" "}
-          <span className="text-xs text-foreground/45">
-            (แอดมิน {users.filter((u) => u.role === "SUPER_ADMIN").length} · ผู้จัดการทีม{" "}
-            {users.filter((u) => u.role === "TEAM_MANAGER").length})
+        <h2 className="font-semibold flex flex-wrap items-center gap-2">
+          <span>
+            ผู้ใช้ระบบ{" "}
+            <span className="text-xs text-foreground/45">
+              (แอดมิน {users.filter((u) => u.role === "SUPER_ADMIN").length} · ผู้จัดการทีม{" "}
+              {users.filter((u) => u.role === "TEAM_MANAGER").length})
+            </span>
           </span>
+          {dormantManagers > 0 && (
+            <span className="rounded-full bg-yellow-400/10 text-yellow-400 px-2 py-0.5 text-[10px]">
+              💤 {dormantManagers} ผู้จัดการเงียบเกิน 30 วัน
+            </span>
+          )}
         </h2>
         <div className="space-y-2">
           {users.map((u) => (

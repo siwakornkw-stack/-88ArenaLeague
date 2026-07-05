@@ -322,6 +322,25 @@ export default async function PublicLeaguePage({
     return top ? { ...top, month: latest.toLocaleDateString("th-TH", { month: "long" }) } : null;
   })();
 
+  // youngest player among the top scorers (uses Player.birthYear)
+  const scorerBirthYears =
+    tab === "players" && playerBoards && playerBoards.scorers.length > 0
+      ? await prisma.player.findMany({
+          where: { id: { in: playerBoards.scorers.map((s) => s.playerId) }, birthYear: { not: null } },
+          select: { id: true, birthYear: true },
+        })
+      : [];
+  const youngestScorer = (() => {
+    if (!playerBoards || scorerBirthYears.length === 0) return null;
+    const byId = new Map(scorerBirthYears.map((p) => [p.id, p.birthYear!]));
+    const withAge = playerBoards.scorers
+      .filter((s) => byId.has(s.playerId))
+      .map((s) => ({ ...s, birthYear: byId.get(s.playerId)! }));
+    if (withAge.length === 0) return null;
+    const y = withAge.sort((a, b) => b.birthYear - a.birthYear)[0];
+    return { ...y, age: new Date().getFullYear() - y.birthYear };
+  })();
+
   const zonesOn = !sideView && !asofRound;
 
   // title-race math from remaining LEAGUE fixtures
@@ -364,6 +383,36 @@ export default async function PublicLeaguePage({
         const p = prevPos.get(r.teamId);
         if (p !== undefined) movement.set(r.teamId, p - i);
       });
+    }
+  }
+
+  // current active streaks per team, from finished LEAGUE matches in kickoff order
+  let hotStreak: { teamName: string; n: number } | null = null;
+  let unbeatenStreak: { teamName: string; n: number } | null = null;
+  if (tab === "standings" && !sideView && !asofRound && finishedLeagueMatches.length > 0) {
+    const teamName = new Map(league.teams.map((t) => [t.id, t.name]));
+    const perTeam = new Map<string, { win: number; unbeaten: number }>();
+    const chron = [...finishedLeagueMatches].sort(
+      (a, b) => a.kickoffAt.getTime() - b.kickoffAt.getTime()
+    );
+    for (const m of chron) {
+      const homeRes = m.homeScore > m.awayScore ? "W" : m.homeScore === m.awayScore ? "D" : "L";
+      const awayRes = m.awayScore > m.homeScore ? "W" : m.homeScore === m.awayScore ? "D" : "L";
+      for (const [teamId, res] of [
+        [m.homeTeamId, homeRes],
+        [m.awayTeamId, awayRes],
+      ] as const) {
+        const cur = perTeam.get(teamId) ?? { win: 0, unbeaten: 0 };
+        cur.win = res === "W" ? cur.win + 1 : 0;
+        cur.unbeaten = res === "L" ? 0 : cur.unbeaten + 1;
+        perTeam.set(teamId, cur);
+      }
+    }
+    for (const [teamId, s] of perTeam) {
+      if (s.win >= 2 && (!hotStreak || s.win > hotStreak.n))
+        hotStreak = { teamName: teamName.get(teamId) ?? "-", n: s.win };
+      if (s.unbeaten >= 3 && (!unbeatenStreak || s.unbeaten > unbeatenStreak.n))
+        unbeatenStreak = { teamName: teamName.get(teamId) ?? "-", n: s.unbeaten };
     }
   }
 
@@ -828,6 +877,17 @@ export default async function PublicLeaguePage({
                 </p>
               </div>
             )}
+            {youngestScorer && (
+              <div className="rounded-xl border border-accent/30 bg-card p-5">
+                <h3 className="font-display font-bold mb-1">🌱 ดาวรุ่งจอมยิง</h3>
+                <p className="text-xs text-foreground/45 mb-2">นักเตะอายุน้อยสุดที่ติดตารางดาวซัลโว</p>
+                <p className="text-sm text-foreground/70">
+                  <span className="font-display font-bold text-accent">{youngestScorer.playerName}</span>{" "}
+                  <span className="text-xs text-foreground/45">({youngestScorer.teamName})</span> · อายุ{" "}
+                  {youngestScorer.age} ปี · {youngestScorer.goals} ประตู
+                </p>
+              </div>
+            )}
             {hatTricks.length > 0 && (
               <div className="rounded-xl border border-white/10 bg-card p-5">
                 <h3 className="font-display font-bold mb-3">🎩 แฮตทริก</h3>
@@ -970,6 +1030,35 @@ export default async function PublicLeaguePage({
                     </div>
                   ) : null;
                 })()}
+                {(() => {
+                  const perRound = new Map<number, number>();
+                  for (const m of finishedLeagueMatches) {
+                    perRound.set(m.round, (perRound.get(m.round) ?? 0) + m.homeScore + m.awayScore);
+                  }
+                  if (perRound.size === 0) return null;
+                  const top = [...perRound.entries()].sort((a, b) => b[1] - a[1])[0];
+                  return (
+                    <div>
+                      <div className="font-display italic font-extrabold text-2xl text-accent">
+                        {top[1]}
+                      </div>
+                      <div className="text-xs text-foreground/55">ประตูสูงสุดในนัดที่ {top[0]}</div>
+                    </div>
+                  );
+                })()}
+                {(() => {
+                  const solidMatches = finishedLeagueMatches.filter(
+                    (m) => m.homeScore === 0 && m.awayScore === 0
+                  ).length;
+                  return solidMatches > 0 ? (
+                    <div>
+                      <div className="font-display italic font-extrabold text-2xl text-accent">
+                        {solidMatches}
+                      </div>
+                      <div className="text-xs text-foreground/55">นัดจบ 0-0</div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -1016,6 +1105,33 @@ export default async function PublicLeaguePage({
                     <div className="rounded-xl border border-white/10 bg-card p-5 lg:col-span-2">
                       <h3 className="font-display font-bold mb-3">ผู้ชมรวมต่อนัด</h3>
                       <GoalsBarChart rounds={rounds} values={att} />
+                    </div>
+                  ) : null;
+                })()}
+                {(() => {
+                  const venues = new Map<string, { n: number; goals: number }>();
+                  for (const m of finishedLeagueMatches) {
+                    const v = m.venue?.trim();
+                    if (!v) continue;
+                    const cur = venues.get(v) ?? { n: 0, goals: 0 };
+                    cur.n++;
+                    cur.goals += m.homeScore + m.awayScore;
+                    venues.set(v, cur);
+                  }
+                  const list = [...venues.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 8);
+                  return list.length > 0 ? (
+                    <div className="rounded-xl border border-white/10 bg-card p-5">
+                      <h3 className="font-display font-bold mb-3">🏟 สนามยอดนิยม</h3>
+                      <div className="space-y-1.5 text-sm">
+                        {list.map(([name, v]) => (
+                          <div key={name} className="flex items-center justify-between gap-3">
+                            <span className="truncate text-foreground/75">{name}</span>
+                            <span className="shrink-0 text-foreground/50 text-xs">
+                              {v.n} นัด · เฉลี่ย {(v.goals / v.n).toFixed(1)} ประตู
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ) : null;
                 })()}
@@ -1311,6 +1427,32 @@ export default async function PublicLeaguePage({
                   🥇 {topScorers[0].playerName} นำดาวซัลโวอยู่{" "}
                   <b className="text-accent">{topScorers[0].goals - topScorers[1].goals}</b> ประตู
                 </p>
+              )}
+
+              {(hotStreak || unbeatenStreak) && (
+                <div className="rounded-xl border border-accent/30 bg-card p-5">
+                  <h3 className="font-display font-bold mb-3">🔥 ฟอร์มร้อนแรง</h3>
+                  <div className="flex flex-col gap-2 text-sm">
+                    {hotStreak && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-foreground/60">ชนะติดต่อกันยาวสุด</span>
+                        <span>
+                          <span className="font-display font-semibold">{hotStreak.teamName}</span>{" "}
+                          <b className="text-accent">{hotStreak.n} นัด</b>
+                        </span>
+                      </div>
+                    )}
+                    {unbeatenStreak && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-foreground/60">ไม่แพ้ติดต่อกันยาวสุด</span>
+                        <span>
+                          <span className="font-display font-semibold">{unbeatenStreak.teamName}</span>{" "}
+                          <b className="text-accent">{unbeatenStreak.n} นัด</b>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
 
               {topAssists.length > 0 && (

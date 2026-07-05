@@ -40,14 +40,24 @@ export default async function ChampionsPage({
       let championName = standings[0]?.teamName ?? null;
       let runnerUp = standings[1]?.teamName ?? null;
       let note = standings[0] ? `${standings[0].points} แต้ม` : null;
+      let finalMargin: number | null = null;
       if (finalMatch) {
         const homeWon = finalMatch.homeScore >= finalMatch.awayScore;
         championName = homeWon ? finalMatch.homeTeam.name : finalMatch.awayTeam.name;
         runnerUp = homeWon ? finalMatch.awayTeam.name : finalMatch.homeTeam.name;
         note = `ชนะนัดชิง ${finalMatch.homeScore}-${finalMatch.awayScore}`;
+        finalMargin = Math.abs(finalMatch.homeScore - finalMatch.awayScore);
       }
 
-      return { league, championName, runnerUp, note, topScorer: topScorers[0] ?? null };
+      return {
+        league,
+        championName,
+        runnerUp,
+        note,
+        topScorer: topScorers[0] ?? null,
+        finalMatch,
+        finalMargin,
+      };
     })
   );
 
@@ -121,6 +131,77 @@ export default async function ChampionsPage({
               </div>
             ) : null;
           })()}
+
+        {(() => {
+          // all-time golden boot: aggregate each season's top scorer across every finished season
+          const bootTotals = new Map<string, { name: string; team: string; goals: number; seasons: number }>();
+          for (const e of entries) {
+            if (!e.topScorer) continue;
+            const key = e.topScorer.playerId;
+            const cur = bootTotals.get(key) ?? {
+              name: e.topScorer.playerName,
+              team: e.topScorer.teamName,
+              goals: 0,
+              seasons: 0,
+            };
+            cur.goals += e.topScorer.goals;
+            cur.seasons += 1;
+            bootTotals.set(key, cur);
+          }
+          const boots = [...bootTotals.values()].sort((a, b) => b.goals - a.goals).slice(0, 5);
+          return boots.length > 0 ? (
+            <div className="rounded-xl border border-white/10 bg-card p-5 max-w-md">
+              <div className="text-sm font-display font-bold text-foreground">
+                ⚽ ดาวซัลโวตลอดกาล
+              </div>
+              <div className="mt-1 text-xs text-foreground/50">
+                รวมประตูจากดาวซัลโวของทุกฤดูกาลที่จบแล้ว
+              </div>
+              <ol className="mt-3 space-y-2 text-sm">
+                {boots.map((b, i) => (
+                  <li key={b.name + b.team} className="flex items-center gap-3">
+                    <span className="w-5 text-right text-foreground/40 tabular-nums">{i + 1}</span>
+                    <span className="flex-1 truncate">
+                      <span className="text-foreground">{b.name}</span>{" "}
+                      <span className="text-foreground/50">· {b.team}</span>
+                      {b.seasons > 1 && (
+                        <span className="ml-1 text-[10px] text-accent">({b.seasons} ฤดูกาล)</span>
+                      )}
+                    </span>
+                    <span className="font-display font-bold text-accent tabular-nums">{b.goals}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : null;
+        })()}
+
+        {(() => {
+          // biggest final-win callout: the most emphatic playoff final across all seasons
+          const withFinals = entries.filter((e) => e.finalMatch && e.finalMargin !== null);
+          if (withFinals.length === 0) return null;
+          const best = withFinals.reduce((a, b) => (b.finalMargin! > a.finalMargin! ? b : a));
+          if (best.finalMargin! < 1) return null;
+          const fm = best.finalMatch!;
+          return (
+            <Link
+              href={`/matches/${fm.id}`}
+              className="hover-lift block rounded-xl border border-accent/30 bg-card p-4 max-w-md text-sm hover:border-accent/60"
+            >
+              <div className="text-xs text-foreground/50">
+                นัดชิงชนะขาดลอยสุด · ฤดูกาล {best.league.seasonYear}
+              </div>
+              <div className="mt-1">
+                💥 <span className="font-display font-bold text-accent">{best.championName}</span>{" "}
+                <span className="text-foreground/60">ถล่ม</span>{" "}
+                <span className="text-foreground">{best.runnerUp}</span>{" "}
+                <span className="text-foreground/50">
+                  {fm.homeScore}-{fm.awayScore} (ห่าง {best.finalMargin} ประตู)
+                </span>
+              </div>
+            </Link>
+          );
+        })()}
 
         {entries[0] && (
           <div className="rounded-2xl border border-accent/50 bg-gradient-to-r from-[#22380f] to-card p-6 max-w-2xl live-glow">

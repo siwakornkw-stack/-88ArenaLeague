@@ -265,6 +265,69 @@ export default async function MyTeamPage({
         </div>
       )}
 
+      {(() => {
+        const finishedLeague = teamMatches.filter(
+          (m) => m.status === "FINISHED" && m.stage === "LEAGUE"
+        );
+        if (finishedLeague.length === 0) return null;
+        const split = (isHomeSide: boolean) => {
+          const rows = finishedLeague.filter((m) =>
+            isHomeSide ? m.homeTeamId === team.id : m.awayTeamId === team.id
+          );
+          let w = 0,
+            d = 0,
+            l = 0,
+            gf = 0,
+            ga = 0;
+          for (const m of rows) {
+            const my = m.homeTeamId === team.id ? m.homeScore : m.awayScore;
+            const opp = m.homeTeamId === team.id ? m.awayScore : m.homeScore;
+            gf += my;
+            ga += opp;
+            if (my > opp) w++;
+            else if (my < opp) l++;
+            else d++;
+          }
+          const pts = w * 3 + d;
+          return { count: rows.length, w, d, l, gf, ga, pts };
+        };
+        const home = split(true);
+        const away = split(false);
+        const Row = ({ label, s }: { label: string; s: ReturnType<typeof split> }) =>
+          s.count === 0 ? null : (
+            <div className="flex items-center gap-3">
+              <span className="w-14 text-xs text-foreground/55">{label}</span>
+              <span className="text-sm">
+                <b className="text-accent">{s.w}</b> ช · <b>{s.d}</b> ส ·{" "}
+                <b className="text-red-400">{s.l}</b> พ
+              </span>
+              <span className="text-xs text-foreground/50">
+                ยิง {s.gf} เสีย {s.ga}
+              </span>
+              <span className="ml-auto text-xs text-foreground/45">
+                {s.pts} แต้ม · เฉลี่ย{" "}
+                <span className="text-foreground/70">{(s.pts / s.count).toFixed(2)}</span>/นัด
+              </span>
+            </div>
+          );
+        return (
+          <div className="rounded-lg bg-card border border-white/10 p-5">
+            <h2 className="font-semibold mb-3">สถิติเหย้า - เยือน</h2>
+            <div className="space-y-2">
+              <Row label="🏠 เหย้า" s={home} />
+              <Row label="✈ เยือน" s={away} />
+            </div>
+            {home.count > 0 && away.count > 0 && (
+              <p className="mt-3 text-xs text-foreground/45">
+                {home.pts / home.count >= away.pts / away.count
+                  ? "ทีมทำแต้มเฉลี่ยได้ดีกว่าเมื่อเล่นในบ้าน"
+                  : "ทีมทำแต้มเฉลี่ยได้ดีกว่าเมื่อเล่นนอกบ้าน"}
+              </p>
+            )}
+          </div>
+        );
+      })()}
+
       {teamMatches.length > 0 && (
         <div className="rounded-lg bg-card border border-white/10 p-5">
           <div className="flex items-center justify-between mb-3">
@@ -537,6 +600,34 @@ export default async function MyTeamPage({
           {team.players.filter((p) => p.status === "INJURED").length} · โดนแบน{" "}
           {team.players.filter((p) => p.status === "BANNED").length}
         </p>
+
+        {(() => {
+          const ages = team.players
+            .filter((p) => p.birthYear)
+            .map((p) => new Date().getFullYear() - (p.birthYear as number));
+          const avgAge = ages.length
+            ? (ages.reduce((sum, a) => sum + a, 0) / ages.length).toFixed(1)
+            : null;
+          const activeCount = team.players.filter((p) => p.status === "ACTIVE").length;
+          const shortBy = LINEUP_SIZE - activeCount;
+          return (
+            <p className="px-4 pt-1 text-xs text-foreground/45">
+              ผู้เล่นในทีม {team.players.length} คน
+              {avgAge && (
+                <>
+                  {" "}
+                  · อายุเฉลี่ย <span className="text-foreground/70">{avgAge}</span> ปี
+                </>
+              )}
+              {shortBy > 0 && (
+                <span className="text-red-400">
+                  {" "}
+                  · ⚠ ตัวพร้อมเล่นไม่พอจัดตัวจริง (ขาดอีก {shortBy} คน)
+                </span>
+              )}
+            </p>
+          );
+        })()}
 
         <div className="space-y-2 mt-1">
           {filteredPlayers.map((p) => (

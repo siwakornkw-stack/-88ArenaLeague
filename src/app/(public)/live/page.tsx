@@ -57,6 +57,30 @@ export default async function LivePage() {
     liveByLeague.get(m.league.name)!.push(m);
   }
 
+  // Feature 1: live goals now + hottest live match (highest combined score, tie-broken by latest minute)
+  const liveGoalsNow = live.reduce((s, m) => s + m.homeScore + m.awayScore, 0);
+  const hottestLive = live.reduce<(typeof live)[number] | null>((best, m) => {
+    if (!best) return m;
+    const bestGoals = best.homeScore + best.awayScore;
+    const mGoals = m.homeScore + m.awayScore;
+    if (mGoals > bestGoals) return m;
+    if (mGoals === bestGoals && bestGoals > 0) {
+      const bestMin = best.events[0] ? computeLiveMinute(best.events[0].createdAt) : 0;
+      const mMin = m.events[0] ? computeLiveMinute(m.events[0].createdAt) : 0;
+      return mMin > bestMin ? m : best;
+    }
+    return best;
+  }, null);
+
+  // Feature 2: today's finished-match summary (played / draws / biggest win margin)
+  const todayDraws = todayFinished.filter((m) => m.homeScore === m.awayScore).length;
+  const biggestWin = todayFinished.reduce<(typeof todayFinished)[number] | null>((best, m) => {
+    const margin = Math.abs(m.homeScore - m.awayScore);
+    if (margin === 0) return best;
+    if (!best) return m;
+    return margin > Math.abs(best.homeScore - best.awayScore) ? m : best;
+  }, null);
+
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
     { icon: "🔴", label: "สด", href: "/live", active: true },
@@ -77,6 +101,30 @@ export default async function LivePage() {
       </div>
 
       <div className="px-6 md:px-16 py-8 flex-1 space-y-10">
+        {live.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl">
+            <div className="rounded-xl border border-white/10 bg-card p-4">
+              <div className="text-xs text-foreground/45">ประตูในเกมสดตอนนี้</div>
+              <div className="font-display italic font-black text-3xl text-accent mt-1">{liveGoalsNow}</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-card p-4">
+              <div className="text-xs text-foreground/45">แมตช์สดทั้งหมด</div>
+              <div className="font-display italic font-black text-3xl text-foreground mt-1">{live.length}</div>
+            </div>
+            {hottestLive && hottestLive.homeScore + hottestLive.awayScore > 0 && (
+              <Link
+                href={`/matches/${hottestLive.id}`}
+                className="rounded-xl border border-red-500/30 bg-card p-4 hover:border-red-400/60"
+              >
+                <div className="text-xs text-red-400">🔥 คู่เดือดที่สุด</div>
+                <div className="text-sm mt-1 truncate">
+                  {hottestLive.homeTeam.name} <span className="text-accent font-bold">{hottestLive.homeScore}-{hottestLive.awayScore}</span> {hottestLive.awayTeam.name}
+                </div>
+              </Link>
+            )}
+          </div>
+        )}
+
         {live.length > 0 &&
           [...liveByLeague.entries()].map(([leagueName, ms]) => (
             <div key={leagueName}>
@@ -108,6 +156,43 @@ export default async function LivePage() {
               </div>
             </div>
           ))}
+
+        {todayFinished.length > 0 && (
+          <div>
+            <h2 className="font-display font-bold mb-4">สรุปผลวันนี้</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl">
+              <div className="rounded-xl border border-white/10 bg-card p-4">
+                <div className="text-xs text-foreground/45">แข่งจบ</div>
+                <div className="font-display italic font-black text-2xl text-foreground mt-1">{todayFinished.length}</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-card p-4">
+                <div className="text-xs text-foreground/45">ประตูรวม</div>
+                <div className="font-display italic font-black text-2xl text-accent mt-1">{todayGoals}</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-card p-4">
+                <div className="text-xs text-foreground/45">เสมอ</div>
+                <div className="font-display italic font-black text-2xl text-foreground mt-1">{todayDraws}</div>
+              </div>
+              {biggestWin ? (
+                <Link
+                  href={`/matches/${biggestWin.id}`}
+                  className="rounded-xl border border-accent/30 bg-card p-4 hover:border-accent/60"
+                >
+                  <div className="text-xs text-foreground/45">ชนะขาดสุด</div>
+                  <div className="text-sm mt-1 truncate">
+                    <span className="text-accent font-bold">{biggestWin.homeScore}-{biggestWin.awayScore}</span>{" "}
+                    {biggestWin.homeScore > biggestWin.awayScore ? biggestWin.homeTeam.name : biggestWin.awayTeam.name}
+                  </div>
+                </Link>
+              ) : (
+                <div className="rounded-xl border border-white/10 bg-card p-4">
+                  <div className="text-xs text-foreground/45">ชนะขาดสุด</div>
+                  <div className="text-sm mt-1 text-foreground/40">ยังไม่มี</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {todayFinished.length > 0 && (
           <div>

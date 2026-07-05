@@ -5,7 +5,15 @@ import { MobileNav } from "@/components/mobile-nav";
 
 export const dynamic = "force-dynamic";
 
-function LeagueCard({ lg, lastPlayed }: { lg: FeaturedLeague; lastPlayed?: Date | null }) {
+function LeagueCard({
+  lg,
+  lastPlayed,
+  goalStats,
+}: {
+  lg: FeaturedLeague;
+  lastPlayed?: Date | null;
+  goalStats?: { goals: number; avg: number };
+}) {
   return (
     <Link
       href={`/leagues/${lg.id}`}
@@ -39,9 +47,36 @@ function LeagueCard({ lg, lastPlayed }: { lg: FeaturedLeague; lastPlayed?: Date 
             {lastPlayed.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
           </span>
         )}
+        {goalStats && goalStats.goals > 0 && (
+          <span>
+            🥅 {goalStats.goals} ประตู{" "}
+            <span className="text-foreground/40">({goalStats.avg.toFixed(1)}/นัด)</span>
+          </span>
+        )}
       </div>
+      {lg.leaderName && lg.leaderForm.length > 0 && (
+        <div className="mt-3 flex items-center gap-2 text-xs text-foreground/55">
+          <span className="truncate">ฟอร์มจ่าฝูง</span>
+          <span className="flex gap-1">
+            {lg.leaderForm.slice(-5).map((r, i) => (
+              <span
+                key={i}
+                className={`w-4 h-4 rounded-sm grid place-items-center text-[9px] font-bold ${
+                  r === "W"
+                    ? "bg-accent/20 text-accent"
+                    : r === "D"
+                      ? "bg-white/10 text-foreground/60"
+                      : "bg-red-500/20 text-red-400"
+                }`}
+              >
+                {r === "W" ? "ช" : r === "D" ? "ส" : "พ"}
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
       {lg.top3.length > 0 && (
-        <div className="mt-4 rounded-lg bg-white/5 px-3 py-2 text-sm space-y-1">
+        <div className="mt-3 rounded-lg bg-white/5 px-3 py-2 text-sm space-y-1">
           {lg.top3.map((t, i) => (
             <div key={t.name} className="flex items-center justify-between">
               <span className="text-foreground/80">
@@ -65,7 +100,7 @@ export default async function LeaguesIndexPage({
   const { q = "", sort = "latest" } = await searchParams;
   const query = q.trim();
 
-  const [leagues, finishedIds, liveNow, totalTeams, lastPlayedRows] = await Promise.all([
+  const [leagues, finishedIds, liveNow, totalTeams, lastPlayedRows, goalRows] = await Promise.all([
     getFeaturedLeagues(100),
     prisma.league.findMany({ where: { status: "FINISHED" }, select: { id: true } }),
     prisma.match.count({ where: { status: "LIVE" } }),
@@ -75,9 +110,22 @@ export default async function LeaguesIndexPage({
       where: { status: "FINISHED" },
       _max: { kickoffAt: true },
     }),
+    prisma.match.groupBy({
+      by: ["leagueId"],
+      where: { status: "FINISHED", stage: "LEAGUE" },
+      _sum: { homeScore: true, awayScore: true },
+      _count: { _all: true },
+    }),
   ]);
   const finishedSet = new Set(finishedIds.map((l) => l.id));
   const lastPlayedMap = new Map(lastPlayedRows.map((r) => [r.leagueId, r._max.kickoffAt]));
+  const goalsMap = new Map(
+    goalRows.map((r) => {
+      const goals = (r._sum.homeScore ?? 0) + (r._sum.awayScore ?? 0);
+      const played = r._count._all;
+      return [r.leagueId, { goals, avg: played > 0 ? goals / played : 0 }];
+    })
+  );
 
   let filtered = query
     ? leagues.filter((lg) => lg.name.toLowerCase().includes(query.toLowerCase()))
@@ -136,7 +184,12 @@ export default async function LeaguesIndexPage({
             <h2 className="font-display font-bold text-lg mb-4">กำลังแข่งขัน ({active.length})</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {active.map((lg) => (
-                <LeagueCard key={lg.id} lg={lg} lastPlayed={lastPlayedMap.get(lg.id)} />
+                <LeagueCard
+                  key={lg.id}
+                  lg={lg}
+                  lastPlayed={lastPlayedMap.get(lg.id)}
+                  goalStats={goalsMap.get(lg.id)}
+                />
               ))}
             </div>
           </div>
@@ -149,7 +202,12 @@ export default async function LeaguesIndexPage({
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {finished.map((lg) => (
-                <LeagueCard key={lg.id} lg={lg} lastPlayed={lastPlayedMap.get(lg.id)} />
+                <LeagueCard
+                  key={lg.id}
+                  lg={lg}
+                  lastPlayed={lastPlayedMap.get(lg.id)}
+                  goalStats={goalsMap.get(lg.id)}
+                />
               ))}
             </div>
           </div>

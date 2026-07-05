@@ -39,7 +39,14 @@ export default async function GlobalStatsPage() {
     }),
   ]);
 
-  const [topAssists, topMvps, highestMatch] = await Promise.all([
+  const biggestMarginId =
+    finished.length > 0
+      ? finished.reduce((a, b) =>
+          Math.abs(b.homeScore - b.awayScore) > Math.abs(a.homeScore - a.awayScore) ? b : a
+        )
+      : null;
+
+  const [topAssists, topMvps, highestMatch, biggestMargin] = await Promise.all([
     prisma.matchEvent.groupBy({
       by: ["relatedPlayerId"],
       where: {
@@ -68,10 +75,28 @@ export default async function GlobalStatsPage() {
           include: { homeTeam: true, awayTeam: true, league: true },
         })
       : Promise.resolve(null),
+    biggestMarginId && Math.abs(biggestMarginId.homeScore - biggestMarginId.awayScore) > 0
+      ? prisma.match.findUnique({
+          where: { id: biggestMarginId.id },
+          include: { homeTeam: true, awayTeam: true, league: true },
+        })
+      : Promise.resolve(null),
   ]);
 
   const totalGoals = finished.reduce((s, m) => s + m.homeScore + m.awayScore, 0);
   const totalSpectators = finished.reduce((s, m) => s + (m.spectators ?? 0), 0);
+
+  const homeWins = finished.filter((m) => m.homeScore > m.awayScore).length;
+  const awayWins = finished.filter((m) => m.awayScore > m.homeScore).length;
+  const draws = finished.filter((m) => m.homeScore === m.awayScore).length;
+  const homeWinPct = finished.length > 0 ? Math.round((homeWins / finished.length) * 100) : 0;
+
+  const cleanSheets = finished.reduce(
+    (s, m) => s + (m.homeScore === 0 ? 1 : 0) + (m.awayScore === 0 ? 1 : 0),
+    0
+  );
+  const cardsPerMatch =
+    finished.length > 0 ? ((yellowCount + redCount) / finished.length).toFixed(2) : "0";
 
   const perLeague = leagues
     .map((lg) => {
@@ -156,6 +181,18 @@ export default async function GlobalStatsPage() {
             </div>
             <div className="text-xs text-foreground/55">นักเตะที่ยิงได้อย่างน้อย 1 ประตู</div>
           </div>
+          <div>
+            <div className="font-display italic font-extrabold text-2xl text-accent">
+              {cardsPerMatch}
+            </div>
+            <div className="text-xs text-foreground/55">ใบเฉลี่ย/นัด</div>
+          </div>
+          <div>
+            <div className="font-display italic font-extrabold text-2xl text-accent">
+              {cleanSheets}
+            </div>
+            <div className="text-xs text-foreground/55">คลีนชีตทั้งระบบ</div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -177,10 +214,51 @@ export default async function GlobalStatsPage() {
             </div>
           </div>
 
+          {finished.length > 0 && (
+            <div className="rounded-xl border border-white/10 bg-card p-5">
+              <h2 className="font-display font-bold mb-3">ความได้เปรียบเจ้าบ้าน</h2>
+              <div className="flex h-3 w-full overflow-hidden rounded-full bg-white/5">
+                <div
+                  className="bg-accent"
+                  style={{ width: `${(homeWins / finished.length) * 100}%` }}
+                />
+                <div
+                  className="bg-white/25"
+                  style={{ width: `${(draws / finished.length) * 100}%` }}
+                />
+                <div
+                  className="bg-white/10"
+                  style={{ width: `${(awayWins / finished.length) * 100}%` }}
+                />
+              </div>
+              <div className="mt-3 flex justify-between text-sm">
+                <div>
+                  <div className="font-display italic font-extrabold text-accent">{homeWins}</div>
+                  <div className="text-xs text-foreground/55">เจ้าบ้านชนะ</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-display italic font-extrabold text-foreground/70">
+                    {draws}
+                  </div>
+                  <div className="text-xs text-foreground/55">เสมอ</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-display italic font-extrabold text-foreground/70">
+                    {awayWins}
+                  </div>
+                  <div className="text-xs text-foreground/55">ทีมเยือนชนะ</div>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-foreground/45">
+                เจ้าบ้านคว้าชัย {homeWinPct}% ของแมตช์ที่จบแล้ว
+              </div>
+            </div>
+          )}
+
           {highestMatch && (
             <Link
               href={`/matches/${highestMatch.id}`}
-              className="lg:col-span-2 rounded-xl border border-accent/30 bg-card p-5 hover:border-accent/60"
+              className="rounded-xl border border-accent/30 bg-card p-5 hover:border-accent/60"
             >
               <div className="text-xs text-foreground/50 mb-1">🎇 แมตช์ประตูเยอะสุดในระบบ</div>
               <div className="font-display font-bold">
@@ -190,6 +268,23 @@ export default async function GlobalStatsPage() {
               <div className="text-xs text-foreground/45 mt-1">
                 {highestMatch.league.name} ·{" "}
                 {highestMatch.homeScore + highestMatch.awayScore} ประตู
+              </div>
+            </Link>
+          )}
+
+          {biggestMargin && (
+            <Link
+              href={`/matches/${biggestMargin.id}`}
+              className="rounded-xl border border-accent/30 bg-card p-5 hover:border-accent/60"
+            >
+              <div className="text-xs text-foreground/50 mb-1">💥 ชนะขาดที่สุดในระบบ</div>
+              <div className="font-display font-bold">
+                {biggestMargin.homeTeam.name} {biggestMargin.homeScore}-{biggestMargin.awayScore}{" "}
+                {biggestMargin.awayTeam.name}
+              </div>
+              <div className="text-xs text-foreground/45 mt-1">
+                {biggestMargin.league.name} · ห่าง{" "}
+                {Math.abs(biggestMargin.homeScore - biggestMargin.awayScore)} ประตู
               </div>
             </Link>
           )}

@@ -399,6 +399,30 @@ export default async function PublicMatchPage({
               </div>
             );
           })()}
+        {match.status !== "SCHEDULED" &&
+          (() => {
+            const goals = match.events
+              .filter((e) => (e.type === "GOAL" || e.type === "OWN_GOAL") && e.minute != null)
+              .sort((a, b) => a.minute - b.minute);
+            if (goals.length === 0) return null;
+            const scoredFor = (e: (typeof goals)[number]) =>
+              e.type === "OWN_GOAL" ? (e.side === "HOME" ? "AWAY" : "HOME") : e.side;
+            const first = goals[0];
+            const opener = scoredFor(first) === "HOME" ? match.homeTeam.name : match.awayTeam.name;
+            const firstHalf = goals.filter((g) => (g.minute ?? 0) <= 45).length;
+            const secondHalf = goals.length - firstHalf;
+            const openerWon =
+              match.status === "FINISHED" &&
+              ((scoredFor(first) === "HOME" && match.homeScore > match.awayScore) ||
+                (scoredFor(first) === "AWAY" && match.awayScore > match.homeScore));
+            return (
+              <p className="mt-2 text-center text-xs text-foreground/45">
+                ประตูแรกนาที {first.minute}&apos; โดย {opener}
+                {openerWon && <span className="text-accent/80"> · ทีมที่ยิงก่อนเป็นฝ่ายชนะ</span>} ·
+                ครึ่งแรก {firstHalf} · ครึ่งหลัง {secondHalf} ประตู
+              </p>
+            );
+          })()}
         {match.mvpPlayer && (
           <p className="mt-2 text-center text-xs text-accent">
             ⭐ ผู้เล่นยอดเยี่ยม: {match.mvpPlayer.name}
@@ -504,6 +528,148 @@ export default async function PublicMatchPage({
             </div>
           </div>
         )}
+
+        {match.status !== "SCHEDULED" &&
+          (() => {
+            const goals = match.events.filter(
+              (e) => (e.type === "GOAL" || e.type === "OWN_GOAL") && e.player
+            );
+            if (goals.length === 0) return null;
+            const scoredFor = (e: (typeof goals)[number]) =>
+              e.type === "OWN_GOAL" ? (e.side === "HOME" ? "AWAY" : "HOME") : e.side;
+            const grouped = new Map<
+              string,
+              { name: string; side: "HOME" | "AWAY"; minutes: number[]; og: boolean }
+            >();
+            for (const g of goals) {
+              const side = scoredFor(g) as "HOME" | "AWAY";
+              const key = `${g.playerId}-${g.type === "OWN_GOAL"}`;
+              const row = grouped.get(key) ?? {
+                name: g.player!.name,
+                side,
+                minutes: [],
+                og: g.type === "OWN_GOAL",
+              };
+              row.minutes.push(g.minute);
+              grouped.set(key, row);
+            }
+            const rows = [...grouped.values()].sort(
+              (a, b) => Math.min(...a.minutes) - Math.min(...b.minutes)
+            );
+            const homeRows = rows.filter((r) => r.side === "HOME");
+            const awayRows = rows.filter((r) => r.side === "AWAY");
+            const col = (list: typeof rows, align: string) => (
+              <div className={`space-y-1.5 ${align}`}>
+                {list.length === 0 ? (
+                  <p className="text-xs text-foreground/35">-</p>
+                ) : (
+                  list.map((r, i) => (
+                    <div key={i} className="text-sm">
+                      <span className="font-display font-semibold">{r.name}</span>
+                      {r.og && <span className="text-red-400/80 text-[10px]"> (เข้าประตูตัวเอง)</span>}
+                      <span className="text-foreground/45 text-xs">
+                        {" "}
+                        {r.minutes.sort((a, b) => a - b).map((m) => `${m}'`).join(", ")}
+                        {r.minutes.length > 1 && ` ·${r.minutes.length} ประตู`}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            );
+            return (
+              <div className="rounded-xl border border-white/10 bg-card p-5">
+                <h2 className="font-display font-bold mb-4">ผู้ทำประตูในนัดนี้ ⚽</h2>
+                <div className="grid grid-cols-2 gap-6">
+                  {col(homeRows, "text-right")}
+                  {col(awayRows, "text-left")}
+                </div>
+              </div>
+            );
+          })()}
+
+        {match.status !== "SCHEDULED" &&
+          (() => {
+            const cards = match.events.filter(
+              (e) => (e.type === "YELLOW_CARD" || e.type === "RED_CARD") && e.side !== "NEUTRAL"
+            );
+            if (cards.length === 0) return null;
+            const count = (side: string, type: string) =>
+              cards.filter((e) => e.side === side && e.type === type).length;
+            const homeY = count("HOME", "YELLOW_CARD");
+            const homeR = count("HOME", "RED_CARD");
+            const awayY = count("AWAY", "YELLOW_CARD");
+            const awayR = count("AWAY", "RED_CARD");
+            const firstCard = cards
+              .filter((e) => e.minute != null)
+              .sort((a, b) => a.minute - b.minute)[0];
+            const cleaner =
+              homeY + homeR * 2 < awayY + awayR * 2
+                ? match.homeTeam.name
+                : homeY + homeR * 2 > awayY + awayR * 2
+                  ? match.awayTeam.name
+                  : null;
+            return (
+              <div className="rounded-xl border border-white/10 bg-card p-5">
+                <h2 className="font-display font-bold mb-4">วินัยในสนาม</h2>
+                <div className="flex items-center justify-center gap-10 text-center">
+                  <div>
+                    <div className="text-xs text-foreground/50 mb-1">{match.homeTeam.name}</div>
+                    <div className="font-display font-bold">
+                      🟨 {homeY} · 🟥 {homeR}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-foreground/50 mb-1">{match.awayTeam.name}</div>
+                    <div className="font-display font-bold">
+                      🟨 {awayY} · 🟥 {awayR}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-white/5 text-center text-xs text-foreground/45 space-y-1">
+                  {firstCard?.player && (
+                    <p>
+                      ใบแรก: 🟨 {firstCard.player.name} ({firstCard.side === "HOME" ? match.homeTeam.name : match.awayTeam.name}) นาที {firstCard.minute}&apos;
+                    </p>
+                  )}
+                  {cleaner && <p className="text-accent/80">เล่นสะอาดกว่า: {cleaner}</p>}
+                </div>
+              </div>
+            );
+          })()}
+
+        {(() => {
+          const subs = match.events.filter((e) => e.type === "SUBSTITUTION");
+          if (subs.length === 0) return null;
+          const sideName = (s: string) =>
+            s === "HOME" ? match.homeTeam.name : s === "AWAY" ? match.awayTeam.name : "";
+          return (
+            <div className="rounded-xl border border-white/10 bg-card p-5">
+              <h2 className="font-display font-bold mb-4">การเปลี่ยนตัว 🔄</h2>
+              <div className="space-y-2 text-sm">
+                {subs
+                  .slice()
+                  .sort((a, b) => a.minute - b.minute)
+                  .map((s) => (
+                    <div key={s.id} className="flex items-center gap-3 rounded-lg bg-white/5 px-3 py-2">
+                      <span className="w-8 font-display font-bold text-accent shrink-0">
+                        {s.minute}&apos;
+                      </span>
+                      <span className="text-foreground/45 text-xs w-24 truncate shrink-0">
+                        {sideName(s.side)}
+                      </span>
+                      <span className="flex-1 flex items-center gap-1.5 flex-wrap">
+                        {s.player && <span className="text-accent">↑ {s.player.name}</span>}
+                        {s.relatedPlayer && (
+                          <span className="text-foreground/50">↓ {s.relatedPlayer.name}</span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {standings.length > 0 &&
           (() => {

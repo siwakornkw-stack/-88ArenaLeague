@@ -42,6 +42,19 @@ export default async function PublicPlayerPage({
     take: 5,
   });
 
+  const [startingApps, assistsGiven] = await Promise.all([
+    prisma.matchLineup.count({
+      where: {
+        playerId,
+        isStarting: true,
+        match: { status: { in: ["LIVE", "FINISHED"] } },
+      },
+    }),
+    prisma.matchEvent.count({
+      where: { type: "GOAL", relatedPlayerId: playerId },
+    }),
+  ]);
+
   const assistPartners = new Map<string, number>();
   for (const ev of events) {
     if (ev.type !== "GOAL") continue;
@@ -190,6 +203,8 @@ export default async function PublicPlayerPage({
           <Stat value={yellows} label="ใบเหลือง" />
           <Stat value={reds} label="ใบแดง" />
           <Stat value={mvpCount} label="MVP" />
+          <Stat value={assistsGiven} label="แอสซิสต์" />
+          <Stat value={goals + assistsGiven} label="มีส่วนร่วมประตู" />
           <Stat value={apps > 0 ? Number((goals / apps).toFixed(2)) : 0} label="ประตู/นัด" />
           {(() => {
             const goalEvents = events.filter((e) => e.type === "GOAL");
@@ -239,6 +254,16 @@ export default async function PublicPlayerPage({
           ) : null;
         })()}
 
+        {apps > 0 && (
+          <p className="text-sm text-foreground/60">
+            ออกสตาร์ทเป็นตัวจริง <b className="text-accent">{startingApps}</b> จาก{" "}
+            <b>{apps}</b> นัด ({Math.round((startingApps / apps) * 100)}%)
+            {apps - startingApps > 0 && (
+              <> · ลงเป็นตัวสำรอง {apps - startingApps} นัด</>
+            )}
+          </p>
+        )}
+
         {(() => {
           const victims = new Map<string, number>();
           for (const e of events) {
@@ -269,6 +294,37 @@ export default async function PublicPlayerPage({
               <span className="text-accent font-display font-bold">{fav[1]} ประตู</span>
             </div>
           ) : null;
+        })()}
+
+        {(() => {
+          const perMatch = new Map<string, number>();
+          for (const e of events) {
+            if (e.type !== "GOAL") continue;
+            perMatch.set(e.matchId, (perMatch.get(e.matchId) ?? 0) + 1);
+          }
+          const hatTricks = [...perMatch.values()].filter((n) => n >= 3).length;
+          const braces = [...perMatch.values()].filter((n) => n === 2).length;
+          const best = Math.max(0, ...perMatch.values());
+          if (braces === 0 && hatTricks === 0) return null;
+          return (
+            <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md flex flex-wrap items-center gap-4">
+              {hatTricks > 0 && (
+                <span>
+                  ⚽⚽⚽ แฮตทริก{" "}
+                  <b className="font-display font-bold text-accent">{hatTricks}</b> ครั้ง
+                </span>
+              )}
+              {braces > 0 && (
+                <span>
+                  ⚽⚽ ยิงคู่{" "}
+                  <b className="font-display font-bold text-accent">{braces}</b> นัด
+                </span>
+              )}
+              <span className="text-foreground/50">
+                ยิงมากสุด {best} ประตูใน 1 นัด
+              </span>
+            </div>
+          );
         })()}
 
         {(() => {

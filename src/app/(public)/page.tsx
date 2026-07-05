@@ -76,6 +76,19 @@ export default async function Home() {
     }),
   ]);
   const totalGoals = (goalSum._sum.homeScore ?? 0) + (goalSum._sum.awayScore ?? 0);
+  const goalsPerMatch = matchCount > 0 ? (totalGoals / matchCount).toFixed(1) : "0.0";
+
+  const biggestWin = recentResults
+    .map((m) => ({ match: m, margin: Math.abs(m.homeScore - m.awayScore) }))
+    .filter((x) => x.margin >= 3)
+    .sort((a, b) => b.margin - a.margin)[0];
+
+  const recentGoals = await prisma.matchEvent.findMany({
+    where: { type: "GOAL", player: { isNot: null } },
+    include: { player: { include: { team: true } }, match: { include: { league: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+  });
 
   const topStandings = featuredLeagues[0] ? await getCachedTopStandings(featuredLeagues[0].id) : [];
   const featuredSponsors = featuredLeagues[0]
@@ -184,6 +197,10 @@ export default async function Home() {
             <Stat value={matchCount} label="แมตช์ที่บันทึกผล" />
             <Stat value={liveMatches.length} label="กำลังแข่งสด" />
             <Stat value={finishedCount} label="ฤดูกาลที่จบแล้ว" />
+            <div>
+              <div className="font-display italic font-extrabold text-3xl text-accent">{goalsPerMatch}</div>
+              <div className="text-sm text-foreground/55">ประตูเฉลี่ยต่อแมตช์</div>
+            </div>
           </div>
 
           {finishedCount > 0 && (
@@ -217,6 +234,19 @@ export default async function Home() {
           <h2 className="font-display italic font-extrabold text-xl text-foreground mb-5">
             ผลการแข่งขัน<span className="text-accent">ล่าสุด</span>
           </h2>
+          {biggestWin && (
+            <Link
+              href={`/matches/${biggestWin.match.id}`}
+              className="mb-4 inline-flex flex-wrap items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2 text-sm hover:border-accent"
+            >
+              <span className="font-display font-bold text-accent">🔥 ผลเด็ด</span>
+              <span className="font-display font-semibold">
+                {biggestWin.match.homeTeam.name} {biggestWin.match.homeScore}-{biggestWin.match.awayScore}{" "}
+                {biggestWin.match.awayTeam.name}
+              </span>
+              <span className="text-xs text-foreground/50">ชนะขาด {biggestWin.margin} ประตู · {biggestWin.match.league.name}</span>
+            </Link>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {recentResults.map((m) => (
               <Link
@@ -232,6 +262,29 @@ export default async function Home() {
                   </span>
                   <span className="truncate text-right">{m.awayTeam.name}</span>
                 </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {recentGoals.length > 0 && (
+        <section className="px-6 md:px-16 py-8 border-b border-white/5">
+          <h2 className="font-display italic font-extrabold text-lg text-foreground mb-4">
+            ผู้ทำประตู<span className="text-accent">ล่าสุด</span>
+          </h2>
+          <div className="flex flex-wrap gap-2.5">
+            {recentGoals.map((g) => (
+              <Link
+                key={g.id}
+                href={`/matches/${g.matchId}`}
+                className="hover-lift flex items-center gap-2 rounded-full border border-white/10 bg-card px-3.5 py-1.5 text-sm hover:border-accent/50"
+              >
+                <span className="text-accent">⚽</span>
+                <span className="font-display font-semibold">{g.player?.name}</span>
+                <span className="text-xs text-foreground/45">
+                  {g.player?.team.name} · {g.minute}&apos;
+                </span>
               </Link>
             ))}
           </div>

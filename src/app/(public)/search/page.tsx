@@ -227,10 +227,22 @@ export default async function SearchPage({
                       {p.number}
                     </span>
                   )}
-                  <div>
-                    <div className="font-display font-semibold">{p.name}</div>
+                  <div className="min-w-0">
+                    <div className="font-display font-semibold flex items-center gap-1.5">
+                      <span className="truncate">{p.name}</span>
+                      {p.status === "INJURED" && (
+                        <span className="shrink-0 rounded-full bg-amber-500/15 text-amber-400 text-[10px] px-1.5 py-0.5 font-semibold">
+                          บาดเจ็บ
+                        </span>
+                      )}
+                      {p.status === "BANNED" && (
+                        <span className="shrink-0 rounded-full bg-red-500/15 text-red-400 text-[10px] px-1.5 py-0.5 font-semibold">
+                          โดนแบน
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-foreground/45">
-                      {p.team.name} · {p.team.league.name}
+                      #{p.number} · {p.position} · {p.team.name}
                     </div>
                   </div>
                 </Link>
@@ -278,6 +290,44 @@ export default async function SearchPage({
             </div>
           </div>
         )}
+
+        {venueMatches.length > 0 &&
+          (() => {
+            const venueMap = new Map<
+              string,
+              { count: number; matchId: string }
+            >();
+            for (const m of venueMatches) {
+              const name = m.venue ?? "";
+              if (!name) continue;
+              const existing = venueMap.get(name);
+              if (existing) existing.count += 1;
+              else venueMap.set(name, { count: 1, matchId: m.id });
+            }
+            const venues = [...venueMap.entries()];
+            if (venues.length === 0) return null;
+            return (
+              <div>
+                <h2 className="font-display font-bold mb-3">
+                  สนามที่ตรงกับคำค้นหา ({venues.length})
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {venues.map(([name, info]) => (
+                    <Link
+                      key={name}
+                      href={`/matches/${info.matchId}`}
+                      className="rounded-full border border-white/15 px-4 py-1.5 text-sm text-foreground/75 hover:border-accent/50 hover:text-accent"
+                    >
+                      📍 {name}
+                      <span className="ml-1.5 text-foreground/40">
+                        {info.count} แมตช์
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
         {venueMatches.length > 0 && (
           <div>

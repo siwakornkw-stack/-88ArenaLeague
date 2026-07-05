@@ -154,6 +154,16 @@ export default async function LeagueDetailPage({
               </p>
             ) : null;
           })()}
+          {(() => {
+            const missingVenue = matches.filter(
+              (m) => m.status === "SCHEDULED" && !m.venue
+            ).length;
+            return missingVenue > 0 ? (
+              <p className="mt-2 text-xs text-foreground/45">
+                📍 {missingVenue} นัดที่ยังไม่กำหนดสนาม — ตั้งสนามได้ที่การ์ด "ตั้งค่าลีก"
+              </p>
+            ) : null;
+          })()}
         </div>
         <div className="flex items-center gap-3">
           {league.status !== "FINISHED" &&
@@ -176,6 +186,59 @@ export default async function LeagueDetailPage({
           </Link>
         </div>
       </div>
+
+      {(() => {
+        const finished = matches.filter((m) => m.status === "FINISHED");
+        if (finished.length === 0) return null;
+        const totalGoals = finished.reduce((s, m) => s + m.homeScore + m.awayScore, 0);
+        const avgGoals = totalGoals / finished.length;
+        const biggest = finished.reduce(
+          (best, m) => {
+            const margin = Math.abs(m.homeScore - m.awayScore);
+            return margin > best.margin ? { margin, m } : best;
+          },
+          { margin: -1, m: finished[0] }
+        );
+        const totalSpectators = finished.reduce((s, m) => s + (m.spectators ?? 0), 0);
+        const cleanSheets = finished.filter(
+          (m) => m.homeScore === 0 || m.awayScore === 0
+        ).length;
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl border border-white/10 bg-card p-4">
+              <div className="text-xs text-foreground/50">ประตูเฉลี่ยต่อนัด</div>
+              <div className="font-display font-bold text-2xl text-accent">
+                {avgGoals.toFixed(2)}
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-card p-4">
+              <div className="text-xs text-foreground/50">ผลต่างมากสุด</div>
+              <div className="font-display font-bold text-2xl">
+                {biggest.margin >= 0 ? `${biggest.margin} ลูก` : "-"}
+              </div>
+              {biggest.margin >= 1 && (
+                <div className="text-[11px] text-foreground/40 truncate">
+                  {biggest.m.homeTeam.name} {biggest.m.homeScore}-{biggest.m.awayScore}{" "}
+                  {biggest.m.awayTeam.name}
+                </div>
+              )}
+            </div>
+            <div className="rounded-xl border border-white/10 bg-card p-4">
+              <div className="text-xs text-foreground/50">คลีนชีต</div>
+              <div className="font-display font-bold text-2xl">{cleanSheets}</div>
+              <div className="text-[11px] text-foreground/40">
+                {Math.round((cleanSheets / finished.length) * 100)}% ของนัดที่จบ
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-card p-4">
+              <div className="text-xs text-foreground/50">ผู้ชมรวม</div>
+              <div className="font-display font-bold text-2xl">
+                {totalSpectators.toLocaleString("th-TH")}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {matches.length === 0 ? (
         <div className="rounded-lg bg-card border border-white/10 p-6 max-w-md space-y-5">
@@ -297,6 +360,7 @@ export default async function LeagueDetailPage({
                   <th className="text-center">แพ้</th>
                   <th className="text-center">ได้-เสีย</th>
                   <th className="text-center">คะแนน</th>
+                  <th className="text-center">เฉลี่ย/นัด</th>
                   <th className="text-center">ฟอร์ม 5 นัด</th>
                 </tr>
               </thead>
@@ -323,6 +387,9 @@ export default async function LeagueDetailPage({
                       {row.goalDiff})
                     </td>
                     <td className="text-center font-semibold">{row.points}</td>
+                    <td className="text-center text-foreground/60">
+                      {row.played > 0 ? (row.points / row.played).toFixed(2) : "-"}
+                    </td>
                     <td>
                       <div className="flex gap-1 justify-center py-1">
                         {row.form.map((f, j) => (

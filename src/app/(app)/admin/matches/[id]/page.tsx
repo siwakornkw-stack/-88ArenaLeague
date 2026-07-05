@@ -131,6 +131,39 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
     formOf(match.awayTeamId),
   ]);
 
+  const unavailableOf = (players: { status: string; name: string }[]) => ({
+    banned: players.filter((p) => p.status === "BANNED").map((p) => p.name),
+    injured: players.filter((p) => p.status === "INJURED").map((p) => p.name),
+  });
+  const homeUnavailable = unavailableOf(match.homeTeam.players);
+  const awayUnavailable = unavailableOf(match.awayTeam.players);
+  const hasUnavailable =
+    homeUnavailable.banned.length +
+      homeUnavailable.injured.length +
+      awayUnavailable.banned.length +
+      awayUnavailable.injured.length >
+    0;
+
+  const goalEvents = match.events.filter(
+    (e) => e.type === "GOAL" || e.type === "OWN_GOAL"
+  );
+  let runHome = 0;
+  let runAway = 0;
+  const scoreTimeline = goalEvents.map((e) => {
+    const countsFor = e.type === "OWN_GOAL" ? (e.side === "HOME" ? "AWAY" : "HOME") : e.side;
+    if (countsFor === "HOME") runHome += 1;
+    else runAway += 1;
+    return {
+      id: e.id,
+      minute: e.minute,
+      side: countsFor as "HOME" | "AWAY",
+      isOwn: e.type === "OWN_GOAL",
+      scorer: e.player?.name ?? "ไม่ระบุ",
+      home: runHome,
+      away: runAway,
+    };
+  });
+
   return (
     <div className="max-w-3xl space-y-8">
       <div className="flex items-center justify-between text-sm">
@@ -221,6 +254,17 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
           รายชื่อส่งแล้ว: {match.homeTeam.name} {homeLineupCount} คน · {match.awayTeam.name}{" "}
           {awayLineupCount} คน
         </p>
+        {hasUnavailable && (
+          <p className="text-center text-[11px] text-amber-400/80">
+            ⚠ ใช้งานไม่ได้:{" "}
+            {[
+              ...homeUnavailable.banned.map((n) => `🟥 ${n}`),
+              ...homeUnavailable.injured.map((n) => `🚑 ${n}`),
+              ...awayUnavailable.banned.map((n) => `🟥 ${n}`),
+              ...awayUnavailable.injured.map((n) => `🚑 ${n}`),
+            ].join(" · ")}
+          </p>
+        )}
         {(homeRecentForm.length > 0 || awayRecentForm.length > 0) && (
           <p className="text-center text-xs text-foreground/35">
             ฟอร์ม 3 นัด: {match.homeTeam.abbr} [{homeRecentForm.join(" ") || "-"}] ·{" "}
@@ -537,6 +581,48 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
                   {m.homeScore}-{m.awayScore}
                 </span>
                 <span className="truncate">{m.awayTeam.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {scoreTimeline.length > 0 && (
+        <div className="rounded-lg bg-card border border-white/10 p-4">
+          <h3 className="text-sm font-semibold mb-2">ลำดับการทำประตู</h3>
+          <div className="space-y-1">
+            {scoreTimeline.map((g) => (
+              <div
+                key={g.id}
+                className="grid grid-cols-[1fr_56px_1fr] items-center gap-2 text-xs"
+              >
+                <span
+                  className={`truncate text-right ${g.side === "HOME" ? "text-foreground/80" : "text-foreground/35"}`}
+                >
+                  {g.side === "HOME" ? (
+                    <>
+                      {g.minute}&apos; {g.scorer}
+                      {g.isOwn ? " (OG)" : ""}
+                    </>
+                  ) : (
+                    ""
+                  )}
+                </span>
+                <span className="text-center font-display font-bold text-accent">
+                  {g.home}-{g.away}
+                </span>
+                <span
+                  className={`truncate ${g.side === "AWAY" ? "text-foreground/80" : "text-foreground/35"}`}
+                >
+                  {g.side === "AWAY" ? (
+                    <>
+                      {g.minute}&apos; {g.scorer}
+                      {g.isOwn ? " (OG)" : ""}
+                    </>
+                  ) : (
+                    ""
+                  )}
+                </span>
               </div>
             ))}
           </div>

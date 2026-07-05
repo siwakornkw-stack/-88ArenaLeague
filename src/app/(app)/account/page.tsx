@@ -38,6 +38,23 @@ export default async function AccountPage({
         ])
       : [[], 0];
 
+  const managedTeamIds = user?.managedTeams.map((t) => t.id) ?? [];
+  const squadByStatus =
+    managedTeamIds.length > 0
+      ? await prisma.player.groupBy({
+          by: ["status"],
+          where: { teamId: { in: managedTeamIds } },
+          _count: { _all: true },
+        })
+      : [];
+  const squadCount = (s: (typeof squadByStatus)[number]["status"]) =>
+    squadByStatus.find((r) => r.status === s)?._count._all ?? 0;
+  const squadTotal = squadByStatus.reduce((sum, r) => sum + r._count._all, 0);
+
+  const memberDays = user
+    ? Math.floor((Date.now() - user.createdAt.getTime()) / 86_400_000)
+    : 0;
+
   return (
     <div className="max-w-sm space-y-6">
       <div>
@@ -70,7 +87,14 @@ export default async function AccountPage({
           )}
           <p>
             <span className="text-foreground/50">สมาชิกตั้งแต่:</span>{" "}
-            {user.createdAt.toLocaleDateString("th-TH", { dateStyle: "long" })}
+            {user.createdAt.toLocaleDateString("th-TH", { dateStyle: "long" })}{" "}
+            <span className="text-foreground/40">
+              (
+              {memberDays >= 365
+                ? `${Math.floor(memberDays / 365)} ปี ${memberDays % 365} วัน`
+                : `${memberDays} วัน`}
+              )
+            </span>
           </p>
           {user.lastLoginAt && (
             <p>
@@ -81,6 +105,41 @@ export default async function AccountPage({
               })}
             </p>
           )}
+        </div>
+      )}
+
+      {squadTotal > 0 && (
+        <div className="rounded-lg bg-card border border-white/10 p-5">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="font-semibold">สถานะนักเตะในทีม</h2>
+            <a href="/teams/mine" className="text-xs text-accent hover:underline">
+              จัดการทีม →
+            </a>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-md bg-black/30 border border-white/10 py-3">
+              <div className="font-display font-bold text-2xl text-accent">
+                {squadCount("ACTIVE")}
+              </div>
+              <div className="text-xs text-foreground/50 mt-0.5">พร้อมเล่น</div>
+            </div>
+            <div className="rounded-md bg-black/30 border border-white/10 py-3">
+              <div className="font-display font-bold text-2xl text-amber-400">
+                {squadCount("INJURED")}
+              </div>
+              <div className="text-xs text-foreground/50 mt-0.5">บาดเจ็บ</div>
+            </div>
+            <div className="rounded-md bg-black/30 border border-white/10 py-3">
+              <div className="font-display font-bold text-2xl text-red-400">
+                {squadCount("BANNED")}
+              </div>
+              <div className="text-xs text-foreground/50 mt-0.5">โดนแบน</div>
+            </div>
+          </div>
+          <p className="text-xs text-foreground/40 mt-3">
+            ผู้เล่นทั้งหมด {squadTotal} คน
+            {squadCount("BANNED") > 0 && " · มีผู้เล่นโดนแบน ปลดแบนได้ที่หน้าจัดการทีม"}
+          </p>
         </div>
       )}
 

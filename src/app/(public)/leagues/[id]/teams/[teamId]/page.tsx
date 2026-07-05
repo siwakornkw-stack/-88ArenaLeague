@@ -335,6 +335,33 @@ export default async function PublicTeamPage({
             );
           })()}
 
+        {allFinished.length >= 3 &&
+          (() => {
+            const chrono = [...allFinished].sort(
+              (a, b) => a.kickoffAt.getTime() - b.kickoffAt.getTime()
+            );
+            let bestWin = 0;
+            let curWin = 0;
+            let bestUnbeaten = 0;
+            let curUnbeaten = 0;
+            for (const m of chrono) {
+              const r = resultFor(m);
+              if (r === "W") curWin++;
+              else curWin = 0;
+              if (r !== "L") curUnbeaten++;
+              else curUnbeaten = 0;
+              if (curWin > bestWin) bestWin = curWin;
+              if (curUnbeaten > bestUnbeaten) bestUnbeaten = curUnbeaten;
+            }
+            return bestWin >= 2 || bestUnbeaten >= 3 ? (
+              <p className="text-xs text-foreground/50">
+                สถิติสูงสุดของฤดูกาล: ชนะติดต่อกันสูงสุด{" "}
+                <b className="text-accent">{bestWin}</b> นัด · ไม่แพ้ติดต่อกันสูงสุด{" "}
+                <b className="text-foreground">{bestUnbeaten}</b> นัด
+              </p>
+            ) : null;
+          })()}
+
         {leagueOnly.length > 0 && (
           <p className="text-sm text-foreground/60">
             ฟอร์ม 5 นัดหลังสุด: ชนะ{" "}
@@ -440,6 +467,55 @@ export default async function PublicTeamPage({
             </div>
           </div>
         )}
+
+        {team.players.length > 0 &&
+          (() => {
+            const byPos = new Map<string, number>();
+            for (const p of team.players) {
+              byPos.set(p.position, (byPos.get(p.position) ?? 0) + 1);
+            }
+            const positions = [...byPos.entries()].sort((a, b) => b[1] - a[1]);
+            return (
+              <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">
+                <div className="text-xs text-foreground/50 mb-2">
+                  โครงสร้างทีมตามตำแหน่ง ({team.players.length} คน)
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {positions.map(([pos, count]) => (
+                    <span
+                      key={pos}
+                      className="rounded-md bg-white/5 px-2.5 py-1.5 flex items-center gap-1.5"
+                    >
+                      <span className="text-foreground/70">{pos}</span>
+                      <span className="font-display font-bold text-accent">{count}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+        {(() => {
+          const attended = allFinished.filter((m) => m.spectators != null);
+          if (attended.length === 0) return null;
+          const top = attended.reduce((a, b) =>
+            (b.spectators ?? 0) > (a.spectators ?? 0) ? b : a
+          );
+          return top.spectators && top.spectators > 0 ? (
+            <Link
+              href={`/matches/${top.id}`}
+              className="block rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md hover:border-accent/40"
+            >
+              <div className="text-xs text-foreground/50 mb-1">👥 นัดที่คนดูมากที่สุด</div>
+              <div className="font-display font-bold">
+                {top.homeTeam.name} {top.homeScore}-{top.awayScore} {top.awayTeam.name}
+              </div>
+              <div className="text-xs text-foreground/50 mt-1">
+                ผู้ชม {top.spectators.toLocaleString("th-TH")} คน
+              </div>
+            </Link>
+          ) : null;
+        })()}
 
         {oppCount.size >= 2 && (
           <div className="rounded-xl border border-white/10 bg-card p-4 max-w-2xl">
