@@ -150,6 +150,14 @@ export default async function ComparePage({
           <button type="submit" className="rounded-md bg-accent text-black font-semibold px-5 py-2 text-sm">
             เปรียบเทียบ
           </button>
+          {ready && (
+            <Link
+              href={`/leagues/${id}/compare?a=${teamB.id}&b=${teamA.id}`}
+              className="text-xs text-foreground/50 hover:text-accent"
+            >
+              ⇄ สลับข้าง
+            </Link>
+          )}
         </form>
       </div>
 

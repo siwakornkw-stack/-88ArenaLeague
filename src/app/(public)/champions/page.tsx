@@ -16,6 +16,7 @@ export default async function ChampionsPage({
 
   const leagues = await prisma.league.findMany({
     where: { status: "FINISHED", hidden: false, ...(yearFilter ? { seasonYear: yearFilter } : {}) },
+    include: { _count: { select: { teams: true, matches: true } } },
     orderBy: [{ seasonYear: "desc" }, { createdAt: "desc" }],
   });
   const allYears = await prisma.league.findMany({
@@ -136,7 +137,8 @@ export default async function ChampionsPage({
                 className="hover-lift rounded-2xl border border-accent/30 bg-gradient-to-r from-[#1a2e12] to-card p-5 hover:border-accent/60"
               >
                 <div className="text-xs text-foreground/50">
-                  ฤดูกาล {league.seasonYear} · {league.name}
+                  ฤดูกาล {league.seasonYear} · {league.name} · {league._count.teams} ทีม ·{" "}
+                  {league._count.matches} นัด
                 </div>
                 <div className="mt-2 flex items-center gap-3">
                   <span className="text-3xl">🏆</span>

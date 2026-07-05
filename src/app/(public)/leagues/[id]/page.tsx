@@ -303,6 +303,37 @@ export default async function PublicLeaguePage({
   })();
 
   const zonesOn = !sideView && !asofRound;
+
+  // title-race math from remaining LEAGUE fixtures
+  const remainingByTeam = new Map<string, number>();
+  for (const m of matches) {
+    if (m.stage !== "LEAGUE" || m.status === "FINISHED") continue;
+    remainingByTeam.set(m.homeTeamId, (remainingByTeam.get(m.homeTeamId) ?? 0) + 1);
+    remainingByTeam.set(m.awayTeamId, (remainingByTeam.get(m.awayTeamId) ?? 0) + 1);
+  }
+  const maxPtsOf = (teamId: string, pts: number) =>
+    pts + (remainingByTeam.get(teamId) ?? 0) * 3;
+  const leader = standings[0] ?? null;
+  const titleContenders = new Set(
+    leader
+      ? standings.filter((r) => maxPtsOf(r.teamId, r.points) >= leader.points).map((r) => r.teamId)
+      : []
+  );
+  const championLocked =
+    leader && standings.length > 1 && zonesOn
+      ? standings.slice(1).every((r) => maxPtsOf(r.teamId, r.points) < leader.points)
+      : false;
+  const doomedTeams = new Set(
+    zonesOn && league.relegatedCount > 0 && standings.length > league.relegatedCount
+      ? standings
+          .slice(-league.relegatedCount)
+          .filter((r) => {
+            const safeLine = standings[standings.length - league.relegatedCount - 1];
+            return safeLine && maxPtsOf(r.teamId, r.points) < safeLine.points;
+          })
+          .map((r) => r.teamId)
+      : []
+  );
   const movement = new Map<string, number>();
   if (tab === "standings" && !sideView && !asofRound && finishedLeagueMatches.length > 0) {
     const lastRound = finishedLeagueMatches.reduce((max, m) => Math.max(max, m.round), 0);
@@ -342,6 +373,9 @@ export default async function PublicLeaguePage({
     { icon: "🏆", label: "ตาราง", href: `/leagues/${id}?tab=standings`, active: tab === "standings" },
     { icon: "📅", label: "โปรแกรม", href: `/leagues/${id}?tab=fixtures`, active: tab === "fixtures" },
     { icon: "👥", label: "ทีม", href: `/leagues/${id}?tab=teams`, active: tab === "teams" },
+    ...(matches.some((m) => m.status === "LIVE")
+      ? [{ icon: "🔴", label: "สด", href: "/live", active: false }]
+      : []),
   ];
 
   return (
@@ -839,6 +873,25 @@ export default async function PublicLeaguePage({
                   <div className="text-xs text-foreground/55">ประตูเหย้า/เยือน</div>
                 </div>
                 {(() => {
+                  const homeWinPts = finishedLeagueMatches.reduce(
+                    (s, m) => s + (m.homeScore > m.awayScore ? 3 : m.homeScore === m.awayScore ? 1 : 0),
+                    0
+                  );
+                  const awayWinPts = finishedLeagueMatches.reduce(
+                    (s, m) => s + (m.awayScore > m.homeScore ? 3 : m.homeScore === m.awayScore ? 1 : 0),
+                    0
+                  );
+                  const totalPts = homeWinPts + awayWinPts || 1;
+                  return (
+                    <div>
+                      <div className="font-display italic font-extrabold text-2xl text-accent">
+                        {Math.round((homeWinPts / totalPts) * 100)}%
+                      </div>
+                      <div className="text-xs text-foreground/55">แต้มเก็บโดยเจ้าบ้าน</div>
+                    </div>
+                  );
+                })()}
+                {(() => {
                   const totalSpectators = matches.reduce((s, m) => s + (m.spectators ?? 0), 0);
                   return totalSpectators > 0 ? (
                     <div>
@@ -919,6 +972,12 @@ export default async function PublicLeaguePage({
           )
         ) : tab === "news" ? (
           <div className="space-y-4 max-w-2xl">
+            {news.length > 0 && (
+              <p className="text-xs text-foreground/45">
+                {news.length} ประกาศ · ล่าสุด{" "}
+                {news[0].createdAt.toLocaleDateString("th-TH", { dateStyle: "medium" })}
+              </p>
+            )}
             {news.map((n) => (
               <div key={n.id} className="rounded-xl border border-white/10 bg-card p-5">
                 <div className="flex items-baseline justify-between gap-3">
@@ -1005,6 +1064,7 @@ export default async function PublicLeaguePage({
                     <th className="text-center">+/-</th>
                     <th className="text-center">แต้ม</th>
                     <th className="text-center">แต้ม/นัด</th>
+                    <th className="text-center">เหลือ</th>
                     <th className="text-center">ฟอร์ม</th>
                   </tr>
                 </thead>
@@ -1057,6 +1117,19 @@ export default async function PublicLeaguePage({
                       <td className="text-center text-foreground/50 text-xs">
                         {row.played > 0 ? (row.points / row.played).toFixed(2) : "-"}
                       </td>
+                      <td className="text-center text-foreground/50 text-xs">
+                        {remainingByTeam.get(row.teamId) ?? 0}
+                        {zonesOn && titleContenders.has(row.teamId) && i > 0 && !championLocked && (
+                          <span className="ml-1 text-accent" title="ยังลุ้นแชมป์ได้ทางคณิตศาสตร์">
+                            ★
+                          </span>
+                        )}
+                        {doomedTeams.has(row.teamId) && (
+                          <span className="ml-1 text-red-400" title="ตกชั้นแน่นอนแล้ว">
+                            ↓
+                          </span>
+                        )}
+                      </td>
                       <td>
                         <div className="flex gap-1 justify-center py-1">
                           {row.form.map((f, j) => (
@@ -1074,7 +1147,24 @@ export default async function PublicLeaguePage({
                 </tbody>
               </table>
               <div className="flex flex-wrap gap-5 px-4 py-3 text-xs text-foreground/45 border-t border-white/5 min-w-[560px]">
-                {zonesOn && league.promotedCount > 0 && (
+                {championLocked && leader && !isFinished && (
+                <div className="px-4 py-2.5 text-sm text-accent border-t border-accent/20 bg-accent/5">
+                  🏆 <b>{leader.teamName}</b> การันตีแชมป์แล้วทางคณิตศาสตร์!
+                </div>
+              )}
+              {zonesOn && leader && !championLocked && standings[1] && (
+                <div className="px-4 py-2 text-xs text-foreground/45 border-t border-white/5">
+                  Magic number: จ่าฝูงต้องเก็บอีก{" "}
+                  <b className="text-accent">
+                    {Math.max(
+                      0,
+                      maxPtsOf(standings[1].teamId, standings[1].points) - leader.points + 1
+                    )}
+                  </b>{" "}
+                  แต้มเพื่อการันตีแชมป์ · ★ = ยังลุ้นแชมป์ได้
+                </div>
+              )}
+              {zonesOn && league.promotedCount > 0 && (
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-sm bg-accent inline-block" /> เข้ารอบแชมเปียนส์
                   </span>

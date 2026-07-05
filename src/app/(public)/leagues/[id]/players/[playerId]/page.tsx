@@ -143,7 +143,20 @@ export default async function PublicPlayerPage({
               <span className="text-accent"> · ดาวซัลโวอันดับ {scorerRank} ของลีก</span>
             )}
           </p>
-          <div className="mt-2 flex items-center gap-3">
+          <div className="mt-2 flex items-center gap-3 flex-wrap">
+            {(() => {
+              const lastTwoMatchIds = [...new Set(events.map((e) => e.matchId))].slice(0, 2);
+              const hot =
+                lastTwoMatchIds.length === 2 &&
+                lastTwoMatchIds.every((mid) =>
+                  events.some((e) => e.matchId === mid && e.type === "GOAL")
+                );
+              return hot ? (
+                <span className="text-xs rounded-full bg-accent/15 text-accent px-3 py-1">
+                  🔥 ฟอร์มร้อน — ยิง 2 นัดติด
+                </span>
+              ) : null;
+            })()}
             {player.status === "BANNED" && (
               <span className="text-xs rounded-full bg-red-500/10 text-red-400 px-3 py-1">
                 ⛔ ติดโทษแบน
@@ -206,6 +219,25 @@ export default async function PublicPlayerPage({
             <GoalsBarChart rounds={MINUTE_BUCKETS} values={goalBuckets} />
           </div>
         )}
+
+        {(() => {
+          const goalEvents = events.filter((e) => e.type === "GOAL");
+          const winWhenScores = goalEvents.filter((e) => {
+            const isHome = e.match.homeTeamId === player.teamId;
+            return isHome
+              ? e.match.homeScore > e.match.awayScore
+              : e.match.awayScore > e.match.homeScore;
+          });
+          const uniqueWinMatches = new Set(winWhenScores.map((e) => e.matchId)).size;
+          const uniqueScoreMatches = new Set(goalEvents.map((e) => e.matchId)).size;
+          return uniqueScoreMatches > 0 ? (
+            <p className="text-sm text-foreground/60">
+              ทีมชนะ <b className="text-accent">{uniqueWinMatches}</b> จาก{" "}
+              <b>{uniqueScoreMatches}</b> นัดที่เขายิงประตู (
+              {Math.round((uniqueWinMatches / uniqueScoreMatches) * 100)}%)
+            </p>
+          ) : null;
+        })()}
 
         {(() => {
           const victims = new Map<string, number>();

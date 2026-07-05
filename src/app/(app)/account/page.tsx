@@ -24,7 +24,7 @@ export default async function AccountPage({
   const message = status ? STATUS_MESSAGE[status] : null;
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    include: { managedTeams: { select: { name: true } } },
+    include: { managedTeams: { select: { id: true, name: true, leagueId: true } } },
   });
   const [myLogs, myLogCount] =
     session.role === "SUPER_ADMIN"
@@ -57,7 +57,15 @@ export default async function AccountPage({
           {user.managedTeams.length > 0 && (
             <p>
               <span className="text-foreground/50">ทีมที่ดูแล:</span>{" "}
-              {user.managedTeams.map((t) => t.name).join(", ")}
+              {user.managedTeams.map((t) => t.name).join(", ")}{" "}
+              <a
+                href={`/leagues/${user.managedTeams[0].leagueId}/teams/${user.managedTeams[0].id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                ดูหน้าสาธารณะ ↗
+              </a>
             </p>
           )}
           <p>

@@ -12,6 +12,7 @@ import {
   deletePlayer,
   setLineup,
   copyLastLineup,
+  clearLineup,
   updateMyTeam,
   importPlayers,
 } from "./actions";
@@ -378,11 +379,20 @@ export default async function MyTeamPage({
               บันทึกตัวจริง
             </button>
           </form>
-          <form action={copyLastLineup.bind(null, nextMatch.id)} className="mt-2">
-            <button type="submit" className="text-xs text-foreground/60 hover:text-accent">
-              📋 คัดลอกรายชื่อจากนัดที่แล้ว
-            </button>
-          </form>
+          <div className="mt-2 flex items-center gap-4">
+            <form action={copyLastLineup.bind(null, nextMatch.id)}>
+              <button type="submit" className="text-xs text-foreground/60 hover:text-accent">
+                📋 คัดลอกรายชื่อจากนัดที่แล้ว
+              </button>
+            </form>
+            {selectedPlayerIds.size > 0 && (
+              <form action={clearLineup.bind(null, nextMatch.id)}>
+                <button type="submit" className="text-xs text-foreground/40 hover:text-red-400">
+                  🗑 ล้างรายชื่อทั้งหมด
+                </button>
+              </form>
+            )}
+          </div>
           {selectedPlayerIds.size > 0 && (
             <p className="mt-2 text-xs text-foreground/45">
               ที่เลือกไว้:{" "}

@@ -42,7 +42,7 @@ export default async function AdminLogsPage({
       : {}),
   };
 
-  const [logs, actions, total, leagues] = await Promise.all([
+  const [logs, actions, total, leagues, actionCounts] = await Promise.all([
     prisma.adminLog.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -52,6 +52,12 @@ export default async function AdminLogsPage({
     prisma.adminLog.findMany({ distinct: ["action"], select: { action: true } }),
     prisma.adminLog.count({ where }),
     prisma.league.findMany({ select: { id: true, name: true }, orderBy: { createdAt: "desc" } }),
+    prisma.adminLog.groupBy({
+      by: ["action"],
+      _count: { action: true },
+      orderBy: { _count: { action: "desc" } },
+      take: 8,
+    }),
   ]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -108,6 +114,24 @@ export default async function AdminLogsPage({
           ⬇ Export CSV
         </a>
       </form>
+
+      {actionCounts.length > 0 && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          {actionCounts.map((a) => (
+            <a
+              key={a.action}
+              href={`/admin/logs?action=${encodeURIComponent(a.action)}`}
+              className={`rounded-full px-3 py-1 border ${
+                actionFilter === a.action
+                  ? "border-accent text-accent bg-accent/10"
+                  : "border-white/10 text-foreground/60 hover:border-accent/50 hover:text-accent"
+              }`}
+            >
+              {a.action} ×{a._count.action}
+            </a>
+          ))}
+        </div>
+      )}
 
       <div className="rounded-lg bg-card border border-white/10 divide-y divide-white/5">
         {logs.map((log) => (

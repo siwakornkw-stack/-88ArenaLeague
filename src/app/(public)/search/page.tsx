@@ -126,7 +126,21 @@ export default async function SearchPage({
           players.length === 0 &&
           leagues.length === 0 &&
           venueMatches.length === 0 && (
-            <p className="text-foreground/50 text-sm">ไม่พบผลลัพธ์สำหรับ &quot;{query}&quot;</p>
+            <div className="text-foreground/50 text-sm space-y-1">
+              <p>ไม่พบผลลัพธ์สำหรับ &quot;{query}&quot;</p>
+              {await (async () => {
+                const [teamTotal, playerTotal] = await Promise.all([
+                  prisma.team.count({ where: { league: { status: { not: "DRAFT" } } } }),
+                  prisma.player.count({ where: { team: { league: { status: { not: "DRAFT" } } } } }),
+                ]);
+                return (
+                  <p className="text-xs text-foreground/40">
+                    ระบบมี {teamTotal} ทีม และ {playerTotal} นักเตะ — ลองพิมพ์คำสั้นลง
+                    หรือเปลี่ยนเป็น &quot;ทุกลีก&quot;
+                  </p>
+                );
+              })()}
+            </div>
           )}
 
         {leagues.length > 0 && (

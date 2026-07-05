@@ -68,11 +68,15 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
   const siblings = await prisma.match.findMany({
     where: { leagueId: match.leagueId },
     orderBy: [{ kickoffAt: "asc" }, { id: "asc" }],
-    select: { id: true },
+    select: { id: true, status: true },
   });
   const idx = siblings.findIndex((m) => m.id === id);
   const prevId = idx > 0 ? siblings[idx - 1].id : null;
   const nextId = idx >= 0 && idx < siblings.length - 1 ? siblings[idx + 1].id : null;
+  const pendingNext =
+    siblings.find((m, i) => i > idx && m.status !== "FINISHED") ??
+    siblings.find((m) => m.id !== id && m.status !== "FINISHED") ??
+    null;
 
   const kickOffWithId = kickOff.bind(null, id);
   const addGoalWithId = addGoal.bind(null, id);
@@ -155,6 +159,15 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
           <span />
         )}
       </div>
+
+      {match.status === "FINISHED" && pendingNext && (
+        <Link
+          href={`/admin/matches/${pendingNext.id}`}
+          className="block rounded-lg border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm text-accent hover:bg-accent/15"
+        >
+          ⏭ นัดถัดไปที่ต้องบันทึก →
+        </Link>
+      )}
 
       <div className="rounded-lg bg-card border border-white/10 p-6 space-y-2">
         <div className="flex items-center justify-between">

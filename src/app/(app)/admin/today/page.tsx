@@ -57,33 +57,43 @@ export default async function AdminTodayPage() {
           <h2 className="font-semibold mb-3">{leagueName}</h2>
           <div className="space-y-2">
             {ms.map((m) => (
-              <Link
+              <div
                 key={m.id}
-                href={`/admin/matches/${m.id}`}
-                className="flex items-center justify-between rounded-md bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                className="flex items-center gap-2 rounded-md bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
               >
-                <span>
-                  {m.homeTeam.name}{" "}
-                  {m.status !== "SCHEDULED" && (
-                    <b>
-                      {m.homeScore}-{m.awayScore}
-                    </b>
-                  )}{" "}
-                  {m.awayTeam.name}
-                </span>
-                <span
-                  className={`text-xs ${m.status === "LIVE" ? "text-red-400" : "text-foreground/50"}`}
+                <Link href={`/admin/matches/${m.id}`} className="flex-1 flex items-center justify-between">
+                  <span>
+                    {m.homeTeam.name}{" "}
+                    {m.status !== "SCHEDULED" && (
+                      <b>
+                        {m.homeScore}-{m.awayScore}
+                      </b>
+                    )}{" "}
+                    {m.awayTeam.name}
+                  </span>
+                  <span
+                    className={`text-xs ${m.status === "LIVE" ? "text-red-400" : "text-foreground/50"}`}
+                  >
+                    {m.status === "LIVE"
+                      ? `● สด ${m.events[0] ? computeLiveMinute(m.events[0].createdAt) : 0}'`
+                      : m.status === "FINISHED"
+                        ? "จบ"
+                        : m.kickoffAt.toLocaleTimeString("th-TH", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                  </span>
+                </Link>
+                <Link
+                  href={`/matches/${m.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-foreground/40 hover:text-accent shrink-0"
+                  title="เปิดหน้าสาธารณะ"
                 >
-                  {m.status === "LIVE"
-                    ? `● สด ${m.events[0] ? computeLiveMinute(m.events[0].createdAt) : 0}'`
-                    : m.status === "FINISHED"
-                      ? "จบ"
-                      : m.kickoffAt.toLocaleTimeString("th-TH", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                </span>
-              </Link>
+                  ↗
+                </Link>
+              </div>
             ))}
           </div>
         </div>

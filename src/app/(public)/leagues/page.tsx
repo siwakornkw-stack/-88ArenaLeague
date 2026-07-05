@@ -5,7 +5,7 @@ import { MobileNav } from "@/components/mobile-nav";
 
 export const dynamic = "force-dynamic";
 
-function LeagueCard({ lg }: { lg: FeaturedLeague }) {
+function LeagueCard({ lg, lastPlayed }: { lg: FeaturedLeague; lastPlayed?: Date | null }) {
   return (
     <Link
       href={`/leagues/${lg.id}`}
@@ -31,6 +31,12 @@ function LeagueCard({ lg }: { lg: FeaturedLeague }) {
           <span className="text-accent flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse inline-block" />
             {lg.live} แมตช์สด
+          </span>
+        )}
+        {lastPlayed && (
+          <span>
+            🕑 เตะล่าสุด{" "}
+            {lastPlayed.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
           </span>
         )}
       </div>
@@ -59,13 +65,19 @@ export default async function LeaguesIndexPage({
   const { q = "", sort = "latest" } = await searchParams;
   const query = q.trim();
 
-  const [leagues, finishedIds, liveNow, totalTeams] = await Promise.all([
+  const [leagues, finishedIds, liveNow, totalTeams, lastPlayedRows] = await Promise.all([
     getFeaturedLeagues(100),
     prisma.league.findMany({ where: { status: "FINISHED" }, select: { id: true } }),
     prisma.match.count({ where: { status: "LIVE" } }),
     prisma.team.count({ where: { league: { status: { not: "DRAFT" } } } }),
+    prisma.match.groupBy({
+      by: ["leagueId"],
+      where: { status: "FINISHED" },
+      _max: { kickoffAt: true },
+    }),
   ]);
   const finishedSet = new Set(finishedIds.map((l) => l.id));
+  const lastPlayedMap = new Map(lastPlayedRows.map((r) => [r.leagueId, r._max.kickoffAt]));
 
   let filtered = query
     ? leagues.filter((lg) => lg.name.toLowerCase().includes(query.toLowerCase()))
@@ -124,7 +136,7 @@ export default async function LeaguesIndexPage({
             <h2 className="font-display font-bold text-lg mb-4">กำลังแข่งขัน ({active.length})</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {active.map((lg) => (
-                <LeagueCard key={lg.id} lg={lg} />
+                <LeagueCard key={lg.id} lg={lg} lastPlayed={lastPlayedMap.get(lg.id)} />
               ))}
             </div>
           </div>
@@ -137,7 +149,7 @@ export default async function LeaguesIndexPage({
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {finished.map((lg) => (
-                <LeagueCard key={lg.id} lg={lg} />
+                <LeagueCard key={lg.id} lg={lg} lastPlayed={lastPlayedMap.get(lg.id)} />
               ))}
             </div>
           </div>

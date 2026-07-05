@@ -340,6 +340,12 @@ export default async function Home() {
           88ARENA<span className="text-accent">LEAGUE</span>
         </span>
         <nav className="flex gap-5 text-xs text-foreground/55">
+          <Link href="/live" className="hover:text-accent">
+            แมตช์สด
+          </Link>
+          <Link href="/stats" className="hover:text-accent">
+            สถิติรวม
+          </Link>
           <Link href="/leagues" className="hover:text-accent">
             ลีกทั้งหมด
           </Link>

@@ -38,7 +38,7 @@ export default async function DashboardPage() {
       orderBy: { createdAt: "desc" },
       include: {
         teams: { select: { id: true } },
-        matches: { select: { round: true, status: true } },
+        matches: { select: { round: true, status: true, kickoffAt: true } },
       },
     }),
     prisma.match.findMany({
@@ -67,7 +67,7 @@ export default async function DashboardPage() {
     prisma.adminLog.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
     prisma.user.findMany({
       include: { managedTeams: { select: { name: true } } },
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ lastLoginAt: { sort: "desc", nulls: "last" } }, { createdAt: "asc" }],
     }),
     prisma.match.findMany({
       where: {
@@ -224,6 +224,16 @@ export default async function DashboardPage() {
           {leagues.map((league) => {
             const { totalRounds, currentRound } = computeRoundProgress(league.matches);
             const pending = league.matches.filter((m) => m.status === "LIVE").length;
+            const lastFinished = league.matches
+              .filter((m) => m.status === "FINISHED")
+              .reduce<Date | null>(
+                (max, m) => (!max || m.kickoffAt > max ? m.kickoffAt : max),
+                null
+              );
+            const quiet =
+              league.status === "IN_PROGRESS" &&
+              lastFinished !== null &&
+              now.getTime() - lastFinished.getTime() > 14 * 86400000;
             return (
               <div
                 key={league.id}
@@ -248,6 +258,11 @@ export default async function DashboardPage() {
                     {totalRounds > 0 ? `นัดที่ ${currentRound}/${totalRounds}` : "ยังไม่มีตาราง"}
                   </span>
                   {pending > 0 && <span className="text-accent">● {pending} รอบันทึกผล</span>}
+                  {quiet && (
+                    <span className="rounded-full bg-yellow-400/10 text-yellow-400 px-2 py-0.5 text-[10px]">
+                      💤 เงียบเกิน 14 วัน
+                    </span>
+                  )}
                 </div>
 
                 {totalRounds > 0 && (

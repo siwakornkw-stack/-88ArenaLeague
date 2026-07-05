@@ -144,6 +144,16 @@ export default async function LeagueDetailPage({
               />
             </div>
           )}
+          {(() => {
+            const overdue = matches.filter(
+              (m) => m.status === "SCHEDULED" && m.kickoffAt < new Date()
+            ).length;
+            return overdue > 0 ? (
+              <p className="mt-2 text-xs text-yellow-400">
+                ⚠ {overdue} นัดเลยกำหนดเตะแต่ยังไม่บันทึกผล — เลื่อนนัดหรือบันทึกผลย้อนหลัง
+              </p>
+            ) : null;
+          })()}
         </div>
         <div className="flex items-center gap-3">
           {league.status !== "FINISHED" &&

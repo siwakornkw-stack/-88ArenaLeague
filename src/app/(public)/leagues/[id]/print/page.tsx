@@ -1,19 +1,21 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { computeStandings } from "@/lib/standings";
+import { getTopScorers } from "@/lib/topScorers";
 
 export default async function PrintLeaguePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const league = await prisma.league.findUnique({ where: { id } });
   if (!league) notFound();
 
-  const [standings, matches] = await Promise.all([
+  const [standings, matches, topScorers] = await Promise.all([
     computeStandings(id),
     prisma.match.findMany({
       where: { leagueId: id, status: "FINISHED" },
       include: { homeTeam: true, awayTeam: true },
       orderBy: [{ round: "asc" }, { kickoffAt: "asc" }],
     }),
+    getTopScorers(id, 5),
   ]);
 
   return (
@@ -57,6 +59,24 @@ export default async function PrintLeaguePage({ params }: { params: Promise<{ id
           ))}
         </tbody>
       </table>
+
+      {topScorers.length > 0 && (
+        <>
+          <h2 className="font-bold mb-2">ดาวซัลโว 5 อันดับ</h2>
+          <table className="w-full border-collapse mb-8">
+            <tbody>
+              {topScorers.map((s, i) => (
+                <tr key={s.playerId} className="border-b border-neutral-200">
+                  <td className="py-1 pr-2 w-8">{i + 1}</td>
+                  <td>{s.playerName}</td>
+                  <td className="text-neutral-500">{s.teamName}</td>
+                  <td className="text-center font-bold w-16">{s.goals} ประตู</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
 
       <h2 className="font-bold mb-2">ผลการแข่งขัน</h2>
       <table className="w-full border-collapse">

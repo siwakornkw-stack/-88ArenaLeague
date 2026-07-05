@@ -11,7 +11,12 @@ export const metadata = {
 };
 
 export default async function LivePage() {
-  const [live, upcoming] = await Promise.all([
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+
+  const [live, upcoming, todayPlayed] = await Promise.all([
     prisma.match.findMany({
       where: { status: "LIVE" },
       include: {
@@ -28,7 +33,16 @@ export default async function LivePage() {
       orderBy: { kickoffAt: "asc" },
       take: 6,
     }),
+    prisma.match.findMany({
+      where: {
+        status: { not: "SCHEDULED" },
+        kickoffAt: { gte: dayStart, lt: dayEnd },
+      },
+      select: { homeScore: true, awayScore: true },
+    }),
   ]);
+
+  const todayGoals = todayPlayed.reduce((s, m) => s + m.homeScore + m.awayScore, 0);
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -45,6 +59,7 @@ export default async function LivePage() {
         </h1>
         <p className="mt-1 text-sm text-foreground/55">
           {live.length > 0 ? `${live.length} แมตช์กำลังแข่งขัน · รีเฟรชอัตโนมัติทุก 60 วิ` : "ยังไม่มีแมตช์สดตอนนี้"}
+          {todayGoals > 0 && <span className="text-accent"> · ⚽ {todayGoals} ประตูวันนี้</span>}
         </p>
       </div>
 

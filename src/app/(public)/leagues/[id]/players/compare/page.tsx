@@ -113,14 +113,24 @@ export default async function PlayersComparePage({
           <div className="rounded-xl border border-white/10 bg-card overflow-hidden max-w-2xl">
             <div className="grid grid-cols-[1fr_auto_1fr] items-center px-5 py-4 border-b border-white/10 text-sm">
               <div>
-                <div className="font-display font-bold">{pA.name}</div>
+                <Link
+                  href={`/leagues/${id}/players/${pA.id}`}
+                  className="font-display font-bold hover:text-accent"
+                >
+                  {pA.name} ↗
+                </Link>
                 <div className="text-xs text-foreground/45">
                   {pA.team.name} · #{pA.number} · {pA.position}
                 </div>
               </div>
               <span className="text-foreground/40 px-4">vs</span>
               <div className="text-right">
-                <div className="font-display font-bold">{pB.name}</div>
+                <Link
+                  href={`/leagues/${id}/players/${pB.id}`}
+                  className="font-display font-bold hover:text-accent"
+                >
+                  {pB.name} ↗
+                </Link>
                 <div className="text-xs text-foreground/45">
                   {pB.team.name} · #{pB.number} · {pB.position}
                 </div>

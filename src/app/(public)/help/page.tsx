@@ -104,7 +104,11 @@ export default function HelpPage() {
           <Tip>
             ใช้เมนู <Link href="/search" className="text-accent hover:underline">ค้นหา</Link>{" "}
             พิมพ์ชื่อทีม นักเตะ ลีก หรือแม้แต่ชื่อสนาม แล้วดูแชมป์เก่าทั้งหมดได้ที่{" "}
-            <Link href="/champions" className="text-accent hover:underline">หอเกียรติยศ</Link>
+            <Link href="/champions" className="text-accent hover:underline">หอเกียรติยศ</Link>{" "}
+            — ดูทุกแมตช์ที่กำลังเตะพร้อมกันที่{" "}
+            <Link href="/live" className="text-accent hover:underline">แมตช์สด</Link>{" "}
+            และตัวเลขรวมทั้งระบบที่{" "}
+            <Link href="/stats" className="text-accent hover:underline">สถิติรวม</Link>
           </Tip>
         </section>
 

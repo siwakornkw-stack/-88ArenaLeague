@@ -41,7 +41,10 @@ export default async function LeagueTeamsPage({ params }: { params: Promise<{ id
           ← {league.name}
         </Link>
         <h1 className="font-display font-bold text-3xl mt-2">จัดการทีม</h1>
-        <p className="text-foreground/60 mt-1">เพิ่มทีมและกำหนดผู้จัดการทีมสำหรับ {league.name}</p>
+        <p className="text-foreground/60 mt-1">
+          เพิ่มทีมและกำหนดผู้จัดการทีมสำหรับ {league.name} · {league.teams.length} ทีม ·{" "}
+          {league.teams.reduce((s, t) => s + t._count.players, 0)} นักเตะรวม
+        </p>
       </div>
 
       <div className="space-y-3">

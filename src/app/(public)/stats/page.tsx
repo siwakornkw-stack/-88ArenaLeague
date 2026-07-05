@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 export default async function GlobalStatsPage() {
-  const [finished, leagues, topScorers] = await Promise.all([
+  const [finished, leagues, topScorers, yellowCount, redCount, scorerIds] = await Promise.all([
     prisma.match.findMany({
       where: { status: "FINISHED", league: { hidden: false } },
       select: { homeScore: true, awayScore: true, leagueId: true, spectators: true },
@@ -25,6 +25,17 @@ export default async function GlobalStatsPage() {
       _count: { playerId: true },
       orderBy: { _count: { playerId: "desc" } },
       take: 5,
+    }),
+    prisma.matchEvent.count({
+      where: { type: "YELLOW_CARD", match: { league: { hidden: false } } },
+    }),
+    prisma.matchEvent.count({
+      where: { type: "RED_CARD", match: { league: { hidden: false } } },
+    }),
+    prisma.matchEvent.findMany({
+      where: { type: "GOAL", playerId: { not: null }, match: { league: { hidden: false } } },
+      select: { playerId: true },
+      distinct: ["playerId"],
     }),
   ]);
 
@@ -88,6 +99,24 @@ export default async function GlobalStatsPage() {
               <div className="text-xs text-foreground/55">ผู้ชมสะสม</div>
             </div>
           )}
+          <div>
+            <div className="font-display italic font-extrabold text-2xl text-yellow-400">
+              {yellowCount}
+            </div>
+            <div className="text-xs text-foreground/55">ใบเหลืองทั้งระบบ</div>
+          </div>
+          <div>
+            <div className="font-display italic font-extrabold text-2xl text-red-400">
+              {redCount}
+            </div>
+            <div className="text-xs text-foreground/55">ใบแดงทั้งระบบ</div>
+          </div>
+          <div>
+            <div className="font-display italic font-extrabold text-2xl text-accent">
+              {scorerIds.length}
+            </div>
+            <div className="text-xs text-foreground/55">นักเตะที่ยิงได้อย่างน้อย 1 ประตู</div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">

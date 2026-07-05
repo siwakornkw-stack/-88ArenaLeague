@@ -238,6 +238,18 @@ export async function setLineup(matchId: string, formData: FormData) {
   revalidatePath("/teams/mine");
 }
 
+export async function clearLineup(matchId: string) {
+  const teamId = await getManagedTeamIdForMatch(matchId);
+
+  const match = await prisma.match.findUniqueOrThrow({ where: { id: matchId } });
+  if (match.status !== "SCHEDULED" || match.kickoffAt.getTime() <= Date.now()) {
+    throw new Error("หมดเวลาแก้รายชื่อ แมตช์เริ่มแข่งแล้ว");
+  }
+
+  await prisma.matchLineup.deleteMany({ where: { matchId, player: { teamId } } });
+  revalidatePath("/teams/mine");
+}
+
 // copy the lineup from this team's most recent finished match
 export async function copyLastLineup(matchId: string) {
   const teamId = await getManagedTeamIdForMatch(matchId);

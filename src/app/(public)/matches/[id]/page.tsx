@@ -304,7 +304,9 @@ export default async function PublicMatchPage({
               href={match.streamUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-md bg-red-600 text-white font-semibold px-5 py-2 text-sm"
+              className={`rounded-md bg-red-600 text-white font-semibold px-5 py-2 text-sm ${
+                match.status === "LIVE" ? "live-glow" : ""
+              }`}
             >
               ▶ ดูถ่ายทอดสด
             </a>
@@ -473,6 +475,55 @@ export default async function PublicMatchPage({
                   <div className="text-xs text-foreground/50">{match.awayTeam.name} ชนะ</div>
                 </div>
               </div>
+              {(() => {
+                const totalGoals = h2h.reduce((s, m) => s + m.homeScore + m.awayScore, 0);
+                const results = h2h.map((m) => {
+                  const hg = m.homeTeamId === match.homeTeamId ? m.homeScore : m.awayScore;
+                  const ag = m.homeTeamId === match.homeTeamId ? m.awayScore : m.homeScore;
+                  return hg > ag ? "W" : hg < ag ? "L" : "D";
+                });
+                let streak = 0;
+                const first = results[0];
+                for (const r of results) {
+                  if (r === first && r !== "D") streak++;
+                  else break;
+                }
+                const oldest = h2h[h2h.length - 1];
+                return (
+                  <div className="mb-4 space-y-2 text-xs text-foreground/50 text-center">
+                    <div className="flex justify-center gap-1">
+                      {results.map((r, i) => (
+                        <span
+                          key={i}
+                          className={`w-5 h-5 rounded text-[10px] font-bold grid place-items-center ${
+                            r === "W"
+                              ? "bg-accent text-black"
+                              : r === "L"
+                                ? "bg-red-500 text-white"
+                                : "bg-white/15 text-foreground"
+                          }`}
+                        >
+                          {r === "W" ? "ช" : r === "L" ? "พ" : "ส"}
+                        </span>
+                      ))}
+                      <span className="ml-2 self-center">(มุมมอง {match.homeTeam.name})</span>
+                    </div>
+                    <p>
+                      เฉลี่ย {(totalGoals / h2h.length).toFixed(1)} ประตู/นัดเมื่อเจอกัน
+                      {streak >= 2 && (
+                        <>
+                          {" "}
+                          ·{" "}
+                          {first === "W" ? match.homeTeam.name : match.awayTeam.name} ชนะคู่นี้{" "}
+                          {streak} นัดติด
+                        </>
+                      )}
+                      {" "}· เจอกันครั้งแรก{" "}
+                      {oldest.kickoffAt.toLocaleDateString("th-TH", { dateStyle: "medium" })}
+                    </p>
+                  </div>
+                );
+              })()}
               <div className="flex flex-col gap-2">
                 {h2h.map((m) => (
                   <Link
