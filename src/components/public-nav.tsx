@@ -2,7 +2,9 @@ import Link from "next/link";
 
 const NAV_LINKS = [
   { href: "/", label: "หน้าแรก" },
+  { href: "/live", label: "สด" },
   { href: "/leagues", label: "ลีกทั้งหมด" },
+  { href: "/stats", label: "สถิติรวม" },
   { href: "/search", label: "ค้นหา" },
   { href: "/champions", label: "หอเกียรติยศ" },
   { href: "/help", label: "วิธีใช้" },

@@ -418,6 +418,21 @@ export default async function MyTeamPage({
       )}
 
       {(() => {
+        const todayMatch = teamMatches.find(
+          (m) =>
+            m.status !== "FINISHED" &&
+            m.kickoffAt.toDateString() === new Date().toDateString()
+        );
+        return todayMatch ? (
+          <div className="rounded-md bg-accent/10 border border-accent/40 px-4 py-2.5 text-sm">
+            🔥 <b>ทีมมีแข่งวันนี้!</b> {todayMatch.homeTeam.name} vs {todayMatch.awayTeam.name} ·{" "}
+            {todayMatch.kickoffAt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
+            {todayMatch.venue && <> · {todayMatch.venue}</>}
+          </div>
+        ) : null;
+      })()}
+
+      {(() => {
         const atRisk = team.players.filter(
           (p) => p.status === "ACTIVE" && (yellowsByPlayer.get(p.id) ?? 0) >= 3
         );

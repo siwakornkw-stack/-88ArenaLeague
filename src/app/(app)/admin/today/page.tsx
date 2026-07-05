@@ -39,6 +39,12 @@ export default async function AdminTodayPage() {
           <span className="text-red-400">
             ● {matches.filter((m) => m.status === "LIVE").length} สด
           </span>
+          {matches.some((m) => (m.spectators ?? 0) > 0) && (
+            <>
+              {" "}
+              · 👥 {matches.reduce((s, m) => s + (m.spectators ?? 0), 0).toLocaleString()} ผู้ชม
+            </>
+          )}
         </p>
       </div>
 

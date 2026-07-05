@@ -478,7 +478,17 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
 
       {h2h.length > 0 && (
         <div className="rounded-lg bg-card border border-white/10 p-4">
-          <h3 className="text-sm font-semibold mb-2">ผลเจอกันล่าสุด</h3>
+          <h3 className="text-sm font-semibold mb-2 flex items-center justify-between">
+            ผลเจอกันล่าสุด
+            <Link
+              href={`/leagues/${match.leagueId}/compare?a=${match.homeTeamId}&b=${match.awayTeamId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-accent hover:underline font-normal"
+            >
+              เทียบเต็ม ↗
+            </Link>
+          </h3>
           <div className="space-y-1">
             {h2h.map((m) => (
               <div key={m.id} className="grid grid-cols-[1fr_56px_1fr] items-center gap-2 text-xs text-foreground/70">

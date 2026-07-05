@@ -319,6 +319,27 @@ export default async function PublicTeamPage({
           </div>
         )}
 
+        {(() => {
+          const ages = team.players
+            .filter((p) => p.birthYear)
+            .map((p) => new Date().getFullYear() - p.birthYear!);
+          const avgAge = ages.length > 0 ? (ages.reduce((s, a) => s + a, 0) / ages.length).toFixed(1) : null;
+          const mostUsed = [...appsByPlayer.entries()].sort((a, b) => b[1] - a[1])[0];
+          const mostUsedPlayer = mostUsed ? team.players.find((p) => p.id === mostUsed[0]) : null;
+          return avgAge || mostUsedPlayer ? (
+            <p className="text-sm text-foreground/60">
+              {avgAge && <>อายุเฉลี่ยทีม <b className="text-foreground">{avgAge}</b> ปี</>}
+              {avgAge && mostUsedPlayer && " · "}
+              {mostUsedPlayer && (
+                <>
+                  ใช้งานมากสุด: <b className="text-foreground">{mostUsedPlayer.name}</b> (
+                  {mostUsed![1]} นัด)
+                </>
+              )}
+            </p>
+          ) : null;
+        })()}
+
         {topTeamScorers.length > 0 && (
           <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">
             <div className="text-xs text-foreground/50 mb-2">⚽ ดาวซัลโวของทีม</div>

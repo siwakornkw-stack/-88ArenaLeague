@@ -178,6 +178,26 @@ export default async function PublicPlayerPage({
           <Stat value={reds} label="ใบแดง" />
           <Stat value={mvpCount} label="MVP" />
           <Stat value={apps > 0 ? Number((goals / apps).toFixed(2)) : 0} label="ประตู/นัด" />
+          {(() => {
+            const goalEvents = events.filter((e) => e.type === "GOAL");
+            const homeGoals = goalEvents.filter(
+              (e) => e.match.homeTeamId === player.teamId
+            ).length;
+            return (
+              <>
+                <Stat value={homeGoals} label="ประตูเหย้า" />
+                <Stat value={goalEvents.length - homeGoals} label="ประตูเยือน" />
+                {goalEvents.length > 0 && (
+                  <Stat
+                    value={Math.round(
+                      goalEvents.reduce((s, e) => s + e.minute, 0) / goalEvents.length
+                    )}
+                    label="นาทีเฉลี่ยที่ยิง"
+                  />
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {goals >= 2 && (
@@ -186,6 +206,23 @@ export default async function PublicPlayerPage({
             <GoalsBarChart rounds={MINUTE_BUCKETS} values={goalBuckets} />
           </div>
         )}
+
+        {(() => {
+          const victims = new Map<string, number>();
+          for (const e of events) {
+            if (e.type !== "GOAL") continue;
+            const opp =
+              e.match.homeTeamId === player.teamId ? e.match.awayTeam.name : e.match.homeTeam.name;
+            victims.set(opp, (victims.get(opp) ?? 0) + 1);
+          }
+          const fav = [...victims.entries()].sort((a, b) => b[1] - a[1])[0];
+          return fav && fav[1] >= 2 ? (
+            <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">
+              🎯 คู่แข่งที่ยิงบ่อยสุด: <b className="font-display">{fav[0]}</b>{" "}
+              <span className="text-accent font-display font-bold">{fav[1]} ประตู</span>
+            </div>
+          ) : null;
+        })()}
 
         {topPartners.length > 0 && (
           <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">

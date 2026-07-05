@@ -126,6 +126,11 @@ export default async function LeagueDetailPage({
               <>
                 {" "}
                 · จบ {matches.filter((m) => m.status === "FINISHED").length}/{matches.length} แมตช์
+                {" "}· ⚽{" "}
+                {matches
+                  .filter((m) => m.status !== "SCHEDULED")
+                  .reduce((s, m) => s + m.homeScore + m.awayScore, 0)}{" "}
+                ประตู
               </>
             )}
           </p>

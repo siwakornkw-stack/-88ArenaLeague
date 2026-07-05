@@ -119,7 +119,17 @@ export default async function AdminLogsPage({
               {relativeTime(log.createdAt)}
             </span>
             <span className="text-foreground/70 shrink-0">{log.userName}</span>
-            <span className="text-accent shrink-0">{log.action}</span>
+            <span
+              className={`shrink-0 ${
+                log.action.includes("ลบ") || log.action.includes("ระงับ") || log.action.includes("รีเซ็ต")
+                  ? "text-red-400"
+                  : log.action.includes("สร้าง") || log.action.includes("เปิด")
+                    ? "text-accent"
+                    : "text-yellow-400"
+              }`}
+            >
+              {log.action}
+            </span>
             <span className="text-foreground/50 truncate">
               {(() => {
                 const m = log.detail.match(/^(.*) · #([a-z0-9]+)$/);

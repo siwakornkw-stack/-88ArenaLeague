@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin/", "/dashboard", "/teams/", "/account", "/login"],
+      disallow: ["/admin/", "/dashboard", "/teams/", "/account", "/login", "/sponsors/"],
     },
     sitemap: "https://league-manager-app.vercel.app/sitemap.xml",
     host: "https://league-manager-app.vercel.app",

@@ -13,12 +13,13 @@ export default async function Image({
   params: Promise<{ id: string; playerId: string }>;
 }) {
   const { id, playerId } = await params;
-  const [player, goals, kanit] = await Promise.all([
+  const [player, goals, assists, kanit] = await Promise.all([
     prisma.player.findFirst({
       where: { id: playerId, team: { leagueId: id } },
       include: { team: true },
     }),
     prisma.matchEvent.count({ where: { playerId, type: "GOAL" } }),
+    prisma.matchEvent.count({ where: { relatedPlayerId: playerId, type: "GOAL" } }),
     readFile(join(process.cwd(), "src/assets/fonts/Kanit-Bold.ttf")),
   ]);
 
@@ -68,7 +69,7 @@ export default async function Image({
             #{player?.number} · {player?.position} · {player?.team.name}
           </div>
           <div style={{ fontSize: 40, color: "#D4FF3A", marginTop: 18, display: "flex" }}>
-            ⚽ {goals} ประตู
+            ⚽ {goals} ประตู · 🅰 {assists} แอสซิสต์
           </div>
           <div style={{ fontSize: 26, color: "rgba(255,255,255,.4)", marginTop: 30, display: "flex" }}>
             88ARENA<span style={{ color: "#D4FF3A" }}>LEAGUE</span>

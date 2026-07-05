@@ -258,7 +258,8 @@ export default async function PublicMatchPage({
         </div>
         <p className="mt-4 text-center text-xs text-foreground/45">
           นัดที่ {match.round} ·{" "}
-          {match.kickoffAt.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
+          {match.kickoffAt.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}{" "}
+          <span className="text-foreground/30">(เวลาไทย)</span>
           {match.venue && (
             <>
               {" "}

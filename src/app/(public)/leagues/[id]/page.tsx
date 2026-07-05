@@ -60,11 +60,13 @@ export default async function PublicLeaguePage({
     asof?: string;
     side?: string;
     view?: string;
+    status?: string;
   }>;
 }) {
   const { id } = await params;
-  const { tab = "standings", round, team, asof, side, view } = await searchParams;
+  const { tab = "standings", round, team, asof, side, view, status } = await searchParams;
   const gridView = view === "grid";
+  const statusFilter = status === "upcoming" || status === "finished" ? status : null;
   const roundFilter = Number(round) || null;
   const sideView = side === "home" ? "HOME" : side === "away" ? "AWAY" : null;
 
@@ -246,7 +248,59 @@ export default async function PublicLeaguePage({
       label: "เกมเหนียวสุด (ประตูน้อยสุด)",
       value: `${quiet.homeTeam.name} ${quiet.homeScore}-${quiet.awayScore} ${quiet.awayTeam.name}`,
     });
+    const fastest = goalMinutes.length
+      ? goalMinutes.reduce((a, b) => (b.minute < a.minute ? b : a))
+      : null;
+    if (fastest) {
+      records.push({ label: "ประตูเร็วสุดของลีก", value: `นาทีที่ ${fastest.minute}` });
+    }
   }
+
+  const hatTricks =
+    tab === "players"
+      ? (
+          await prisma.matchEvent.groupBy({
+            by: ["matchId", "playerId"],
+            where: { type: "GOAL", playerId: { not: null }, match: { leagueId: id } },
+            _count: { playerId: true },
+          })
+        ).filter((g) => g._count.playerId >= 3)
+      : [];
+  const hatTrickPlayers =
+    hatTricks.length > 0
+      ? await prisma.player.findMany({
+          where: { id: { in: hatTricks.map((h) => h.playerId!) } },
+          include: { team: true },
+        })
+      : [];
+
+  const monthMvps =
+    tab === "players"
+      ? await prisma.match.findMany({
+          where: { leagueId: id, mvpPlayerId: { not: null } },
+          include: { mvpPlayer: true },
+          orderBy: { kickoffAt: "desc" },
+          take: 30,
+        })
+      : [];
+  const latestMonthMvp = (() => {
+    if (monthMvps.length === 0) return null;
+    const latest = monthMvps[0].kickoffAt;
+    const inMonth = monthMvps.filter(
+      (m) =>
+        m.kickoffAt.getMonth() === latest.getMonth() &&
+        m.kickoffAt.getFullYear() === latest.getFullYear()
+    );
+    const count = new Map<string, { name: string; n: number }>();
+    for (const m of inMonth) {
+      if (!m.mvpPlayer) continue;
+      const c = count.get(m.mvpPlayerId!) ?? { name: m.mvpPlayer.name, n: 0 };
+      c.n++;
+      count.set(m.mvpPlayerId!, c);
+    }
+    const top = [...count.values()].sort((a, b) => b.n - a.n)[0];
+    return top ? { ...top, month: latest.toLocaleDateString("th-TH", { month: "long" }) } : null;
+  })();
 
   const zonesOn = !sideView && !asofRound;
   const movement = new Map<string, number>();
@@ -361,7 +415,7 @@ export default async function PublicLeaguePage({
               </a>
             </div>
           )}
-          <ShareLinks url={pageUrl} text={league.name} />
+          <ShareLinks url={pageUrl} text={`ติดตามผลสด ${league.name} ได้ที่นี่`} />
         </div>
       </div>
 
@@ -469,12 +523,32 @@ export default async function PublicLeaguePage({
 
         {tab === "teams" ? (
           <div className="space-y-4">
-          <Link
-            href={`/leagues/${id}/compare`}
-            className="inline-block rounded-md border border-white/20 px-4 py-2 text-sm text-foreground/75 hover:border-accent/50 hover:text-accent"
-          >
-            ⚖ เปรียบเทียบทีม
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/leagues/${id}/compare`}
+              className="inline-block rounded-md border border-white/20 px-4 py-2 text-sm text-foreground/75 hover:border-accent/50 hover:text-accent"
+            >
+              ⚖ เปรียบเทียบทีม
+            </Link>
+            {(() => {
+              const unbeaten = standings.filter((r) => r.played > 0 && r.lost === 0);
+              const winless = standings.filter((r) => r.played > 0 && r.won === 0);
+              return (
+                <>
+                  {unbeaten.length > 0 && (
+                    <span className="text-xs rounded-full bg-accent/10 text-accent px-3 py-1">
+                      🛡 ยังไม่แพ้: {unbeaten.map((r) => r.teamAbbr).join(", ")}
+                    </span>
+                  )}
+                  {winless.length > 0 && (
+                    <span className="text-xs rounded-full bg-red-500/10 text-red-400 px-3 py-1">
+                      ยังไม่ชนะ: {winless.map((r) => r.teamAbbr).join(", ")}
+                    </span>
+                  )}
+                </>
+              );
+            })()}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...league.teams]
               .sort((a, b) => {
@@ -605,6 +679,28 @@ export default async function PublicLeaguePage({
                 </div>
               )}
 
+              {(() => {
+                const refs = new Map<string, number>();
+                for (const m of finishedLeagueMatches) {
+                  if (m.refereeName) refs.set(m.refereeName, (refs.get(m.refereeName) ?? 0) + 1);
+                }
+                return refs.size > 0 ? (
+                  <div className="rounded-xl border border-white/10 bg-card p-5">
+                    <h3 className="font-display font-bold mb-2">🧑‍⚖️ ผู้ตัดสิน</h3>
+                    <div className="space-y-1 text-sm">
+                      {[...refs.entries()]
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([name, n]) => (
+                          <div key={name} className="flex justify-between">
+                            <span>{name}</span>
+                            <span className="text-foreground/50">{n} นัด</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
               {discipline.teams.length > 0 && (
                 <div className="rounded-xl border border-accent/30 bg-card p-5">
                   <h3 className="font-display font-bold mb-2">🤝 ทีมมารยาทดี</h3>
@@ -655,6 +751,41 @@ export default async function PublicLeaguePage({
                 )}
               </div>
             </div>
+            {latestMonthMvp && (
+              <div className="rounded-xl border border-accent/30 bg-card p-5 lg:col-span-2">
+                <h3 className="font-display font-bold mb-1">⭐ MVP ประจำเดือน{latestMonthMvp.month}</h3>
+                <p className="text-sm text-foreground/70">
+                  <span className="font-display font-bold text-accent">{latestMonthMvp.name}</span>{" "}
+                  ({latestMonthMvp.n} ครั้ง)
+                </p>
+              </div>
+            )}
+            {hatTricks.length > 0 && (
+              <div className="rounded-xl border border-white/10 bg-card p-5">
+                <h3 className="font-display font-bold mb-3">🎩 แฮตทริก</h3>
+                <div className="space-y-2 text-sm">
+                  {hatTricks.map((h) => {
+                    const p = hatTrickPlayers.find((pl) => pl.id === h.playerId);
+                    if (!p) return null;
+                    return (
+                      <Link
+                        key={`${h.matchId}-${h.playerId}`}
+                        href={`/matches/${h.matchId}`}
+                        className="flex items-center justify-between hover:text-accent"
+                      >
+                        <span>
+                          {p.name}{" "}
+                          <span className="text-xs text-foreground/45">({p.team.name})</span>
+                        </span>
+                        <span className="font-display font-bold text-accent">
+                          ⚽×{h._count.playerId}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <PlayerBoard title="MVP สูงสุด" unit="ครั้ง" rows={playerBoards.mvps} />
             <PlayerBoard
               title="ยิง+จ่ายรวม (G+A)"
@@ -738,13 +869,35 @@ export default async function PublicLeaguePage({
                 </div>
                 {goalMinutes.length > 0 && (
                   <div className="rounded-xl border border-white/10 bg-card p-5 lg:col-span-2">
-                    <h3 className="font-display font-bold mb-3">ช่วงนาทีเกิดประตูทั้งลีก</h3>
+                    <h3 className="font-display font-bold mb-3">
+                      ช่วงนาทีเกิดประตูทั้งลีก
+                      <span className="ml-3 text-xs text-foreground/50 font-sans font-normal">
+                        ครึ่งแรก {goalMinutes.filter((g) => g.minute <= 45).length} · ครึ่งหลัง{" "}
+                        {goalMinutes.filter((g) => g.minute > 45).length}
+                      </span>
+                    </h3>
                     <GoalsBarChart
                       rounds={["1-15", "16-30", "31-45", "46-60", "61-75", "76+"]}
                       values={heatBuckets}
                     />
                   </div>
                 )}
+                {(() => {
+                  const rounds = [...new Set(finishedLeagueMatches.map((m) => m.round))].sort(
+                    (a, b) => a - b
+                  );
+                  const att = rounds.map((r) =>
+                    finishedLeagueMatches
+                      .filter((m) => m.round === r)
+                      .reduce((s, m) => s + (m.spectators ?? 0), 0)
+                  );
+                  return att.some((a) => a > 0) ? (
+                    <div className="rounded-xl border border-white/10 bg-card p-5 lg:col-span-2">
+                      <h3 className="font-display font-bold mb-3">ผู้ชมรวมต่อนัด</h3>
+                      <GoalsBarChart rounds={rounds} values={att} />
+                    </div>
+                  ) : null;
+                })()}
               </div>
               {records.length > 0 && (
                 <div>
@@ -985,6 +1138,13 @@ export default async function PublicLeaguePage({
                 </div>
               )}
 
+              {topScorers.length >= 2 && (
+                <p className="text-xs text-foreground/50 px-1">
+                  🥇 {topScorers[0].playerName} นำดาวซัลโวอยู่{" "}
+                  <b className="text-accent">{topScorers[0].goals - topScorers[1].goals}</b> ประตู
+                </p>
+              )}
+
               {topAssists.length > 0 && (
                 <div className="rounded-xl border border-white/10 bg-card p-5">
                   <h3 className="font-display font-bold mb-3">ดาวแอสซิสต์</h3>
@@ -1145,6 +1305,15 @@ export default async function PublicLeaguePage({
                 ))}
               </select>
               <select
+                name="status"
+                defaultValue={statusFilter ?? ""}
+                className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              >
+                <option value="">ทุกสถานะ</option>
+                <option value="upcoming">ยังไม่แข่ง</option>
+                <option value="finished">จบแล้ว</option>
+              </select>
+              <select
                 name="team"
                 defaultValue={teamFilter ?? ""}
                 className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
@@ -1169,11 +1338,13 @@ export default async function PublicLeaguePage({
             {Array.from(matchesByRound.entries())
               .filter(([round]) => roundFilter === null || round === roundFilter)
               .map(([round, roundMatches]) => {
-                const shown = teamFilter
+                let shown = teamFilter
                   ? roundMatches.filter(
                       (m) => m.homeTeamId === teamFilter || m.awayTeamId === teamFilter
                     )
                   : roundMatches;
+                if (statusFilter === "upcoming") shown = shown.filter((m) => m.status !== "FINISHED");
+                if (statusFilter === "finished") shown = shown.filter((m) => m.status === "FINISHED");
                 if (shown.length === 0) return null;
                 if (gridView) {
                   return (

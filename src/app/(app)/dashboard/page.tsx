@@ -164,7 +164,12 @@ export default async function DashboardPage() {
 
       {todayMatches.length > 0 && (
         <div className="rounded-lg bg-card border border-white/10 p-5">
-          <h2 className="font-semibold mb-3">แมตช์วันนี้</h2>
+          <h2 className="font-semibold mb-3 flex items-center justify-between">
+            แมตช์วันนี้
+            <Link href="/admin/today" className="text-xs text-accent hover:underline">
+              ดูบอร์ดรวมทุกลีก →
+            </Link>
+          </h2>
           <div className="space-y-2">
             {todayMatches.map((m) => (
               <Link
@@ -283,7 +288,13 @@ export default async function DashboardPage() {
       </div>
 
       <div className="rounded-lg bg-card border border-white/10 p-5 space-y-4">
-        <h2 className="font-semibold">ผู้ใช้ระบบ</h2>
+        <h2 className="font-semibold">
+          ผู้ใช้ระบบ{" "}
+          <span className="text-xs text-foreground/45">
+            (แอดมิน {users.filter((u) => u.role === "SUPER_ADMIN").length} · ผู้จัดการทีม{" "}
+            {users.filter((u) => u.role === "TEAM_MANAGER").length})
+          </span>
+        </h2>
         <div className="space-y-2">
           {users.map((u) => (
             <div
