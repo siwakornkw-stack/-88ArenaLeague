@@ -55,6 +55,32 @@ export default async function AccountPage({
     ? Math.floor((Date.now() - user.createdAt.getTime()) / 86_400_000)
     : 0;
 
+  const loginDaysAgo = user?.lastLoginAt
+    ? Math.floor((Date.now() - user.lastLoginAt.getTime()) / 86_400_000)
+    : null;
+
+  const nextMatch =
+    managedTeamIds.length > 0
+      ? await prisma.match.findFirst({
+          where: {
+            status: { in: ["SCHEDULED", "LIVE"] },
+            OR: [
+              { homeTeamId: { in: managedTeamIds } },
+              { awayTeamId: { in: managedTeamIds } },
+            ],
+          },
+          orderBy: [{ status: "desc" }, { kickoffAt: "asc" }],
+          select: {
+            id: true,
+            kickoffAt: true,
+            venue: true,
+            status: true,
+            homeTeam: { select: { name: true } },
+            awayTeam: { select: { name: true } },
+          },
+        })
+      : null;
+
   return (
     <div className="max-w-sm space-y-6">
       <div>
@@ -103,8 +129,31 @@ export default async function AccountPage({
                 dateStyle: "medium",
                 timeStyle: "short",
               })}
+              {loginDaysAgo !== null && (
+                <span className="text-foreground/40">
+                  {" "}
+                  ({loginDaysAgo === 0 ? "วันนี้" : `${loginDaysAgo} วันก่อน`})
+                </span>
+              )}
             </p>
           )}
+          <div className="pt-1.5 mt-1.5 border-t border-white/10 flex items-center gap-2">
+            <span className="text-foreground/50">สถานะบัญชี:</span>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${
+                user.isActive
+                  ? "bg-accent/15 text-accent"
+                  : "bg-red-400/15 text-red-400"
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  user.isActive ? "bg-accent" : "bg-red-400"
+                }`}
+              />
+              {user.isActive ? "ใช้งานอยู่" : "ถูกระงับ"}
+            </span>
+          </div>
         </div>
       )}
 
@@ -141,6 +190,38 @@ export default async function AccountPage({
             {squadCount("BANNED") > 0 && " · มีผู้เล่นโดนแบน ปลดแบนได้ที่หน้าจัดการทีม"}
           </p>
         </div>
+      )}
+
+      {nextMatch && (
+        <a
+          href={`/matches/${nextMatch.id}`}
+          className="block rounded-lg bg-card border border-white/10 p-5 hover:border-accent/50 transition-colors"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-semibold">
+              {nextMatch.status === "LIVE" ? "แมตช์ที่กำลังแข่ง" : "แมตช์ถัดไปของทีม"}
+            </h2>
+            {nextMatch.status === "LIVE" ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-400/15 px-2 py-0.5 text-xs font-medium text-red-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
+                สด
+              </span>
+            ) : (
+              <span className="text-xs text-accent">ดูรายละเอียด →</span>
+            )}
+          </div>
+          <p className="font-display font-bold text-lg">
+            {nextMatch.homeTeam.name} <span className="text-foreground/40">พบ</span>{" "}
+            {nextMatch.awayTeam.name}
+          </p>
+          <p className="text-xs text-foreground/50 mt-1">
+            {nextMatch.kickoffAt.toLocaleString("th-TH", {
+              dateStyle: "full",
+              timeStyle: "short",
+            })}
+            {nextMatch.venue && ` · ${nextMatch.venue}`}
+          </p>
+        </a>
       )}
 
       <div className="rounded-lg bg-card border border-white/10 p-5">

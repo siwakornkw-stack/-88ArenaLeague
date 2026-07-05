@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 export default async function GlobalStatsPage() {
-  const [finished, leagues, topScorers, yellowCount, redCount, scorerIds] = await Promise.all([
+  const [finished, leagues, topScorers, yellowCount, redCount, scorerIds, cardsByLeague] = await Promise.all([
     prisma.match.findMany({
       where: { status: "FINISHED", league: { hidden: false } },
       select: { id: true, homeScore: true, awayScore: true, leagueId: true, spectators: true },
@@ -37,6 +37,14 @@ export default async function GlobalStatsPage() {
       select: { playerId: true },
       distinct: ["playerId"],
     }),
+    prisma.matchEvent.groupBy({
+      by: ["matchId"],
+      where: {
+        type: { in: ["YELLOW_CARD", "RED_CARD"] },
+        match: { status: "FINISHED", league: { hidden: false } },
+      },
+      _count: { matchId: true },
+    }),
   ]);
 
   const biggestMarginId =
@@ -46,7 +54,14 @@ export default async function GlobalStatsPage() {
         )
       : null;
 
-  const [topAssists, topMvps, highestMatch, biggestMargin] = await Promise.all([
+  const topCrowd =
+    finished.filter((m) => (m.spectators ?? 0) > 0).length > 0
+      ? finished
+          .filter((m) => (m.spectators ?? 0) > 0)
+          .reduce((a, b) => ((b.spectators ?? 0) > (a.spectators ?? 0) ? b : a))
+      : null;
+
+  const [topAssists, topMvps, highestMatch, biggestMargin, biggestCrowd] = await Promise.all([
     prisma.matchEvent.groupBy({
       by: ["relatedPlayerId"],
       where: {
@@ -81,6 +96,12 @@ export default async function GlobalStatsPage() {
           include: { homeTeam: true, awayTeam: true, league: true },
         })
       : Promise.resolve(null),
+    topCrowd
+      ? prisma.match.findUnique({
+          where: { id: topCrowd.id },
+          include: { homeTeam: true, awayTeam: true, league: true },
+        })
+      : Promise.resolve(null),
   ]);
 
   const totalGoals = finished.reduce((s, m) => s + m.homeScore + m.awayScore, 0);
@@ -106,6 +127,25 @@ export default async function GlobalStatsPage() {
     })
     .filter((l) => l.matches > 0)
     .sort((a, b) => b.avg - a.avg);
+
+  const thrillers = finished.filter((m) => m.homeScore + m.awayScore >= 4).length;
+  const thrillerPct = finished.length > 0 ? Math.round((thrillers / finished.length) * 100) : 0;
+
+  const matchLeague = new Map(finished.map((m) => [m.id, m.leagueId]));
+  const cardsPerLeagueTotals = new Map<string, number>();
+  for (const c of cardsByLeague) {
+    const lid = matchLeague.get(c.matchId);
+    if (!lid) continue;
+    cardsPerLeagueTotals.set(lid, (cardsPerLeagueTotals.get(lid) ?? 0) + c._count.matchId);
+  }
+  const disciplineBoard = leagues
+    .map((lg) => {
+      const ms = finished.filter((m) => m.leagueId === lg.id).length;
+      const cards = cardsPerLeagueTotals.get(lg.id) ?? 0;
+      return { id: lg.id, name: lg.name, matches: ms, cards, per: ms > 0 ? cards / ms : 0 };
+    })
+    .filter((l) => l.matches > 0)
+    .sort((a, b) => b.per - a.per);
 
   const scorerPlayers = await prisma.player.findMany({
     where: {
@@ -193,6 +233,14 @@ export default async function GlobalStatsPage() {
             </div>
             <div className="text-xs text-foreground/55">คลีนชีตทั้งระบบ</div>
           </div>
+          <div>
+            <div className="font-display italic font-extrabold text-2xl text-accent">
+              {thrillers}
+            </div>
+            <div className="text-xs text-foreground/55">
+              แมตช์ยิงกันมันส์ 4+ ประตู ({thrillerPct}%)
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -213,6 +261,28 @@ export default async function GlobalStatsPage() {
               ))}
             </div>
           </div>
+
+          {disciplineBoard.length > 0 && (
+            <div className="rounded-xl border border-white/10 bg-card p-5">
+              <h2 className="font-display font-bold mb-3">ลีกที่เดือดที่สุด (ใบเฉลี่ย/นัด)</h2>
+              <div className="space-y-2 text-sm">
+                {disciplineBoard.map((l, i) => (
+                  <Link
+                    key={l.id}
+                    href={`/leagues/${l.id}`}
+                    className="flex items-center gap-3 rounded-md bg-white/5 px-3 py-2 hover:bg-white/10"
+                  >
+                    <span className="w-5 font-display font-bold text-foreground/50">{i + 1}</span>
+                    <span className="flex-1 truncate">{l.name}</span>
+                    <span className="text-xs text-foreground/45">{l.cards} ใบ</span>
+                    <span className="font-display font-bold text-yellow-400">
+                      {l.per.toFixed(2)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {finished.length > 0 && (
             <div className="rounded-xl border border-white/10 bg-card p-5">
@@ -285,6 +355,23 @@ export default async function GlobalStatsPage() {
               <div className="text-xs text-foreground/45 mt-1">
                 {biggestMargin.league.name} · ห่าง{" "}
                 {Math.abs(biggestMargin.homeScore - biggestMargin.awayScore)} ประตู
+              </div>
+            </Link>
+          )}
+
+          {biggestCrowd && (biggestCrowd.spectators ?? 0) > 0 && (
+            <Link
+              href={`/matches/${biggestCrowd.id}`}
+              className="rounded-xl border border-accent/30 bg-card p-5 hover:border-accent/60"
+            >
+              <div className="text-xs text-foreground/50 mb-1">🎟️ แมตช์คนดูเยอะสุดในระบบ</div>
+              <div className="font-display font-bold">
+                {biggestCrowd.homeTeam.name} {biggestCrowd.homeScore}-{biggestCrowd.awayScore}{" "}
+                {biggestCrowd.awayTeam.name}
+              </div>
+              <div className="text-xs text-foreground/45 mt-1">
+                {biggestCrowd.league.name} ·{" "}
+                {(biggestCrowd.spectators ?? 0).toLocaleString()} คน
               </div>
             </Link>
           )}

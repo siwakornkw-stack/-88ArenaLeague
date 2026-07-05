@@ -203,6 +203,54 @@ export default async function ChampionsPage({
           );
         })()}
 
+        {(() => {
+          // record golden boot: the single best individual top-scorer season (not a cumulative total)
+          const best = entries
+            .filter((e) => e.topScorer)
+            .reduce<(typeof entries)[number] | null>(
+              (a, b) => (a === null || b.topScorer!.goals > a.topScorer!.goals ? b : a),
+              null
+            );
+          return best && best.topScorer!.goals > 0 ? (
+            <div className="rounded-xl border border-accent/30 bg-card p-4 max-w-md text-sm">
+              <div className="text-xs text-foreground/50">
+                สถิติดาวซัลโวฤดูกาลเดียวสูงสุด · ฤดูกาล {best.league.seasonYear}
+              </div>
+              <div className="mt-1">
+                🎯 <span className="font-display font-bold text-accent">{best.topScorer!.playerName}</span>{" "}
+                <span className="text-foreground/50">· {best.topScorer!.teamName}</span>{" "}
+                <span className="text-foreground">ยิง {best.topScorer!.goals} ประตู</span>
+              </div>
+            </div>
+          ) : null;
+        })()}
+
+        {(() => {
+          // nearly men: teams that finished runner-up most often across all finished seasons
+          const nearMiss = new Map<string, number>();
+          for (const e of entries) {
+            if (e.runnerUp) nearMiss.set(e.runnerUp, (nearMiss.get(e.runnerUp) ?? 0) + 1);
+          }
+          const top = [...nearMiss.entries()].sort((a, b) => b[1] - a[1])[0];
+          return top && top[1] > 1 ? (
+            <div className="rounded-xl border border-white/10 bg-card p-4 max-w-md text-sm space-y-2">
+              <div>
+                🥈 รองแชมป์บ่อยสุด:{" "}
+                <span className="font-display font-bold text-foreground">{top[0]}</span> ({top[1]} ครั้ง)
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-foreground/60">
+                {[...nearMiss.entries()]
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([name, n]) => (
+                    <span key={name} className="rounded-full bg-white/5 px-2.5 py-0.5">
+                      {name} ×{n}
+                    </span>
+                  ))}
+              </div>
+            </div>
+          ) : null;
+        })()}
+
         {entries[0] && (
           <div className="rounded-2xl border border-accent/50 bg-gradient-to-r from-[#22380f] to-card p-6 max-w-2xl live-glow">
             <div className="text-xs text-foreground/50">แชมป์ล่าสุด · ฤดูกาล {entries[0].league.seasonYear}</div>

@@ -88,6 +88,14 @@ export default async function LeagueDetailPage({
     matchesByRound.get(m.round)!.push(m);
   }
 
+  const cardEvents = await prisma.matchEvent.groupBy({
+    by: ["type"],
+    where: { match: { leagueId: id }, type: { in: ["YELLOW_CARD", "RED_CARD"] } },
+    _count: { _all: true },
+  });
+  const yellowCards = cardEvents.find((c) => c.type === "YELLOW_CARD")?._count._all ?? 0;
+  const redCards = cardEvents.find((c) => c.type === "RED_CARD")?._count._all ?? 0;
+
   const standings = tab === "standings" ? await computeStandings(id) : [];
   const generateWithId = generateSchedule.bind(null, id, dayOfWeek ?? 0, start ?? "");
 
@@ -164,6 +172,28 @@ export default async function LeagueDetailPage({
               </p>
             ) : null;
           })()}
+          {(() => {
+            const now = new Date();
+            const upcoming = matches
+              .filter((m) => m.status === "SCHEDULED" && m.kickoffAt >= now)
+              .sort((a, b) => a.kickoffAt.getTime() - b.kickoffAt.getTime());
+            const next = upcoming[0];
+            if (!next) return null;
+            const days = Math.ceil((next.kickoffAt.getTime() - now.getTime()) / 86400000);
+            const sameDay = matches.filter(
+              (m) =>
+                m.status === "SCHEDULED" &&
+                m.kickoffAt.toDateString() === next.kickoffAt.toDateString()
+            ).length;
+            return (
+              <p className="mt-2 text-xs text-accent">
+                ⏭ นัดถัดไป {next.homeTeam.name} พบ {next.awayTeam.name} ·{" "}
+                {next.kickoffAt.toLocaleDateString("th-TH", { dateStyle: "medium" })}{" "}
+                {days <= 0 ? "(วันนี้)" : `(อีก ${days} วัน)`}
+                {sameDay > 1 && ` · ${sameDay} นัดในวันเดียวกัน`}
+              </p>
+            );
+          })()}
         </div>
         <div className="flex items-center gap-3">
           {league.status !== "FINISHED" &&
@@ -235,10 +265,39 @@ export default async function LeagueDetailPage({
               <div className="font-display font-bold text-2xl">
                 {totalSpectators.toLocaleString("th-TH")}
               </div>
+              <div className="text-[11px] text-foreground/40">
+                เฉลี่ย {Math.round(totalSpectators / finished.length).toLocaleString("th-TH")}/นัด
+              </div>
             </div>
           </div>
         );
       })()}
+
+      {(yellowCards > 0 || redCards > 0) && (
+        <div className="rounded-xl border border-white/10 bg-card p-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+          <div className="text-xs text-foreground/50">วินัยลีก (รวมเพลย์ออฟ)</div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-4 w-3 rounded-sm bg-yellow-400" />
+            <span className="font-display font-bold text-lg">{yellowCards}</span>
+            <span className="text-xs text-foreground/50">ใบเหลือง</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-4 w-3 rounded-sm bg-red-500" />
+            <span className="font-display font-bold text-lg">{redCards}</span>
+            <span className="text-xs text-foreground/50">ใบแดง</span>
+          </div>
+          {matches.filter((m) => m.status === "FINISHED").length > 0 && (
+            <span className="text-[11px] text-foreground/40">
+              เฉลี่ย{" "}
+              {(
+                (yellowCards + redCards) /
+                matches.filter((m) => m.status === "FINISHED").length
+              ).toFixed(1)}{" "}
+              ใบ/นัด
+            </span>
+          )}
+        </div>
+      )}
 
       {matches.length === 0 ? (
         <div className="rounded-lg bg-card border border-white/10 p-6 max-w-md space-y-5">
@@ -408,6 +467,33 @@ export default async function LeagueDetailPage({
             </table>
           ) : (
             <div className="space-y-6">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-foreground/50 mr-1">ความคืบหน้าแต่ละนัด:</span>
+                {Array.from(matchesByRound.entries()).map(([r, rm]) => {
+                  const done = rm.filter((m) => m.status === "FINISHED").length;
+                  const state =
+                    done === rm.length
+                      ? "bg-accent text-black"
+                      : done > 0 || rm.some((m) => m.status === "LIVE")
+                        ? "bg-accent/25 text-accent border border-accent/40"
+                        : "bg-white/5 text-foreground/40";
+                  const label = STAGE_LABEL[rm[0].stage]
+                    ? rm[0].stage === "FINAL"
+                      ? "F"
+                      : "SF"
+                    : String(r);
+                  return (
+                    <Link
+                      key={r}
+                      href={`/admin/leagues/${id}?tab=fixtures&round=${r}`}
+                      title={`${STAGE_LABEL[rm[0].stage] ?? `นัดที่ ${r}`} — ${done}/${rm.length} จบ`}
+                      className={`grid h-6 min-w-6 place-items-center rounded px-1 text-[10px] font-bold ${state} ${roundFilter === r ? "ring-2 ring-accent" : ""}`}
+                    >
+                      {label}
+                    </Link>
+                  );
+                })}
+              </div>
               <form method="get" className="flex items-center gap-2">
                 <input type="hidden" name="tab" value="fixtures" />
                 <select

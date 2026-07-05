@@ -243,6 +243,10 @@ export default async function PublicTeamPage({
             <Stat value={row.lost} label="แพ้" />
             <Stat value={`${row.goalsFor}-${row.goalsAgainst}`} label="ได้-เสีย" />
             <Stat value={row.points} label="แต้ม" />
+            <Stat
+              value={row.played > 0 ? `${Math.round((row.points / (row.played * 3)) * 100)}%` : "-"}
+              label="ประสิทธิภาพแต้ม"
+            />
             <Stat value={cleanSheets} label="คลีนชีต" />
             <Stat
               value={row.played > 0 ? (row.goalsFor / row.played).toFixed(1) : "-"}
@@ -331,6 +335,23 @@ export default async function PublicTeamPage({
               <p className="text-xs text-foreground/50">
                 ผลงานกับครึ่งบนตาราง: {rec.top.w}-{rec.top.d}-{rec.top.l} · กับครึ่งล่าง:{" "}
                 {rec.bottom.w}-{rec.bottom.d}-{rec.bottom.l} (ชนะ-เสมอ-แพ้)
+              </p>
+            );
+          })()}
+
+        {allFinished.length > 0 &&
+          (() => {
+            const failedToScore = allFinished.filter((m) =>
+              m.homeTeamId === teamId ? m.homeScore === 0 : m.awayScore === 0
+            ).length;
+            const bothScored = allFinished.filter(
+              (m) => m.homeScore > 0 && m.awayScore > 0
+            ).length;
+            return (
+              <p className="text-xs text-foreground/50">
+                คลีนชีต <b className="text-accent">{cleanSheets}</b>/{allFinished.length} นัด · ยิงไม่ได้{" "}
+                <b className="text-red-400">{failedToScore}</b> นัด · ทั้งสองทีมทำประตู (BTTS){" "}
+                <b className="text-foreground">{bothScored}</b> นัด
               </p>
             );
           })()}
@@ -493,6 +514,36 @@ export default async function PublicTeamPage({
                 </div>
               </div>
             );
+          })()}
+
+        {team.players.length > 0 &&
+          (() => {
+            const injured = team.players.filter((p) => p.status === "INJURED").length;
+            const banned = team.players.filter((p) => p.status === "BANNED").length;
+            const available = team.players.length - injured - banned;
+            return injured > 0 || banned > 0 ? (
+              <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">
+                <div className="text-xs text-foreground/50 mb-2">🩺 ความพร้อมของทีม</div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-md bg-accent/10 px-2.5 py-1.5 flex items-center gap-1.5">
+                    <span className="text-foreground/70">พร้อมลงสนาม</span>
+                    <span className="font-display font-bold text-accent">{available}</span>
+                  </span>
+                  {injured > 0 && (
+                    <span className="rounded-md bg-yellow-400/10 px-2.5 py-1.5 flex items-center gap-1.5">
+                      <span className="text-foreground/70">บาดเจ็บ</span>
+                      <span className="font-display font-bold text-yellow-400">{injured}</span>
+                    </span>
+                  )}
+                  {banned > 0 && (
+                    <span className="rounded-md bg-red-500/10 px-2.5 py-1.5 flex items-center gap-1.5">
+                      <span className="text-foreground/70">ถูกแบน</span>
+                      <span className="font-display font-bold text-red-400">{banned}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : null;
           })()}
 
         {(() => {

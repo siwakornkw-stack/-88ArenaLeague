@@ -33,7 +33,7 @@ export default async function DashboardPage() {
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const endOfDay = new Date(startOfDay.getTime() + 86400000);
 
-  const [leagues, todayMatches, attentionMatches, adminLogs, users, tomorrowMatches, totalEvents] = await Promise.all([
+  const [leagues, todayMatches, attentionMatches, adminLogs, users, tomorrowMatches, totalEvents, totalGoals] = await Promise.all([
     prisma.league.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -77,6 +77,7 @@ export default async function DashboardPage() {
       orderBy: { kickoffAt: "asc" },
     }),
     prisma.matchEvent.count(),
+    prisma.matchEvent.count({ where: { type: { in: ["GOAL", "OWN_GOAL"] } } }),
   ]);
 
   const tasks = [
@@ -125,6 +126,34 @@ export default async function DashboardPage() {
       (!u.lastLoginAt || u.lastLoginAt < new Date(now.getTime() - 30 * 86400000))
   ).length;
 
+  const goalsPerMatch =
+    finishedMatches > 0 ? (totalGoals / finishedMatches).toFixed(2) : "0.00";
+
+  const openRegLeagues = leagues.filter((lg) => lg.registrationOpen && !lg.hidden);
+
+  const busiestDay = (() => {
+    const buckets = new Map<string, number>();
+    for (const m of allMatches) {
+      if (m.status !== "SCHEDULED" || m.kickoffAt < now || m.kickoffAt > sevenDaysAhead) continue;
+      const d = new Date(
+        m.kickoffAt.getFullYear(),
+        m.kickoffAt.getMonth(),
+        m.kickoffAt.getDate()
+      );
+      const key = d.toISOString();
+      buckets.set(key, (buckets.get(key) ?? 0) + 1);
+    }
+    let bestKey: string | null = null;
+    let bestCount = 0;
+    for (const [key, count] of buckets) {
+      if (count > bestCount) {
+        bestKey = key;
+        bestCount = count;
+      }
+    }
+    return bestKey ? { date: new Date(bestKey), count: bestCount } : null;
+  })();
+
   return (
     <div className="max-w-4xl space-y-8">
       <div>
@@ -166,6 +195,10 @@ export default async function DashboardPage() {
           <div className="text-xs text-foreground/55">อีเวนต์ที่บันทึก</div>
         </div>
         <div>
+          <div className="font-display font-extrabold text-2xl text-accent">{goalsPerMatch}</div>
+          <div className="text-xs text-foreground/55">ประตูเฉลี่ย/นัด</div>
+        </div>
+        <div>
           <div className="font-display font-extrabold text-2xl text-accent">{playedThisWeek}</div>
           <div className="text-xs text-foreground/55">แข่งใน 7 วันที่ผ่านมา</div>
         </div>
@@ -188,6 +221,46 @@ export default async function DashboardPage() {
               className="h-full bg-accent rounded-full"
               style={{ width: `${seasonPct}%` }}
             />
+          </div>
+        </div>
+      )}
+
+      {busiestDay !== null && busiestDay.count > 1 && (
+        <div className="rounded-lg bg-card border border-white/10 p-5 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">วันที่แข่งหนาแน่นที่สุด (7 วันข้างหน้า)</h2>
+            <p className="text-sm text-foreground/55 mt-1">
+              {busiestDay.date.toLocaleDateString("th-TH", {
+                weekday: "long",
+                day: "numeric",
+                month: "short",
+              })}
+            </p>
+          </div>
+          <span className="rounded-full bg-accent/15 text-accent px-3 py-1 text-sm font-semibold shrink-0">
+            {busiestDay.count} นัด
+          </span>
+        </div>
+      )}
+
+      {openRegLeagues.length > 0 && (
+        <div className="rounded-lg bg-card border border-white/10 p-5">
+          <h2 className="font-semibold mb-3 flex items-center gap-2">
+            เปิดรับสมัครทีมอยู่
+            <span className="rounded-full bg-emerald-400/10 text-emerald-400 px-2 py-0.5 text-[10px]">
+              {openRegLeagues.length} ลีก
+            </span>
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {openRegLeagues.map((lg) => (
+              <Link
+                key={lg.id}
+                href={`/admin/leagues/${lg.id}/teams`}
+                className="rounded-md bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
+              >
+                {lg.name} <span className="text-foreground/45">· {lg.teams.length} ทีม</span>
+              </Link>
+            ))}
           </div>
         </div>
       )}

@@ -70,6 +70,19 @@ export default async function SearchPage({
         ])
       : [[], [], [], [], [], []];
 
+  // Goal tallies for matched players (type GOAL only, per scoring rules)
+  const playerGoals = new Map<string, number>();
+  if (players.length > 0) {
+    const goalRows = await prisma.matchEvent.groupBy({
+      by: ["playerId"],
+      where: { type: "GOAL", playerId: { in: players.map((p) => p.id) } },
+      _count: { _all: true },
+    });
+    for (const row of goalRows) {
+      if (row.playerId) playerGoals.set(row.playerId, row._count._all);
+    }
+  }
+
   const suggestions = query.length < 2 ? await getFeaturedLeagues(6) : [];
 
   const mobileNavItems = [
@@ -204,7 +217,25 @@ export default async function SearchPage({
 
         {players.length > 0 && (
           <div>
-            <h2 className="font-display font-bold mb-3">นักเตะ ({players.length})</h2>
+            <h2 className="font-display font-bold mb-3 flex flex-wrap items-center gap-2">
+              นักเตะ ({players.length})
+              {(() => {
+                const byPos = { GK: 0, DF: 0, MF: 0, FW: 0 } as Record<string, number>;
+                for (const p of players) {
+                  const key = (p.position || "").toUpperCase();
+                  if (key in byPos) byPos[key] += 1;
+                }
+                const parts = (["GK", "DF", "MF", "FW"] as const)
+                  .filter((k) => byPos[k] > 0)
+                  .map((k) => `${k} ${byPos[k]}`);
+                if (parts.length === 0) return null;
+                return (
+                  <span className="rounded-full border border-white/15 px-2.5 py-0.5 text-[11px] font-normal text-foreground/55">
+                    {parts.join(" · ")}
+                  </span>
+                );
+              })()}
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {players.map((p) => (
                 <Link
@@ -238,6 +269,11 @@ export default async function SearchPage({
                       {p.status === "BANNED" && (
                         <span className="shrink-0 rounded-full bg-red-500/15 text-red-400 text-[10px] px-1.5 py-0.5 font-semibold">
                           โดนแบน
+                        </span>
+                      )}
+                      {(playerGoals.get(p.id) ?? 0) > 0 && (
+                        <span className="shrink-0 rounded-full bg-accent/15 text-accent text-[10px] px-1.5 py-0.5 font-semibold">
+                          ⚽ {playerGoals.get(p.id)} ประตู
                         </span>
                       )}
                     </div>

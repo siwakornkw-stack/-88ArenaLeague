@@ -141,8 +141,10 @@ export default async function PublicMatchPage({
   const standings = await getCachedStandings(match.leagueId);
   const homeRank = standings.findIndex((r) => r.teamId === match.homeTeamId) + 1;
   const awayRank = standings.findIndex((r) => r.teamId === match.awayTeamId) + 1;
-  const homeForm = standings.find((r) => r.teamId === match.homeTeamId)?.form ?? [];
-  const awayForm = standings.find((r) => r.teamId === match.awayTeamId)?.form ?? [];
+  const homeRow = standings.find((r) => r.teamId === match.homeTeamId);
+  const awayRow = standings.find((r) => r.teamId === match.awayTeamId);
+  const homeForm = homeRow?.form ?? [];
+  const awayForm = awayRow?.form ?? [];
 
   const h2h = await prisma.match.findMany({
     where: {
@@ -423,6 +425,40 @@ export default async function PublicMatchPage({
               </p>
             );
           })()}
+        {match.status === "FINISHED" &&
+          (() => {
+            const badges: { t: string; cls: string }[] = [];
+            const bothScored = match.homeScore > 0 && match.awayScore > 0;
+            const totalGoals = match.homeScore + match.awayScore;
+            const margin = Math.abs(match.homeScore - match.awayScore);
+            if (match.homeScore === 0 || match.awayScore === 0) {
+              const keeper =
+                match.awayScore === 0 ? match.homeTeam.name : match.awayTeam.name;
+              if (!(match.homeScore === 0 && match.awayScore === 0))
+                badges.push({ t: `🧤 คลีนชีต ${keeper}`, cls: "border-accent/40 bg-accent/10 text-accent" });
+            }
+            if (bothScored)
+              badges.push({ t: "⚽ ยิงกันทั้งสองทีม", cls: "border-white/15 bg-white/5 text-foreground/70" });
+            if (totalGoals >= 5)
+              badges.push({ t: `🔥 ${totalGoals} ประตูรวม`, cls: "border-orange-400/40 bg-orange-400/10 text-orange-300" });
+            if (margin >= 3)
+              badges.push({ t: `💥 ชนะขาด ${margin} ลูก`, cls: "border-white/15 bg-white/5 text-foreground/70" });
+            if (totalGoals === 0)
+              badges.push({ t: "🥱 ไร้สกอร์", cls: "border-white/15 bg-white/5 text-foreground/50" });
+            if (badges.length === 0) return null;
+            return (
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                {badges.map((b, i) => (
+                  <span
+                    key={i}
+                    className={`rounded-full border px-3 py-1 text-[11px] font-display font-semibold ${b.cls}`}
+                  >
+                    {b.t}
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
         {match.mvpPlayer && (
           <p className="mt-2 text-center text-xs text-accent">
             ⭐ ผู้เล่นยอดเยี่ยม: {match.mvpPlayer.name}
@@ -472,6 +508,51 @@ export default async function PublicMatchPage({
               </div>
             );
           })()}
+
+        {homeRow && awayRow && homeRow.played + awayRow.played > 0 && (
+          <div className="rounded-xl border border-white/10 bg-card p-5 max-w-xl mx-auto w-full">
+            <h2 className="font-display font-bold mb-3 text-center text-sm">ฟอร์มในลีกฤดูกาลนี้</h2>
+            <div className="space-y-2.5 text-sm">
+              {(
+                [
+                  { label: "แข่ง", h: homeRow.played, a: awayRow.played, hi: null },
+                  { label: "ชนะ", h: homeRow.won, a: awayRow.won, hi: "max" },
+                  { label: "เสมอ", h: homeRow.drawn, a: awayRow.drawn, hi: null },
+                  { label: "แพ้", h: homeRow.lost, a: awayRow.lost, hi: "min" },
+                  { label: "ได้ประตู", h: homeRow.goalsFor, a: awayRow.goalsFor, hi: "max" },
+                  { label: "เสียประตู", h: homeRow.goalsAgainst, a: awayRow.goalsAgainst, hi: "min" },
+                  { label: "ผลต่าง", h: homeRow.goalDiff, a: awayRow.goalDiff, hi: "max" },
+                  { label: "คะแนน", h: homeRow.points, a: awayRow.points, hi: "max" },
+                ] as const
+              ).map((r) => {
+                const homeBest =
+                  r.hi === "max" ? r.h > r.a : r.hi === "min" ? r.h < r.a : false;
+                const awayBest =
+                  r.hi === "max" ? r.a > r.h : r.hi === "min" ? r.a < r.h : false;
+                return (
+                  <div key={r.label} className="grid grid-cols-3 items-center">
+                    <span
+                      className={`font-display font-bold text-left ${homeBest ? "text-accent" : "text-foreground"}`}
+                    >
+                      {r.hi === "max" && r.label === "ผลต่าง" && r.h > 0 ? "+" : ""}
+                      {r.h}
+                    </span>
+                    <span className="text-center text-xs text-foreground/45">{r.label}</span>
+                    <span
+                      className={`font-display font-bold text-right ${awayBest ? "text-accent" : "text-foreground"}`}
+                    >
+                      {r.hi === "max" && r.label === "ผลต่าง" && r.a > 0 ? "+" : ""}
+                      {r.a}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-center text-[10px] text-foreground/35">
+              {match.homeTeam.name} (ซ้าย) · {match.awayTeam.name} (ขวา) · เฉพาะรอบลีก
+            </p>
+          </div>
+        )}
 
         {match.status !== "SCHEDULED" && (
           <div>
@@ -590,6 +671,56 @@ export default async function PublicMatchPage({
 
         {match.status !== "SCHEDULED" &&
           (() => {
+            const assists = match.events.filter(
+              (e) => e.type === "GOAL" && e.relatedPlayer
+            );
+            if (assists.length === 0) return null;
+            const grouped = new Map<
+              string,
+              { name: string; side: "HOME" | "AWAY"; count: number }
+            >();
+            for (const a of assists) {
+              const key = a.relatedPlayerId!;
+              const row = grouped.get(key) ?? {
+                name: a.relatedPlayer!.name,
+                side: (a.side === "HOME" ? "HOME" : "AWAY") as "HOME" | "AWAY",
+                count: 0,
+              };
+              row.count++;
+              grouped.set(key, row);
+            }
+            const rows = [...grouped.values()].sort((a, b) => b.count - a.count);
+            return (
+              <div className="rounded-xl border border-white/10 bg-card p-5">
+                <h2 className="font-display font-bold mb-4">ผู้จ่ายบอลให้เพื่อนทำประตู 🅰️</h2>
+                <div className="grid grid-cols-2 gap-6">
+                  {(["HOME", "AWAY"] as const).map((sd) => {
+                    const list = rows.filter((r) => r.side === sd);
+                    return (
+                      <div key={sd} className={`space-y-1.5 ${sd === "HOME" ? "text-right" : "text-left"}`}>
+                        {list.length === 0 ? (
+                          <p className="text-xs text-foreground/35">-</p>
+                        ) : (
+                          list.map((r, i) => (
+                            <div key={i} className="text-sm">
+                              <span className="font-display font-semibold">{r.name}</span>
+                              <span className="text-foreground/45 text-xs">
+                                {" "}
+                                {r.count} แอสซิสต์
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+        {match.status !== "SCHEDULED" &&
+          (() => {
             const cards = match.events.filter(
               (e) => (e.type === "YELLOW_CARD" || e.type === "RED_CARD") && e.side !== "NEUTRAL"
             );
@@ -662,6 +793,41 @@ export default async function PublicMatchPage({
                         {s.player && <span className="text-accent">↑ {s.player.name}</span>}
                         {s.relatedPlayer && (
                           <span className="text-foreground/50">↓ {s.relatedPlayer.name}</span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {(() => {
+          const notable = match.events.filter(
+            (e) => e.type === "PENALTY_MISSED" || e.type === "INJURY"
+          );
+          if (notable.length === 0) return null;
+          const sideName = (s: string) =>
+            s === "HOME" ? match.homeTeam.name : s === "AWAY" ? match.awayTeam.name : "";
+          return (
+            <div className="rounded-xl border border-white/10 bg-card p-5">
+              <h2 className="font-display font-bold mb-4">เหตุการณ์สำคัญอื่นๆ</h2>
+              <div className="space-y-2 text-sm">
+                {notable
+                  .slice()
+                  .sort((a, b) => a.minute - b.minute)
+                  .map((e) => (
+                    <div key={e.id} className="flex items-center gap-3 rounded-lg bg-white/5 px-3 py-2">
+                      <span className="w-8 font-display font-bold text-accent shrink-0">
+                        {e.minute}&apos;
+                      </span>
+                      <span className="shrink-0">
+                        {e.type === "PENALTY_MISSED" ? "❌ จุดโทษพลาด" : "🚑 บาดเจ็บ"}
+                      </span>
+                      <span className="flex-1 truncate text-foreground/70">
+                        {e.player?.name ?? e.label}
+                        {sideName(e.side) && (
+                          <span className="text-foreground/40 text-xs"> · {sideName(e.side)}</span>
                         )}
                       </span>
                     </div>

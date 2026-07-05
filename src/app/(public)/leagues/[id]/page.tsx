@@ -274,6 +274,19 @@ export default async function PublicLeaguePage({
         value: `${lateGoals} ประตู`,
       });
     }
+    const crowded = finishedLeagueMatches
+      .filter((m) => (m.spectators ?? 0) > 0)
+      .reduce<(typeof finishedLeagueMatches)[number] | null>(
+        (a, b) => (a && (a.spectators ?? 0) >= (b.spectators ?? 0) ? a : b),
+        null
+      );
+    if (crowded) {
+      records.push({
+        label: "แมตช์คนดูเยอะสุด",
+        value: `${crowded.homeTeam.name} พบ ${crowded.awayTeam.name}`,
+        sub: `${(crowded.spectators ?? 0).toLocaleString()} คน`,
+      });
+    }
   }
 
   const hatTricks =
@@ -649,6 +662,23 @@ export default async function PublicLeaguePage({
                     </span>
                   )}
                 </>
+              );
+            })()}
+            {(() => {
+              const withPlayers = league.teams.filter((t) => t._count.players > 0);
+              if (withPlayers.length < 2) return null;
+              const deepest = withPlayers.reduce((a, b) =>
+                b._count.players > a._count.players ? b : a
+              );
+              const thinnest = withPlayers.reduce((a, b) =>
+                b._count.players < a._count.players ? b : a
+              );
+              if (deepest._count.players === thinnest._count.players) return null;
+              return (
+                <span className="text-xs rounded-full bg-white/5 text-foreground/60 px-3 py-1">
+                  👥 ผู้เล่นเยอะสุด: {deepest.abbr} ({deepest._count.players}) · น้อยสุด: {thinnest.abbr} (
+                  {thinnest._count.players})
+                </span>
               );
             })()}
           </div>
@@ -1429,6 +1459,31 @@ export default async function PublicLeaguePage({
                 </p>
               )}
 
+              {!sideView && !asofRound && standings.length >= 2 && standings[0].played > 0 && (
+                <div className="rounded-xl border border-white/10 bg-card p-5">
+                  <h3 className="font-display font-bold mb-3">📏 ช่องว่างในตาราง</h3>
+                  <div className="flex flex-col gap-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-foreground/60">จ่าฝูงนำอันดับสอง</span>
+                      <b className="text-accent">{standings[0].points - standings[1].points} แต้ม</b>
+                    </div>
+                    {zonesOn &&
+                      league.relegatedCount > 0 &&
+                      standings.length > league.relegatedCount &&
+                      (() => {
+                        const safe = standings[standings.length - league.relegatedCount - 1];
+                        const drop = standings[standings.length - league.relegatedCount];
+                        return (
+                          <div className="flex items-center justify-between">
+                            <span className="text-foreground/60">พ้นโซนตกชั้น</span>
+                            <b className="text-red-400">{safe.points - drop.points} แต้ม</b>
+                          </div>
+                        );
+                      })()}
+                  </div>
+                </div>
+              )}
+
               {(hotStreak || unbeatenStreak) && (
                 <div className="rounded-xl border border-accent/30 bg-card p-5">
                   <h3 className="font-display font-bold mb-3">🔥 ฟอร์มร้อนแรง</h3>
@@ -1653,6 +1708,23 @@ export default async function PublicLeaguePage({
                 </Link>
               )}
             </form>
+            {(() => {
+              const done = matches.filter((m) => m.status === "FINISHED").length;
+              const pct = matches.length > 0 ? Math.round((done / matches.length) * 100) : 0;
+              return (
+                <div className="rounded-xl border border-white/10 bg-card p-4">
+                  <div className="flex items-center justify-between text-xs text-foreground/55 mb-2">
+                    <span>ความคืบหน้าฤดูกาล</span>
+                    <span>
+                      <b className="text-accent">{done}</b> / {matches.length} นัด · {pct}%
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div className="h-full bg-accent rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })()}
             {Array.from(matchesByRound.entries())
               .filter(([round]) => roundFilter === null || round === roundFilter)
               .map(([round, roundMatches]) => {

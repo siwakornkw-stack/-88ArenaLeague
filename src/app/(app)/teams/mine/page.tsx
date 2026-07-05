@@ -328,6 +328,104 @@ export default async function MyTeamPage({
         );
       })()}
 
+      {(() => {
+        const finishedLeague = teamMatches
+          .filter((m) => m.status === "FINISHED" && m.stage === "LEAGUE")
+          .sort((a, b) => a.round - b.round || a.kickoffAt.getTime() - b.kickoffAt.getTime());
+        if (finishedLeague.length === 0) return null;
+        const results = finishedLeague.map((m) => {
+          const gf = m.homeTeamId === team.id ? m.homeScore : m.awayScore;
+          const ga = m.homeTeamId === team.id ? m.awayScore : m.homeScore;
+          return gf > ga ? "W" : gf < ga ? "L" : "D";
+        });
+        const last = results[results.length - 1];
+        let run = 0;
+        for (let i = results.length - 1; i >= 0 && results[i] === last; i--) run++;
+        let unbeaten = 0;
+        for (let i = results.length - 1; i >= 0 && results[i] !== "L"; i--) unbeaten++;
+        const streakLabel =
+          last === "W" ? "ชนะรวด" : last === "L" ? "แพ้รวด" : "เสมอรวด";
+        const streakClass =
+          last === "W"
+            ? "border-accent/40 bg-accent/10 text-accent"
+            : last === "L"
+              ? "border-red-500/40 bg-red-500/10 text-red-400"
+              : "border-white/15 bg-white/5 text-foreground/70";
+        return (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className={`rounded-full border px-3 py-1 font-semibold ${streakClass}`}>
+              {run >= 2 ? `🔥 ${streakLabel} ${run} นัด` : `นัดล่าสุด: ${last === "W" ? "ชนะ" : last === "L" ? "แพ้" : "เสมอ"}`}
+            </span>
+            {unbeaten >= 3 && last !== "W" && (
+              <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-foreground/70">
+                ไม่แพ้ติดต่อกัน {unbeaten} นัด
+              </span>
+            )}
+          </div>
+        );
+      })()}
+
+      {(() => {
+        const finishedLeague = teamMatches.filter(
+          (m) => m.status === "FINISHED" && m.stage === "LEAGUE"
+        );
+        if (finishedLeague.length === 0) return null;
+        type Rec = { m: (typeof finishedLeague)[number]; gf: number; ga: number; diff: number };
+        const rows: Rec[] = finishedLeague.map((m) => {
+          const gf = m.homeTeamId === team.id ? m.homeScore : m.awayScore;
+          const ga = m.homeTeamId === team.id ? m.awayScore : m.homeScore;
+          return { m, gf, ga, diff: gf - ga };
+        });
+        const bestWin = rows
+          .filter((r) => r.diff > 0)
+          .sort((a, b) => b.diff - a.diff || b.gf - a.gf)[0];
+        const worstLoss = rows
+          .filter((r) => r.diff < 0)
+          .sort((a, b) => a.diff - b.diff || b.ga - a.ga)[0];
+        const opp = (r: Rec) =>
+          r.m.homeTeamId === team.id ? r.m.awayTeam.name : r.m.homeTeam.name;
+        if (!bestWin && !worstLoss) return null;
+        return (
+          <div className="rounded-lg bg-card border border-white/10 p-5">
+            <h2 className="font-semibold mb-3">สถิติเด่นของฤดูกาล</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              {bestWin && (
+                <Link
+                  href={`/matches/${bestWin.m.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-md bg-white/5 px-3 py-2.5 hover:bg-white/10"
+                >
+                  <div className="text-xs text-foreground/50 mb-0.5">🏆 ชนะขาดที่สุด</div>
+                  <div>
+                    พบ {opp(bestWin)}{" "}
+                    <span className="font-display font-bold text-accent">
+                      {bestWin.gf}-{bestWin.ga}
+                    </span>
+                  </div>
+                </Link>
+              )}
+              {worstLoss && (
+                <Link
+                  href={`/matches/${worstLoss.m.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-md bg-white/5 px-3 py-2.5 hover:bg-white/10"
+                >
+                  <div className="text-xs text-foreground/50 mb-0.5">💔 แพ้ยับที่สุด</div>
+                  <div>
+                    พบ {opp(worstLoss)}{" "}
+                    <span className="font-display font-bold text-red-400">
+                      {worstLoss.gf}-{worstLoss.ga}
+                    </span>
+                  </div>
+                </Link>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {teamMatches.length > 0 && (
         <div className="rounded-lg bg-card border border-white/10 p-5">
           <div className="flex items-center justify-between mb-3">

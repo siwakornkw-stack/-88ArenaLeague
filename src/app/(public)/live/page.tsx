@@ -23,7 +23,10 @@ export default async function LivePage() {
         homeTeam: true,
         awayTeam: true,
         league: true,
-        events: { where: { type: "KICK_OFF" } },
+        events: {
+          where: { type: { in: ["KICK_OFF", "GOAL", "OWN_GOAL"] } },
+          include: { player: true },
+        },
       },
       orderBy: { kickoffAt: "asc" },
     }),
@@ -65,12 +68,35 @@ export default async function LivePage() {
     const mGoals = m.homeScore + m.awayScore;
     if (mGoals > bestGoals) return m;
     if (mGoals === bestGoals && bestGoals > 0) {
-      const bestMin = best.events[0] ? computeLiveMinute(best.events[0].createdAt) : 0;
-      const mMin = m.events[0] ? computeLiveMinute(m.events[0].createdAt) : 0;
+      const bestKick = best.events.find((e) => e.type === "KICK_OFF");
+      const mKick = m.events.find((e) => e.type === "KICK_OFF");
+      const bestMin = bestKick ? computeLiveMinute(bestKick.createdAt) : 0;
+      const mMin = mKick ? computeLiveMinute(mKick.createdAt) : 0;
       return mMin > bestMin ? m : best;
     }
     return best;
   }, null);
+
+  // Feature: live goal ticker — most recent goals across all live matches (scorer + minute)
+  const liveGoals = live
+    .flatMap((m) =>
+      m.events
+        .filter((e) => e.type === "GOAL" || e.type === "OWN_GOAL")
+        .map((e) => ({
+          matchId: m.id,
+          minute: e.minute,
+          createdAt: e.createdAt,
+          isOwnGoal: e.type === "OWN_GOAL",
+          scorer: e.player?.name ?? null,
+          // OWN_GOAL counts for the opposite side of the player who scored it
+          scoringTeam:
+            (e.side === "HOME") === (e.type === "OWN_GOAL")
+              ? m.awayTeam.name
+              : m.homeTeam.name,
+        })),
+    )
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 8);
 
   // Feature 2: today's finished-match summary (played / draws / biggest win margin)
   const todayDraws = todayFinished.filter((m) => m.homeScore === m.awayScore).length;
@@ -80,6 +106,13 @@ export default async function LivePage() {
     if (!best) return m;
     return margin > Math.abs(best.homeScore - best.awayScore) ? m : best;
   }, null);
+
+  // Feature: countdown to the next scheduled kickoff (derived from already-fetched upcoming list)
+  const now = Date.now();
+  const nextMatch = upcoming[0] ?? null;
+  const minutesUntil = (d: Date) => Math.max(0, Math.round((d.getTime() - now) / 60000));
+  const formatCountdown = (mins: number) =>
+    mins >= 60 ? `${Math.floor(mins / 60)} ชม. ${mins % 60} น.` : `${mins} น.`;
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -125,6 +158,28 @@ export default async function LivePage() {
           </div>
         )}
 
+        {liveGoals.length > 0 && (
+          <div className="rounded-xl border border-accent/20 bg-card p-4 max-w-2xl">
+            <div className="text-xs text-foreground/45 mb-3">⚡ ประตูล่าสุดในเกมสด</div>
+            <div className="flex flex-col gap-2">
+              {liveGoals.map((g, i) => (
+                <Link
+                  key={i}
+                  href={`/matches/${g.matchId}`}
+                  className="flex items-center gap-3 text-sm hover:text-accent"
+                >
+                  <span className="font-display font-bold text-accent shrink-0 w-9">{g.minute}&apos;</span>
+                  <span className="truncate">
+                    {g.scorer ?? "ประตู"}
+                    {g.isOwnGoal && <span className="text-red-400"> (เข้าประตูตัวเอง)</span>}
+                  </span>
+                  <span className="text-foreground/40 truncate ml-auto text-right">{g.scoringTeam}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {live.length > 0 &&
           [...liveByLeague.entries()].map(([leagueName, ms]) => (
             <div key={leagueName}>
@@ -141,7 +196,10 @@ export default async function LivePage() {
                     <div className="flex items-center justify-between text-[10px] mb-2">
                       <span className="text-foreground/40">{m.league.name}</span>
                       <span className="text-red-400">
-                        ● {m.events[0] ? computeLiveMinute(m.events[0].createdAt) : 0}&apos;
+                        ● {(() => {
+                          const k = m.events.find((e) => e.type === "KICK_OFF");
+                          return k ? computeLiveMinute(k.createdAt) : 0;
+                        })()}&apos;
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
@@ -216,6 +274,22 @@ export default async function LivePage() {
           </div>
         )}
 
+        {nextMatch && live.length === 0 && (
+          <Link
+            href={`/matches/${nextMatch.id}`}
+            className="block rounded-xl border border-accent/30 bg-card p-5 max-w-2xl hover:border-accent/60"
+          >
+            <div className="text-xs text-foreground/45">คู่ถัดไปเตะใน</div>
+            <div className="font-display italic font-black text-3xl text-accent mt-1">
+              {formatCountdown(minutesUntil(nextMatch.kickoffAt))}
+            </div>
+            <div className="text-sm mt-2 truncate">
+              {nextMatch.homeTeam.name} <span className="text-foreground/40">พบ</span> {nextMatch.awayTeam.name}
+            </div>
+            <div className="text-[11px] text-foreground/40 mt-0.5">{nextMatch.league.name}</div>
+          </Link>
+        )}
+
         {upcoming.length > 0 && (
           <div>
             <h2 className="font-display font-bold mb-4">กำลังจะเริ่ม</h2>
@@ -227,8 +301,13 @@ export default async function LivePage() {
                   className="grid grid-cols-[1fr_72px_1fr_auto] items-center gap-2 rounded-lg bg-card border border-white/10 px-3 py-2 text-sm hover:border-accent/50"
                 >
                   <span className="text-right truncate">{m.homeTeam.name}</span>
-                  <span className="text-center text-xs text-accent">
-                    {m.kickoffAt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
+                  <span className="text-center text-accent leading-tight">
+                    <span className="block text-xs">
+                      {m.kickoffAt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <span className="block text-[9px] text-foreground/40">
+                      อีก {formatCountdown(minutesUntil(m.kickoffAt))}
+                    </span>
                   </span>
                   <span className="truncate">{m.awayTeam.name}</span>
                   <span className="text-[10px] text-foreground/40">{m.league.name}</span>

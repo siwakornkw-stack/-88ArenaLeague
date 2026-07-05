@@ -66,7 +66,7 @@ export default async function Home() {
 
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
-  const [todayCount, goalSum] = await Promise.all([
+  const [todayCount, goalSum, spectatorSum] = await Promise.all([
     prisma.match.count({
       where: { kickoffAt: { gte: dayStart, lt: new Date(dayStart.getTime() + 86400000) } },
     }),
@@ -74,18 +74,35 @@ export default async function Home() {
       where: { status: "FINISHED" },
       _sum: { homeScore: true, awayScore: true },
     }),
+    prisma.match.aggregate({
+      where: { status: "FINISHED", spectators: { not: null } },
+      _sum: { spectators: true },
+    }),
   ]);
   const totalGoals = (goalSum._sum.homeScore ?? 0) + (goalSum._sum.awayScore ?? 0);
   const goalsPerMatch = matchCount > 0 ? (totalGoals / matchCount).toFixed(1) : "0.0";
+  const totalSpectators = spectatorSum._sum.spectators ?? 0;
 
   const biggestWin = recentResults
     .map((m) => ({ match: m, margin: Math.abs(m.homeScore - m.awayScore) }))
     .filter((x) => x.margin >= 3)
     .sort((a, b) => b.margin - a.margin)[0];
 
+  const goalFest = recentResults
+    .map((m) => ({ match: m, goals: m.homeScore + m.awayScore }))
+    .filter((x) => x.goals >= 4)
+    .sort((a, b) => b.goals - a.goals)[0];
+
   const recentGoals = await prisma.matchEvent.findMany({
     where: { type: "GOAL", player: { isNot: null } },
     include: { player: { include: { team: true } }, match: { include: { league: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+  });
+
+  const recentCards = await prisma.matchEvent.findMany({
+    where: { type: { in: ["YELLOW_CARD", "RED_CARD"] }, player: { isNot: null } },
+    include: { player: { include: { team: true } } },
     orderBy: { createdAt: "desc" },
     take: 6,
   });
@@ -247,6 +264,19 @@ export default async function Home() {
               <span className="text-xs text-foreground/50">ชนะขาด {biggestWin.margin} ประตู · {biggestWin.match.league.name}</span>
             </Link>
           )}
+          {goalFest && goalFest.match.id !== biggestWin?.match.id && (
+            <Link
+              href={`/matches/${goalFest.match.id}`}
+              className="mb-4 ml-0 sm:ml-2 inline-flex flex-wrap items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm hover:border-accent/50"
+            >
+              <span className="font-display font-bold text-foreground">⚽ มันส์สุด</span>
+              <span className="font-display font-semibold">
+                {goalFest.match.homeTeam.name} {goalFest.match.homeScore}-{goalFest.match.awayScore}{" "}
+                {goalFest.match.awayTeam.name}
+              </span>
+              <span className="text-xs text-foreground/50">รวม {goalFest.goals} ประตู · {goalFest.match.league.name}</span>
+            </Link>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {recentResults.map((m) => (
               <Link
@@ -284,6 +314,33 @@ export default async function Home() {
                 <span className="font-display font-semibold">{g.player?.name}</span>
                 <span className="text-xs text-foreground/45">
                   {g.player?.team.name} · {g.minute}&apos;
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {recentCards.length > 0 && (
+        <section className="px-6 md:px-16 py-8 border-b border-white/5">
+          <h2 className="font-display italic font-extrabold text-lg text-foreground mb-4">
+            ใบเตือน<span className="text-accent">ล่าสุด</span>
+          </h2>
+          <div className="flex flex-wrap gap-2.5">
+            {recentCards.map((c) => (
+              <Link
+                key={c.id}
+                href={`/matches/${c.matchId}`}
+                className="hover-lift flex items-center gap-2 rounded-full border border-white/10 bg-card px-3.5 py-1.5 text-sm hover:border-accent/50"
+              >
+                <span
+                  className={`inline-block h-3.5 w-2.5 rounded-sm ${
+                    c.type === "RED_CARD" ? "bg-red-500" : "bg-yellow-400"
+                  }`}
+                />
+                <span className="font-display font-semibold">{c.player?.name}</span>
+                <span className="text-xs text-foreground/45">
+                  {c.player?.team.name} · {c.minute}&apos;
                 </span>
               </Link>
             ))}
@@ -438,7 +495,8 @@ export default async function Home() {
           </Link>
         </nav>
         <span className="text-foreground/40 text-xs">
-          {leagueCount} ลีก · {matchCount} แมตช์ · ⚽ {totalGoals.toLocaleString()} ประตู · © 2026
+          {leagueCount} ลีก · {matchCount} แมตช์ · ⚽ {totalGoals.toLocaleString()} ประตู
+          {totalSpectators > 0 && <> · 👥 {totalSpectators.toLocaleString()} ผู้ชม</>} · © 2026
           88ArenaLeague — อัปเดตล่าสุด{" "}
           {new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })} น.
         </span>

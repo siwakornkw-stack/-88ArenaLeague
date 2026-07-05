@@ -144,6 +144,23 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
       awayUnavailable.injured.length >
     0;
 
+  const subsUsed = {
+    HOME: match.events.filter((e) => e.type === "SUBSTITUTION" && e.side === "HOME").length,
+    AWAY: match.events.filter((e) => e.type === "SUBSTITUTION" && e.side === "AWAY").length,
+  };
+  const SUB_LIMIT = 5;
+
+  const readiness =
+    match.status === "SCHEDULED"
+      ? [
+          { label: "ตั้งค่าสนามแข่ง", done: !!match.venue },
+          { label: "กำหนดผู้ตัดสิน", done: !!match.refereeName },
+          { label: `ส่งรายชื่อ ${match.homeTeam.abbr}`, done: homeLineupCount > 0 },
+          { label: `ส่งรายชื่อ ${match.awayTeam.abbr}`, done: awayLineupCount > 0 },
+        ]
+      : [];
+  const readyCount = readiness.filter((r) => r.done).length;
+
   const goalEvents = match.events.filter(
     (e) => e.type === "GOAL" || e.type === "OWN_GOAL"
   );
@@ -387,6 +404,34 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
       </form>
 
       {match.status === "SCHEDULED" && (
+        <div className="rounded-lg bg-card border border-white/10 p-4">
+          <h3 className="text-sm font-semibold mb-2 flex items-center justify-between">
+            เช็กความพร้อมก่อนเริ่ม
+            <span
+              className={`text-xs font-normal ${readyCount === readiness.length ? "text-accent" : "text-foreground/40"}`}
+            >
+              {readyCount}/{readiness.length} พร้อม
+            </span>
+          </h3>
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+            {readiness.map((r) => (
+              <li
+                key={r.label}
+                className={r.done ? "text-foreground/70" : "text-amber-400/80"}
+              >
+                {r.done ? "✓" : "○"} {r.label}
+              </li>
+            ))}
+          </ul>
+          {readyCount < readiness.length && (
+            <p className="mt-2 text-[11px] text-foreground/35">
+              เริ่มแข่งได้เลย แต่ควรกรอกข้อมูลด้านบนให้ครบก่อนคิกออฟ
+            </p>
+          )}
+        </div>
+      )}
+
+      {match.status === "SCHEDULED" && (
         <div className="flex gap-3">
           <form action={kickOffWithId}>
             <button
@@ -445,6 +490,20 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             </p>
           ) : null;
         })()}
+
+      {match.status === "LIVE" && (
+        <p className="text-xs text-foreground/50">
+          เปลี่ยนตัวแล้ว:{" "}
+          <span className={subsUsed.HOME >= SUB_LIMIT ? "text-amber-400/80" : ""}>
+            {match.homeTeam.abbr} {subsUsed.HOME}/{SUB_LIMIT}
+          </span>{" "}
+          ·{" "}
+          <span className={subsUsed.AWAY >= SUB_LIMIT ? "text-amber-400/80" : ""}>
+            {match.awayTeam.abbr} {subsUsed.AWAY}/{SUB_LIMIT}
+          </span>
+          {(subsUsed.HOME >= SUB_LIMIT || subsUsed.AWAY >= SUB_LIMIT) && " (เต็มโควตา)"}
+        </p>
+      )}
 
       {match.status === "LIVE" && (
         <div className="flex gap-3">

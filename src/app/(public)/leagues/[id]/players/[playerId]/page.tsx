@@ -42,18 +42,45 @@ export default async function PublicPlayerPage({
     take: 5,
   });
 
-  const [startingApps, assistsGiven] = await Promise.all([
-    prisma.matchLineup.count({
-      where: {
-        playerId,
-        isStarting: true,
-        match: { status: { in: ["LIVE", "FINISHED"] } },
-      },
-    }),
-    prisma.matchEvent.count({
-      where: { type: "GOAL", relatedPlayerId: playerId },
-    }),
-  ]);
+  const [startingApps, assistsGiven, subbedOff, teamLeagueGoals, crowdLineups] =
+    await Promise.all([
+      prisma.matchLineup.count({
+        where: {
+          playerId,
+          isStarting: true,
+          match: { status: { in: ["LIVE", "FINISHED"] } },
+        },
+      }),
+      prisma.matchEvent.count({
+        where: { type: "GOAL", relatedPlayerId: playerId },
+      }),
+      prisma.matchEvent.count({
+        where: { type: "SUBSTITUTION", relatedPlayerId: playerId },
+      }),
+      prisma.matchEvent.count({
+        where: {
+          type: "GOAL",
+          match: { leagueId: id, stage: "LEAGUE" },
+          player: { teamId: player.teamId },
+        },
+      }),
+      prisma.matchLineup.findMany({
+        where: {
+          playerId,
+          match: { status: { in: ["LIVE", "FINISHED"] }, spectators: { not: null } },
+        },
+        select: {
+          match: {
+            select: {
+              spectators: true,
+              homeTeam: { select: { name: true } },
+              awayTeam: { select: { name: true } },
+              kickoffAt: true,
+            },
+          },
+        },
+      }),
+    ]);
 
   const assistPartners = new Map<string, number>();
   for (const ev of events) {
@@ -223,6 +250,12 @@ export default async function PublicPlayerPage({
                     label="นาทีเฉลี่ยที่ยิง"
                   />
                 )}
+                {teamLeagueGoals > 0 && (goals + assistsGiven) > 0 && (
+                  <Stat
+                    value={Math.round(((goals + assistsGiven) / teamLeagueGoals) * 100)}
+                    label="% ประตูทีม (มีส่วนร่วม)"
+                  />
+                )}
               </>
             );
           })()}
@@ -347,6 +380,72 @@ export default async function PublicPlayerPage({
             ไม่เคยโดนใบเหลือง-แดง
           </div>
         )}
+
+        {(() => {
+          const withCrowd = crowdLineups
+            .map((l) => l.match)
+            .filter((m): m is typeof m & { spectators: number } => m.spectators != null);
+          if (withCrowd.length === 0) return null;
+          const total = withCrowd.reduce((s, m) => s + m.spectators, 0);
+          const biggest = withCrowd.reduce((a, b) => (b.spectators > a.spectators ? b : a));
+          return (
+            <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md flex flex-wrap items-center gap-x-6 gap-y-2">
+              <span>
+                👥 ผู้ชมรวมที่ลงเล่นต่อหน้า{" "}
+                <b className="font-display font-bold text-accent">
+                  {total.toLocaleString("th-TH")}
+                </b>{" "}
+                คน
+              </span>
+              <span className="text-foreground/60">
+                นัดผู้ชมมากสุด {biggest.homeTeam.name} พบ {biggest.awayTeam.name}{" "}
+                <b className="text-foreground/80">
+                  {biggest.spectators.toLocaleString("th-TH")}
+                </b>{" "}
+                คน
+              </span>
+            </div>
+          );
+        })()}
+
+        {(() => {
+          const subbedOn = events.filter(
+            (e) => e.type === "SUBSTITUTION" && e.playerId === playerId
+          ).length;
+          if (subbedOn === 0 && subbedOff === 0) return null;
+          const goalsAsSub = events.filter((e) => {
+            if (e.type !== "GOAL") return false;
+            return events.some(
+              (s) =>
+                s.type === "SUBSTITUTION" &&
+                s.matchId === e.matchId &&
+                s.playerId === playerId &&
+                s.minute <= e.minute
+            );
+          }).length;
+          return (
+            <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md flex flex-wrap items-center gap-x-6 gap-y-2">
+              🔄
+              {subbedOn > 0 && (
+                <span>
+                  ลงเป็นตัวสำรอง{" "}
+                  <b className="font-display font-bold text-accent">{subbedOn}</b> ครั้ง
+                </span>
+              )}
+              {subbedOff > 0 && (
+                <span>
+                  ถูกเปลี่ยนออก{" "}
+                  <b className="font-display font-bold text-accent">{subbedOff}</b> ครั้ง
+                </span>
+              )}
+              {goalsAsSub > 0 && (
+                <span className="text-foreground/60">
+                  ยิงหลังลงมาเป็นตัวสำรอง {goalsAsSub} ประตู
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         {topPartners.length > 0 && (
           <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">

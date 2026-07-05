@@ -9,11 +9,15 @@ function LeagueCard({
   lg,
   lastPlayed,
   goalStats,
+  nextKickoff,
 }: {
   lg: FeaturedLeague;
   lastPlayed?: Date | null;
   goalStats?: { goals: number; avg: number };
+  nextKickoff?: Date | null;
 }) {
+  const progressPct =
+    lg.totalRounds > 0 ? Math.min(100, Math.round((lg.round / lg.totalRounds) * 100)) : 0;
   return (
     <Link
       href={`/leagues/${lg.id}`}
@@ -47,6 +51,12 @@ function LeagueCard({
             {lastPlayed.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
           </span>
         )}
+        {nextKickoff && (
+          <span className="text-foreground/70">
+            ⏭️ นัดต่อไป{" "}
+            {nextKickoff.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
+          </span>
+        )}
         {goalStats && goalStats.goals > 0 && (
           <span>
             🥅 {goalStats.goals} ประตู{" "}
@@ -54,6 +64,17 @@ function LeagueCard({
           </span>
         )}
       </div>
+      {lg.totalRounds > 0 && (
+        <div className="mt-3">
+          <div className="flex justify-between text-[10px] text-foreground/45 mb-1">
+            <span>ความคืบหน้าฤดูกาล</span>
+            <span>{progressPct}%</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+            <div className="h-full rounded-full bg-accent" style={{ width: `${progressPct}%` }} />
+          </div>
+        </div>
+      )}
       {lg.leaderName && lg.leaderForm.length > 0 && (
         <div className="mt-3 flex items-center gap-2 text-xs text-foreground/55">
           <span className="truncate">ฟอร์มจ่าฝูง</span>
@@ -100,25 +121,32 @@ export default async function LeaguesIndexPage({
   const { q = "", sort = "latest" } = await searchParams;
   const query = q.trim();
 
-  const [leagues, finishedIds, liveNow, totalTeams, lastPlayedRows, goalRows] = await Promise.all([
-    getFeaturedLeagues(100),
-    prisma.league.findMany({ where: { status: "FINISHED" }, select: { id: true } }),
-    prisma.match.count({ where: { status: "LIVE" } }),
-    prisma.team.count({ where: { league: { status: { not: "DRAFT" } } } }),
-    prisma.match.groupBy({
-      by: ["leagueId"],
-      where: { status: "FINISHED" },
-      _max: { kickoffAt: true },
-    }),
-    prisma.match.groupBy({
-      by: ["leagueId"],
-      where: { status: "FINISHED", stage: "LEAGUE" },
-      _sum: { homeScore: true, awayScore: true },
-      _count: { _all: true },
-    }),
-  ]);
+  const [leagues, finishedIds, liveNow, totalTeams, lastPlayedRows, goalRows, nextKickoffRows] =
+    await Promise.all([
+      getFeaturedLeagues(100),
+      prisma.league.findMany({ where: { status: "FINISHED" }, select: { id: true } }),
+      prisma.match.count({ where: { status: "LIVE" } }),
+      prisma.team.count({ where: { league: { status: { not: "DRAFT" } } } }),
+      prisma.match.groupBy({
+        by: ["leagueId"],
+        where: { status: "FINISHED" },
+        _max: { kickoffAt: true },
+      }),
+      prisma.match.groupBy({
+        by: ["leagueId"],
+        where: { status: "FINISHED", stage: "LEAGUE" },
+        _sum: { homeScore: true, awayScore: true },
+        _count: { _all: true },
+      }),
+      prisma.match.groupBy({
+        by: ["leagueId"],
+        where: { status: "SCHEDULED", kickoffAt: { gte: new Date() } },
+        _min: { kickoffAt: true },
+      }),
+    ]);
   const finishedSet = new Set(finishedIds.map((l) => l.id));
   const lastPlayedMap = new Map(lastPlayedRows.map((r) => [r.leagueId, r._max.kickoffAt]));
+  const nextKickoffMap = new Map(nextKickoffRows.map((r) => [r.leagueId, r._min.kickoffAt]));
   const goalsMap = new Map(
     goalRows.map((r) => {
       const goals = (r._sum.homeScore ?? 0) + (r._sum.awayScore ?? 0);
@@ -189,6 +217,7 @@ export default async function LeaguesIndexPage({
                   lg={lg}
                   lastPlayed={lastPlayedMap.get(lg.id)}
                   goalStats={goalsMap.get(lg.id)}
+                  nextKickoff={nextKickoffMap.get(lg.id)}
                 />
               ))}
             </div>
@@ -207,6 +236,7 @@ export default async function LeaguesIndexPage({
                   lg={lg}
                   lastPlayed={lastPlayedMap.get(lg.id)}
                   goalStats={goalsMap.get(lg.id)}
+                  nextKickoff={nextKickoffMap.get(lg.id)}
                 />
               ))}
             </div>
