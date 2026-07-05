@@ -224,7 +224,54 @@ export async function setLineup(matchId: string, formData: FormData) {
   await prisma.$transaction([
     prisma.matchLineup.deleteMany({ where: { matchId, player: { teamId } } }),
     prisma.matchLineup.createMany({
-      data: playerIds.map((playerId) => ({ matchId, playerId, isStarting: true })),
+      data: playerIds.map((playerId) => {
+        const shirtRaw = Number(formData.get(`shirt_${playerId}`));
+        return {
+          matchId,
+          playerId,
+          isStarting: true,
+          shirtNumber: Number.isInteger(shirtRaw) && shirtRaw > 0 ? shirtRaw : null,
+        };
+      }),
+    }),
+  ]);
+  revalidatePath("/teams/mine");
+}
+
+// copy the lineup from this team's most recent finished match
+export async function copyLastLineup(matchId: string) {
+  const teamId = await getManagedTeamIdForMatch(matchId);
+
+  const lastMatch = await prisma.match.findFirst({
+    where: {
+      status: "FINISHED",
+      OR: [{ homeTeamId: teamId }, { awayTeamId: teamId }],
+    },
+    orderBy: { kickoffAt: "desc" },
+    include: { lineups: { where: { player: { teamId } } } },
+  });
+  if (!lastMatch || lastMatch.lineups.length === 0) {
+    throw new Error("ไม่พบรายชื่อจากนัดก่อนหน้า");
+  }
+
+  const activeIds = new Set(
+    (
+      await prisma.player.findMany({ where: { teamId, status: "ACTIVE" }, select: { id: true } })
+    ).map((p) => p.id)
+  );
+  const rows = lastMatch.lineups
+    .filter((l) => activeIds.has(l.playerId))
+    .slice(0, LINEUP_SIZE);
+
+  await prisma.$transaction([
+    prisma.matchLineup.deleteMany({ where: { matchId, player: { teamId } } }),
+    prisma.matchLineup.createMany({
+      data: rows.map((l) => ({
+        matchId,
+        playerId: l.playerId,
+        isStarting: l.isStarting,
+        shirtNumber: l.shirtNumber,
+      })),
     }),
   ]);
   revalidatePath("/teams/mine");

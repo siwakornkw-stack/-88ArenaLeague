@@ -44,9 +44,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       `DTEND:${fmt(new Date(m.kickoffAt.getTime() + 2 * 3600000))}`,
       `SUMMARY:${esc(`${filterTeam ? `[${filterTeam.abbr}] ` : ""}${m.homeTeam.name} vs ${m.awayTeam.name}`)}`,
       `DESCRIPTION:${esc(
-        m.status === "FINISHED"
-          ? `จบแล้ว ${m.homeScore}-${m.awayScore} · ${league.name}`
-          : `นัดที่ ${m.round} · ${league.name}`
+        `${
+          m.status === "FINISHED"
+            ? `จบแล้ว ${m.homeScore}-${m.awayScore} · ${league.name}`
+            : `นัดที่ ${m.round} · ${league.name}`
+        } · https://league-manager-app.vercel.app/matches/${m.id}`
       )}`,
       ...(m.venue ? [`LOCATION:${esc(m.venue)}`] : []),
       "END:VEVENT"

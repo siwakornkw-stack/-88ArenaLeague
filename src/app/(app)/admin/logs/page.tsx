@@ -16,18 +16,30 @@ function relativeTime(d: Date) {
 export default async function AdminLogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ action?: string; page?: string; league?: string }>;
+  searchParams: Promise<{
+    action?: string;
+    page?: string;
+    league?: string;
+    from?: string;
+    to?: string;
+  }>;
 }) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") redirect("/teams/mine");
 
-  const { action, page, league } = await searchParams;
+  const { action, page, league, from, to } = await searchParams;
   const actionFilter = action?.trim() || null;
   const leagueFilter = league?.trim() || null;
+  const fromDate = from ? new Date(`${from}T00:00`) : null;
+  const toDate = to ? new Date(`${to}T23:59:59`) : null;
   const pageNum = Math.max(1, Number(page) || 1);
   const where = {
     ...(actionFilter ? { action: actionFilter } : {}),
     ...(leagueFilter ? { leagueId: leagueFilter } : {}),
+    ...(fromDate && !isNaN(fromDate.getTime()) ? { createdAt: { gte: fromDate } } : {}),
+    ...(toDate && !isNaN(toDate.getTime())
+      ? { createdAt: { ...(fromDate ? { gte: fromDate } : {}), lte: toDate } }
+      : {}),
   };
 
   const [logs, actions, total, leagues] = await Promise.all([
@@ -77,6 +89,18 @@ export default async function AdminLogsPage({
             </option>
           ))}
         </select>
+        <input
+          type="date"
+          name="from"
+          defaultValue={from ?? ""}
+          className="rounded-md bg-black/30 border border-white/10 px-2 py-2 text-xs"
+        />
+        <input
+          type="date"
+          name="to"
+          defaultValue={to ?? ""}
+          className="rounded-md bg-black/30 border border-white/10 px-2 py-2 text-xs"
+        />
         <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
           กรอง
         </button>

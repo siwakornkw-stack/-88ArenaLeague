@@ -34,7 +34,11 @@ export default async function AdminTodayPage() {
       <div>
         <h1 className="font-display font-bold text-3xl">แมตช์วันนี้ทุกลีก</h1>
         <p className="text-foreground/60 mt-1">
-          {now.toLocaleDateString("th-TH", { dateStyle: "full" })} · {matches.length} แมตช์
+          {now.toLocaleDateString("th-TH", { dateStyle: "full" })} · {matches.length} แมตช์ · ⚽{" "}
+          {matches.reduce((s, m) => s + m.homeScore + m.awayScore, 0)} ประตู ·{" "}
+          <span className="text-red-400">
+            ● {matches.filter((m) => m.status === "LIVE").length} สด
+          </span>
         </p>
       </div>
 

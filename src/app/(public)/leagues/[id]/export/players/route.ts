@@ -11,7 +11,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const league = await prisma.league.findUnique({ where: { id } });
   if (!league) return new Response("Not found", { status: 404 });
 
-  const [players, goals, yellows] = await Promise.all([
+  const [players, goals, yellows, assists] = await Promise.all([
     prisma.player.findMany({
       where: { team: { leagueId: id } },
       include: { team: true },
@@ -27,12 +27,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       where: { type: "YELLOW_CARD", playerId: { not: null }, match: { leagueId: id } },
       _count: { playerId: true },
     }),
+    prisma.matchEvent.groupBy({
+      by: ["relatedPlayerId"],
+      where: { type: "GOAL", relatedPlayerId: { not: null }, match: { leagueId: id } },
+      _count: { relatedPlayerId: true },
+    }),
   ]);
   const goalMap = new Map(goals.map((g) => [g.playerId, g._count.playerId]));
   const yellowMap = new Map(yellows.map((g) => [g.playerId, g._count.playerId]));
+  const assistMap = new Map(assists.map((g) => [g.relatedPlayerId, g._count.relatedPlayerId]));
 
   const rows = [
-    ["ทีม", "เบอร์", "ชื่อ", "ชื่อเล่น", "ตำแหน่ง", "สถานะ", "ประตู", "ใบเหลือง"],
+    ["ทีม", "เบอร์", "ชื่อ", "ชื่อเล่น", "ตำแหน่ง", "สถานะ", "ประตู", "แอสซิสต์", "ใบเหลือง"],
     ...players.map((p) => [
       p.team.name,
       p.number,
@@ -41,6 +47,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       p.position,
       p.status,
       goalMap.get(p.id) ?? 0,
+      assistMap.get(p.id) ?? 0,
       yellowMap.get(p.id) ?? 0,
     ]),
   ];

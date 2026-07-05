@@ -26,14 +26,17 @@ export default async function AccountPage({
     where: { id: session.userId },
     include: { managedTeams: { select: { name: true } } },
   });
-  const myLogs =
+  const [myLogs, myLogCount] =
     session.role === "SUPER_ADMIN"
-      ? await prisma.adminLog.findMany({
-          where: { userId: session.userId },
-          orderBy: { createdAt: "desc" },
-          take: 10,
-        })
-      : [];
+      ? await Promise.all([
+          prisma.adminLog.findMany({
+            where: { userId: session.userId },
+            orderBy: { createdAt: "desc" },
+            take: 10,
+          }),
+          prisma.adminLog.count({ where: { userId: session.userId } }),
+        ])
+      : [[], 0];
 
   return (
     <div className="max-w-sm space-y-6">
@@ -81,7 +84,10 @@ export default async function AccountPage({
 
       {myLogs.length > 0 && (
         <div className="rounded-lg bg-card border border-white/10 p-5">
-          <h2 className="font-semibold mb-3">กิจกรรมล่าสุดของฉัน</h2>
+          <h2 className="font-semibold mb-3">
+            กิจกรรมล่าสุดของฉัน{" "}
+            <span className="text-xs text-foreground/45">(ทั้งหมด {myLogCount} รายการ)</span>
+          </h2>
           <div className="space-y-1.5 text-sm">
             {myLogs.map((log) => (
               <div key={log.id} className="flex items-baseline gap-2">

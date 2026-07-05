@@ -304,6 +304,7 @@ export async function updateMatchInfo(matchId: string, formData: FormData) {
   const streamRaw = String(formData.get("streamUrl") ?? "").trim();
   const spectatorsRaw = String(formData.get("spectators") ?? "").trim();
   const refereeName = String(formData.get("refereeName") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim();
 
   const match = await prisma.match.findUniqueOrThrow({ where: { id: matchId } });
   const data: {
@@ -312,11 +313,13 @@ export async function updateMatchInfo(matchId: string, formData: FormData) {
     streamUrl: string | null;
     spectators: number | null;
     refereeName: string | null;
+    note: string | null;
   } = {
     venue: venue || null,
     streamUrl: /^https?:\/\//.test(streamRaw) ? streamRaw : null,
     spectators: spectatorsRaw ? Math.max(0, Math.round(Number(spectatorsRaw) || 0)) : null,
     refereeName: refereeName || null,
+    note: note || null,
   };
 
   if (kickoffRaw && match.status === "SCHEDULED") {
@@ -325,6 +328,27 @@ export async function updateMatchInfo(matchId: string, formData: FormData) {
   }
 
   await prisma.match.update({ where: { id: matchId }, data });
+  revalidatePath(`/admin/matches/${matchId}`);
+}
+
+export async function resetEvents(matchId: string) {
+  const session = await assertSuperAdmin();
+  const match = await prisma.match.findUniqueOrThrow({
+    where: { id: matchId },
+    include: { homeTeam: true, awayTeam: true },
+  });
+  if (match.status === "FINISHED") throw new Error("Reopen the match first");
+
+  await prisma.$transaction([
+    prisma.matchEvent.deleteMany({ where: { matchId, type: { not: "KICK_OFF" } } }),
+    prisma.match.update({ where: { id: matchId }, data: { homeScore: 0, awayScore: 0 } }),
+  ]);
+  await logAdmin(
+    session,
+    "รีเซ็ตเหตุการณ์",
+    `${match.homeTeam.name} vs ${match.awayTeam.name} · #${matchId}`,
+    match.leagueId
+  );
   revalidatePath(`/admin/matches/${matchId}`);
 }
 

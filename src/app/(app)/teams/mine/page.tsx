@@ -11,6 +11,7 @@ import {
   updatePlayerStatus,
   deletePlayer,
   setLineup,
+  copyLastLineup,
   updateMyTeam,
   importPlayers,
 } from "./actions";
@@ -346,6 +347,16 @@ export default async function MyTeamPage({
                     defaultChecked={selectedPlayerIds.has(p.id)}
                   />
                   #{p.number} {p.name}
+                  <input
+                    type="number"
+                    name={`shirt_${p.id}`}
+                    placeholder="เบอร์"
+                    title="เบอร์เสื้อเฉพาะนัดนี้ (ไม่ใส่ = เบอร์เดิม)"
+                    defaultValue={
+                      nextMatch?.lineups.find((l) => l.playerId === p.id)?.shirtNumber ?? ""
+                    }
+                    className="w-12 rounded bg-black/30 border border-white/10 px-1 py-0.5 text-[10px]"
+                  />
                 </label>
               ))}
               {eligiblePlayers.length === 0 && (
@@ -367,6 +378,42 @@ export default async function MyTeamPage({
               บันทึกตัวจริง
             </button>
           </form>
+          <form action={copyLastLineup.bind(null, nextMatch.id)} className="mt-2">
+            <button type="submit" className="text-xs text-foreground/60 hover:text-accent">
+              📋 คัดลอกรายชื่อจากนัดที่แล้ว
+            </button>
+          </form>
+          {selectedPlayerIds.size > 0 && (
+            <p className="mt-2 text-xs text-foreground/45">
+              ที่เลือกไว้:{" "}
+              {(["GK", "DF", "MF", "FW"] as const)
+                .map((g) => {
+                  const count = team.players.filter((p) => {
+                    if (!selectedPlayerIds.has(p.id)) return false;
+                    const pos = p.position.toUpperCase();
+                    if (g === "GK") return pos.includes("GK") || p.position.includes("ผู้รักษา");
+                    if (g === "DF") return pos.includes("DF") || p.position.includes("กองหลัง");
+                    if (g === "FW")
+                      return (
+                        pos.includes("FW") ||
+                        p.position.includes("กองหน้า") ||
+                        p.position.includes("ปีก")
+                      );
+                    return (
+                      !pos.includes("GK") &&
+                      !pos.includes("DF") &&
+                      !pos.includes("FW") &&
+                      !p.position.includes("ผู้รักษา") &&
+                      !p.position.includes("กองหลัง") &&
+                      !p.position.includes("กองหน้า") &&
+                      !p.position.includes("ปีก")
+                    );
+                  }).length;
+                  return `${g} ${count}`;
+                })
+                .join(" · ")}
+            </p>
+          )}
         </div>
       )}
 

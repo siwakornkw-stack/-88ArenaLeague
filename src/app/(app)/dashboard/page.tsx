@@ -234,6 +234,7 @@ export default async function DashboardPage() {
                   <span className="text-xs rounded-full bg-white/5 px-3 py-1 text-foreground/70 shrink-0">
                     {league.status === "FINISHED" ? "🏆 " : ""}
                     {STATUS_LABEL[league.status]}
+                    {league.hidden && " · ซ่อนอยู่"}
                   </span>
                 </div>
 

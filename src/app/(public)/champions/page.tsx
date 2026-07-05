@@ -93,10 +93,21 @@ export default async function ChampionsPage({
             }
             const top = [...titleCount.entries()].sort((a, b) => b[1] - a[1])[0];
             return top && top[1] > 1 ? (
-              <div className="rounded-xl border border-accent/30 bg-card p-4 max-w-md text-sm">
-                👑 คว้าแชมป์มากสุด:{" "}
-                <span className="font-display font-bold text-accent">{top[0]}</span> ({top[1]}{" "}
-                สมัย)
+              <div className="rounded-xl border border-accent/30 bg-card p-4 max-w-md text-sm space-y-2">
+                <div>
+                  👑 คว้าแชมป์มากสุด:{" "}
+                  <span className="font-display font-bold text-accent">{top[0]}</span> ({top[1]}{" "}
+                  สมัย)
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs text-foreground/60">
+                  {[...titleCount.entries()]
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([name, n]) => (
+                      <span key={name} className="rounded-full bg-white/5 px-2.5 py-0.5">
+                        {name} ×{n}
+                      </span>
+                    ))}
+                </div>
               </div>
             ) : null;
           })()}

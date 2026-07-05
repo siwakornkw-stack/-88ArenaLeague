@@ -276,6 +276,15 @@ export default async function PublicMatchPage({
           {match.spectators != null && match.spectators > 0 && <> · ผู้ชม {match.spectators}</>}
           {match.refereeName && <> · 🧑‍⚖️ {match.refereeName}</>}
         </p>
+        {(() => {
+          const ht = match.events.find((e) => e.type === "HALF_TIME");
+          return ht ? (
+            <p className="mt-1 text-center text-[11px] text-foreground/40">({ht.label})</p>
+          ) : null;
+        })()}
+        {match.note && (
+          <p className="mt-2 text-center text-xs text-yellow-400/90">📝 {match.note}</p>
+        )}
         {match.status === "SCHEDULED" &&
           (() => {
             const hoursLeft = Math.round(
@@ -405,6 +414,39 @@ export default async function PublicMatchPage({
             </div>
           </div>
         )}
+
+        {standings.length > 0 &&
+          (() => {
+            const idxs = [homeRank - 1, awayRank - 1].filter((i) => i >= 0);
+            if (idxs.length === 0) return null;
+            const lo = Math.max(0, Math.min(...idxs) - 1);
+            const hi = Math.min(standings.length - 1, Math.max(...idxs) + 1);
+            const slice = standings.slice(lo, hi + 1);
+            return (
+              <div className="rounded-xl border border-white/10 bg-card p-5 max-w-xl mx-auto w-full">
+                <h2 className="font-display font-bold mb-3 text-sm">ตารางคะแนนช่วงนี้</h2>
+                <div className="space-y-1 text-sm">
+                  {slice.map((r, i) => {
+                    const pos = lo + i + 1;
+                    const isInMatch =
+                      r.teamId === match.homeTeamId || r.teamId === match.awayTeamId;
+                    return (
+                      <div
+                        key={r.teamId}
+                        className={`flex items-center gap-3 rounded-md px-2 py-1 ${
+                          isInMatch ? "bg-accent/10 text-accent" : "text-foreground/70"
+                        }`}
+                      >
+                        <span className="w-5 font-display font-bold">{pos}</span>
+                        <span className="flex-1 truncate">{r.teamName}</span>
+                        <span className="font-display font-bold">{r.points}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
         {h2h.length > 0 && (
           <div>
@@ -541,8 +583,8 @@ export default async function PublicMatchPage({
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <LineupCard teamName={match.homeTeam.name} players={homePlayers} />
-          <LineupCard teamName={match.awayTeam.name} players={awayPlayers} />
+          <LineupCard teamName={match.homeTeam.name} players={homePlayers} events={match.events} />
+          <LineupCard teamName={match.awayTeam.name} players={awayPlayers} events={match.events} />
         </div>
 
         {(homeBench.length > 0 || awayBench.length > 0) && (
@@ -561,20 +603,36 @@ export default async function PublicMatchPage({
 function LineupCard({
   teamName,
   players,
+  events = [],
 }: {
   teamName: string;
   players: { id: string; name: string; number: number }[];
+  events?: { type: string; playerId: string | null; relatedPlayerId?: string | null }[];
 }) {
   return (
     <div className="rounded-xl border border-white/10 bg-card p-5">
       <h3 className="font-display font-bold mb-3">{teamName}</h3>
       <div className="space-y-2">
-        {players.map((p) => (
+        {players.map((p) => {
+          const g = events.filter((e) => e.type === "GOAL" && e.playerId === p.id).length;
+          const a = events.filter(
+            (e) => e.type === "GOAL" && e.relatedPlayerId === p.id
+          ).length;
+          const y = events.filter((e) => e.type === "YELLOW_CARD" && e.playerId === p.id).length;
+          const r = events.filter((e) => e.type === "RED_CARD" && e.playerId === p.id).length;
+          return (
           <div key={p.id} className="flex items-center gap-3 text-sm">
             <span className="w-6 text-foreground/45 font-display font-bold">{p.number}</span>
-            <span>{p.name}</span>
+            <span className="flex-1">{p.name}</span>
+            <span className="text-xs text-foreground/50 space-x-1">
+              {g > 0 && <span>⚽{g > 1 ? `x${g}` : ""}</span>}
+              {a > 0 && <span className="text-foreground/40">🅰{a > 1 ? `x${a}` : ""}</span>}
+              {y > 0 && <span>🟨</span>}
+              {r > 0 && <span>🟥</span>}
+            </span>
           </div>
-        ))}
+          );
+        })}
         {players.length === 0 && <p className="text-foreground/50 text-sm">ยังไม่มีรายชื่อผู้เล่น</p>}
       </div>
     </div>

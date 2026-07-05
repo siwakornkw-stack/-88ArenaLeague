@@ -20,6 +20,7 @@ import {
   updateEventMinute,
   swapSides,
   recordInjury,
+  resetEvents,
 } from "./actions";
 
 const STAT_FIELDS = [
@@ -157,11 +158,25 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
 
       <div className="rounded-lg bg-card border border-white/10 p-6 space-y-2">
         <div className="flex items-center justify-between">
-          <span className="font-semibold flex-1 text-right">{match.homeTeam.name}</span>
+          <Link
+            href={`/leagues/${match.leagueId}/teams/${match.homeTeamId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold flex-1 text-right hover:text-accent"
+          >
+            {match.homeTeam.name}
+          </Link>
           <span className="font-display font-bold text-4xl px-6">
             {match.homeScore} - {match.awayScore}
           </span>
-          <span className="font-semibold flex-1">{match.awayTeam.name}</span>
+          <Link
+            href={`/leagues/${match.leagueId}/teams/${match.awayTeamId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold flex-1 hover:text-accent"
+          >
+            {match.awayTeam.name}
+          </Link>
         </div>
         {match.status === "LIVE" && (
           <p className="text-center text-xs text-accent">
@@ -181,7 +196,12 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             {(["HOME", "AWAY"] as const).map((side) => (
               <div key={side} className="flex flex-wrap gap-2">
                 <span className="text-xs text-foreground/50 w-full">
-                  {side === "HOME" ? match.homeTeam.name : match.awayTeam.name}
+                  {side === "HOME" ? match.homeTeam.name : match.awayTeam.name}{" "}
+                  <span className="text-foreground/35">
+                    (ยิง {side === "HOME" ? match.homeShots : match.awayShots} · มุม{" "}
+                    {side === "HOME" ? match.homeCorners : match.awayCorners} · ฟาวล์{" "}
+                    {side === "HOME" ? match.homeFouls : match.awayFouls})
+                  </span>
                 </span>
                 {[
                   { stat: "Shots", label: "ยิง" },
@@ -265,6 +285,18 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             className="w-24 rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
           />
         </div>
+        <div className="w-full space-y-1">
+          <label className="text-sm text-foreground/70" htmlFor="note">
+            หมายเหตุแมตช์ (โชว์หน้าสาธารณะ)
+          </label>
+          <input
+            id="note"
+            name="note"
+            defaultValue={match.note ?? ""}
+            placeholder="เช่น เลื่อนจากสัปดาห์ก่อนเพราะฝนตก"
+            className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+        </div>
         <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
           บันทึกข้อมูลแมตช์
         </button>
@@ -315,6 +347,21 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
         </div>
       )}
 
+      {match.status === "LIVE" &&
+        (() => {
+          const booked = match.events.filter(
+            (e) => (e.type === "YELLOW_CARD" || e.type === "RED_CARD") && e.player
+          );
+          return booked.length > 0 ? (
+            <p className="text-xs text-foreground/50">
+              ใบโทษนัดนี้:{" "}
+              {booked
+                .map((e) => `${e.type === "RED_CARD" ? "🟥" : "🟨"} ${e.player!.name}`)
+                .join(" · ")}
+            </p>
+          ) : null;
+        })()}
+
       {match.status === "LIVE" && (
         <div className="flex gap-3">
           {!hasHalfTime && (
@@ -348,6 +395,14 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
         </form>
       )}
 
+      {match.status === "LIVE" && match.events.length > 1 && (
+        <form action={resetEvents.bind(null, id)}>
+          <button type="submit" className="text-xs text-red-400/70 hover:text-red-400">
+            🗑 ล้างเหตุการณ์ทั้งหมด (สกอร์กลับ 0-0, เก็บเวลาเริ่มไว้)
+          </button>
+        </form>
+      )}
+
       {match.status === "FINISHED" && (
         <form
           action={updateMvp.bind(null, id)}
@@ -365,18 +420,22 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             >
               <option value="">- ไม่ระบุ -</option>
               <optgroup label={match.homeTeam.name}>
-                {match.homeTeam.players.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    #{p.number} {p.name}
-                  </option>
-                ))}
+                {(homeLineupPlayers.length > 0 ? homeLineupPlayers : match.homeTeam.players).map(
+                  (p) => (
+                    <option key={p.id} value={p.id}>
+                      #{p.number} {p.name}
+                    </option>
+                  )
+                )}
               </optgroup>
               <optgroup label={match.awayTeam.name}>
-                {match.awayTeam.players.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    #{p.number} {p.name}
-                  </option>
-                ))}
+                {(awayLineupPlayers.length > 0 ? awayLineupPlayers : match.awayTeam.players).map(
+                  (p) => (
+                    <option key={p.id} value={p.id}>
+                      #{p.number} {p.name}
+                    </option>
+                  )
+                )}
               </optgroup>
             </select>
           </div>

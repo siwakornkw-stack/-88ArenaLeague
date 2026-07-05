@@ -160,6 +160,12 @@ export default async function PublicPlayerPage({
               </span>
             )}
             <ShareLinks url={pageUrl} text={`${player.name} · ${player.team.name}`} />
+            <Link
+              href={`/leagues/${id}/players/compare?a=${playerId}`}
+              className="text-xs text-foreground/60 hover:text-accent"
+            >
+              ⚖ เทียบกับนักเตะอื่น
+            </Link>
           </div>
         </div>
       </div>

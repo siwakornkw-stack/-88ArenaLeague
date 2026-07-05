@@ -17,7 +17,7 @@ export default async function SearchPage({
   });
   const leagueScope = allLeagues.some((l) => l.id === leagueParam) ? leagueParam : null;
 
-  const [teams, players, leagues, venueMatches] =
+  const [teams, players, leagues, venueMatches, coachTeams] =
     query.length >= 2
       ? await Promise.all([
           prisma.team.findMany({
@@ -51,8 +51,13 @@ export default async function SearchPage({
             orderBy: { kickoffAt: "desc" },
             take: 10,
           }),
+          prisma.team.findMany({
+            where: { coachName: { contains: query, mode: "insensitive" } },
+            include: { league: true },
+            take: 10,
+          }),
         ])
-      : [[], [], [], []];
+      : [[], [], [], [], []];
 
   const suggestions = query.length < 2 ? await getFeaturedLeagues(6) : [];
 
@@ -208,6 +213,23 @@ export default async function SearchPage({
             </div>
           </div>
         )}
+        {coachTeams.length > 0 && (
+          <div>
+            <h2 className="font-display font-bold mb-3">โค้ช ({coachTeams.length})</h2>
+            <div className="flex flex-col gap-2 max-w-md">
+              {coachTeams.map((t) => (
+                <Link
+                  key={t.id}
+                  href={`/leagues/${t.leagueId}/teams/${t.id}`}
+                  className="rounded-lg bg-card border border-white/10 px-3 py-2 text-sm hover:border-accent/50"
+                >
+                  🧑‍🏫 {t.coachName} — <span className="text-foreground/60">{t.name} · {t.league.name}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {venueMatches.length > 0 && (
           <div>
             <h2 className="font-display font-bold mb-3">แมตช์ในสนาม &quot;{query}&quot; ({venueMatches.length})</h2>

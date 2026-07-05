@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/db";
-import { computeStandings, computeHomeAwayStandings } from "@/lib/standings";
+import {
+  computeStandings,
+  computeHomeAwayStandings,
+  computeStandingsUpTo,
+} from "@/lib/standings";
 
 function csvCell(value: string | number) {
   const s = String(value);
@@ -8,7 +12,9 @@ function csvCell(value: string | number) {
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const side = new URL(req.url).searchParams.get("side");
+  const url = new URL(req.url);
+  const side = url.searchParams.get("side");
+  const asof = Number(url.searchParams.get("asof")) || null;
 
   const league = await prisma.league.findUnique({ where: { id } });
   if (!league) return new Response("Not found", { status: 404 });
@@ -18,7 +24,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       ? await computeHomeAwayStandings(id, "HOME")
       : side === "away"
         ? await computeHomeAwayStandings(id, "AWAY")
-        : await computeStandings(id);
+        : asof && asof >= 1
+          ? await computeStandingsUpTo(id, asof + 1)
+          : await computeStandings(id);
   const rows = [
     ["อันดับ", "ทีม", "แข่ง", "ชนะ", "เสมอ", "แพ้", "ได้", "เสีย", "ผลต่าง", "แต้ม", "ฟอร์ม"],
     ...standings.map((r, i) => [

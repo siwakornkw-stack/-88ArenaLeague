@@ -222,8 +222,14 @@ export default async function PublicTeamPage({
               ))}
             </div>
           )}
-          <div className="mt-2">
+          <div className="mt-2 flex items-center gap-3">
             <ShareLinks url={pageUrl} text={`${team.name} · ${team.league.name}`} />
+            <a
+              href={`/leagues/${id}/calendar?team=${teamId}`}
+              className="text-xs text-foreground/60 hover:text-accent"
+            >
+              📅 ปฏิทินทีม (.ics)
+            </a>
           </div>
         </div>
       </div>

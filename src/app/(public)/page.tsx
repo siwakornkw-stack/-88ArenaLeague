@@ -37,7 +37,7 @@ const FEATURES = [
 ];
 
 export default async function Home() {
-  const [{ featuredLeagues, leagueCount, teamCount, playerCount, matchCount }, liveMatches, recentResults, nextUp] =
+  const [{ featuredLeagues, leagueCount, teamCount, playerCount, matchCount }, liveMatches, recentResults, nextUp, finishedCount] =
     await Promise.all([
       getCachedLandingStats(),
       prisma.match.findMany({
@@ -61,6 +61,7 @@ export default async function Home() {
         include: { homeTeam: true, awayTeam: true, league: true },
         orderBy: { kickoffAt: "asc" },
       }),
+      prisma.league.count({ where: { status: "FINISHED", hidden: false } }),
     ]);
 
   const topStandings = featuredLeagues[0] ? await getCachedTopStandings(featuredLeagues[0].id) : [];
@@ -82,6 +83,18 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col">
       {liveMatches.length > 0 && <meta httpEquiv="refresh" content="60" />}
+      {liveMatches.length === 0 && recentResults.length > 0 && (
+        <div className="bg-white/5 overflow-hidden border-b border-white/10">
+          <div className="animate-marquee flex w-max gap-10 whitespace-nowrap px-6 py-1.5 font-display text-xs text-foreground/60">
+            {[...recentResults, ...recentResults].map((m, i) => (
+              <Link key={`${m.id}-r${i}`} href={`/matches/${m.id}`} className="hover:text-accent">
+                ผลล่าสุด — {m.homeTeam.name} {m.homeScore}-{m.awayScore} {m.awayTeam.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {liveMatches.length > 0 && (
         <div className="bg-accent overflow-hidden">
           <div className="animate-marquee flex w-max gap-10 whitespace-nowrap px-6 py-2 font-display font-semibold text-sm text-black">
@@ -148,7 +161,17 @@ export default async function Home() {
             <Stat value={playerCount} label="นักเตะลงทะเบียน" />
             <Stat value={matchCount} label="แมตช์ที่บันทึกผล" />
             <Stat value={liveMatches.length} label="กำลังแข่งสด" />
+            <Stat value={finishedCount} label="ฤดูกาลที่จบแล้ว" />
           </div>
+
+          {finishedCount > 0 && (
+            <Link
+              href="/champions"
+              className="mt-4 inline-block text-xs text-foreground/55 hover:text-accent"
+            >
+              🏆 ดูแชมป์ทั้ง {finishedCount} ฤดูกาลในหอเกียรติยศ →
+            </Link>
+          )}
 
           {nextUp && (
             <Link

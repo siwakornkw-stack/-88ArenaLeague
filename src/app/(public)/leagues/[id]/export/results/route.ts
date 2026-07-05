@@ -30,7 +30,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   });
 
   const rows = [
-    ["นัดที่", "รอบ", "วันเวลา", "เหย้า", "สกอร์", "เยือน", "สนาม", "สถานะ", "MVP"],
+    ["นัดที่", "รอบ", "วันเวลา", "เหย้า", "สกอร์", "เยือน", "สนาม", "สถานะ", "MVP", "ผู้ตัดสิน", "ผู้ชม"],
     ...matches.map((m) => [
       m.round,
       STAGE_LABEL[m.stage] ?? m.stage,
@@ -41,6 +41,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       m.venue ?? "-",
       STATUS_LABEL[m.status] ?? m.status,
       m.mvpPlayer?.name ?? "-",
+      m.refereeName ?? "-",
+      m.spectators ?? "-",
     ]),
   ];
   const csv = "﻿" + rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
