@@ -36,7 +36,12 @@ const FEATURES = [
   { icon: "📣", title: "หน้าโปรโมตมืออาชีพ", desc: "หน้าลีกสาธารณะสวยพร้อมแชร์ ดึงสปอนเซอร์และแฟนบอลเข้าหาลีกคุณ" },
 ];
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ upcoming?: string }>;
+}) {
+  const { upcoming: upcomingSort } = await searchParams;
   const [{ featuredLeagues, leagueCount, teamCount, playerCount, matchCount }, liveMatches, recentResults, nextUp, finishedCount] =
     await Promise.all([
       getCachedLandingStats(),
@@ -104,6 +109,76 @@ export default async function Home() {
     where: { type: { in: ["YELLOW_CARD", "RED_CARD"] }, player: { isNot: null } },
     include: { player: { include: { team: true } } },
     orderBy: { createdAt: "desc" },
+    take: 6,
+  });
+
+  // Feature 1: system-wide top scorer (type GOAL only, across all leagues)
+  const topScorerGroups = await prisma.matchEvent.groupBy({
+    by: ["playerId"],
+    where: { type: "GOAL", playerId: { not: null } },
+    _count: { playerId: true },
+    orderBy: { _count: { playerId: "desc" } },
+    take: 1,
+  });
+  const topScorerGroup = topScorerGroups[0];
+  const topScorer =
+    topScorerGroup?.playerId
+      ? await prisma.player.findUnique({
+          where: { id: topScorerGroup.playerId },
+          include: { team: { include: { league: true } } },
+        })
+      : null;
+  const topScorerGoals = topScorerGroup?._count.playerId ?? 0;
+
+  // Feature 2: most in-form team (best win rate over finished LEAGUE matches, min 3 played)
+  const finishedLeagueMatches = await prisma.match.findMany({
+    where: { status: "FINISHED", stage: "LEAGUE" },
+    select: {
+      homeTeamId: true,
+      awayTeamId: true,
+      homeScore: true,
+      awayScore: true,
+      homeTeam: { select: { id: true, name: true, leagueId: true } },
+      awayTeam: { select: { id: true, name: true, leagueId: true } },
+    },
+  });
+  const formTally = new Map<
+    string,
+    { name: string; leagueId: string; played: number; won: number }
+  >();
+  for (const m of finishedLeagueMatches) {
+    const home = formTally.get(m.homeTeamId) ?? {
+      name: m.homeTeam.name,
+      leagueId: m.homeTeam.leagueId,
+      played: 0,
+      won: 0,
+    };
+    const away = formTally.get(m.awayTeamId) ?? {
+      name: m.awayTeam.name,
+      leagueId: m.awayTeam.leagueId,
+      played: 0,
+      won: 0,
+    };
+    home.played++;
+    away.played++;
+    if (m.homeScore > m.awayScore) home.won++;
+    else if (m.awayScore > m.homeScore) away.won++;
+    formTally.set(m.homeTeamId, home);
+    formTally.set(m.awayTeamId, away);
+  }
+  const inFormTeam = Array.from(formTally.entries())
+    .filter(([, t]) => t.played >= 3)
+    .map(([id, t]) => ({ id, ...t, winRate: t.won / t.played }))
+    .sort((a, b) => b.winRate - a.winRate || b.played - a.played)[0];
+
+  // Feature 3: upcoming fixtures, sortable via searchParams (soonest default / by league)
+  const upcomingFixtures = await prisma.match.findMany({
+    where: { status: "SCHEDULED", kickoffAt: { gte: new Date() } },
+    include: { homeTeam: true, awayTeam: true, league: true },
+    orderBy:
+      upcomingSort === "league"
+        ? [{ league: { name: "asc" } }, { kickoffAt: "asc" }]
+        : { kickoffAt: "asc" },
     take: 6,
   });
 
@@ -342,6 +417,116 @@ export default async function Home() {
                 <span className="text-xs text-foreground/45">
                   {c.player?.team.name} · {c.minute}&apos;
                 </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {(topScorer || inFormTeam) && (
+        <section className="px-6 md:px-16 py-8 border-b border-white/5">
+          <h2 className="font-display italic font-extrabold text-lg text-foreground mb-4">
+            ผู้นำ<span className="text-accent">ประจำระบบ</span>
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
+            {topScorer && (
+              <Link
+                href={`/leagues/${topScorer.team.leagueId}/players/${topScorer.id}`}
+                className="hover-lift flex items-center gap-4 rounded-2xl border border-accent/40 bg-accent/10 px-5 py-4 hover:border-accent"
+              >
+                <span className="text-3xl">👑</span>
+                <div className="min-w-0">
+                  <div className="text-xs text-foreground/50">ดาวซัลโวสูงสุดทุกลีก</div>
+                  <div className="font-display italic font-extrabold text-lg text-foreground truncate">
+                    {topScorer.name}
+                  </div>
+                  <div className="text-xs text-foreground/55 truncate">
+                    {topScorer.team.name} · {topScorer.team.league.name}
+                  </div>
+                </div>
+                <div className="ml-auto text-right shrink-0">
+                  <div className="font-display italic font-black text-2xl text-accent">
+                    {topScorerGoals}
+                  </div>
+                  <div className="text-[10px] text-foreground/50">ประตู</div>
+                  {topScorerGoals >= 10 && (
+                    <span className="mt-1 inline-block rounded-full bg-accent px-2 py-0.5 text-[9px] font-bold text-black">
+                      ⭐ 10+
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )}
+            {inFormTeam && (
+              <Link
+                href={`/leagues/${inFormTeam.leagueId}/teams/${inFormTeam.id}`}
+                className="hover-lift flex items-center gap-4 rounded-2xl border border-white/15 bg-white/5 px-5 py-4 hover:border-accent/50"
+              >
+                <span className="text-3xl">🔥</span>
+                <div className="min-w-0">
+                  <div className="text-xs text-foreground/50">ทีมฟอร์มดีที่สุด</div>
+                  <div className="font-display italic font-extrabold text-lg text-foreground truncate">
+                    {inFormTeam.name}
+                  </div>
+                  <div className="text-xs text-foreground/55">
+                    ชนะ {inFormTeam.won} จาก {inFormTeam.played} นัด
+                  </div>
+                </div>
+                <div className="ml-auto text-right shrink-0">
+                  <div className="font-display italic font-black text-2xl text-accent">
+                    {Math.round(inFormTeam.winRate * 100)}%
+                  </div>
+                  <div className="text-[10px] text-foreground/50">อัตราชนะ</div>
+                </div>
+              </Link>
+            )}
+          </div>
+        </section>
+      )}
+
+      {upcomingFixtures.length > 0 && (
+        <section className="px-6 md:px-16 py-8 border-b border-white/5">
+          <div className="flex items-baseline justify-between gap-4 mb-4 flex-wrap">
+            <h2 className="font-display italic font-extrabold text-lg text-foreground">
+              โปรแกรม<span className="text-accent">ที่จะแข่ง</span>
+            </h2>
+            <form method="get" className="flex items-center gap-2 text-xs">
+              <label htmlFor="upcoming" className="text-foreground/45">
+                เรียงตาม
+              </label>
+              <select
+                id="upcoming"
+                name="upcoming"
+                defaultValue={upcomingSort === "league" ? "league" : "soon"}
+                className="rounded-md border border-white/15 bg-card px-2 py-1 text-foreground"
+              >
+                <option value="soon">ใกล้ที่สุด</option>
+                <option value="league">ชื่อลีก</option>
+              </select>
+              <button
+                type="submit"
+                className="rounded-md border border-white/15 px-3 py-1 font-display font-semibold text-foreground hover:border-accent/50"
+              >
+                จัดเรียง
+              </button>
+            </form>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {upcomingFixtures.map((m) => (
+              <Link
+                key={m.id}
+                href={`/matches/${m.id}`}
+                className="hover-lift rounded-xl border border-white/10 bg-card p-3 hover:border-accent/50"
+              >
+                <div className="text-[10px] text-foreground/40 mb-1.5">{m.league.name}</div>
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="truncate">{m.homeTeam.name}</span>
+                  <span className="font-display font-bold text-foreground/40 shrink-0">vs</span>
+                  <span className="truncate text-right">{m.awayTeam.name}</span>
+                </div>
+                <div className="mt-1.5 text-xs text-accent">
+                  {m.kickoffAt.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}
+                </div>
               </Link>
             ))}
           </div>

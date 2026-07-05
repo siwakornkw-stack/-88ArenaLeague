@@ -9,11 +9,23 @@ export const metadata = {
   description: "ตัวเลขรวมทั้งระบบ 88ArenaLeague",
 };
 
-export default async function GlobalStatsPage() {
+export default async function GlobalStatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ leagueSort?: string; venueSort?: string }>;
+}) {
+  const { venueSort } = await searchParams;
   const [finished, leagues, topScorers, yellowCount, redCount, scorerIds, cardsByLeague] = await Promise.all([
     prisma.match.findMany({
       where: { status: "FINISHED", league: { hidden: false } },
-      select: { id: true, homeScore: true, awayScore: true, leagueId: true, spectators: true },
+      select: {
+        id: true,
+        homeScore: true,
+        awayScore: true,
+        leagueId: true,
+        spectators: true,
+        venue: true,
+      },
     }),
     prisma.league.findMany({
       where: { status: { not: "DRAFT" }, hidden: false },
@@ -146,6 +158,38 @@ export default async function GlobalStatsPage() {
     })
     .filter((l) => l.matches > 0)
     .sort((a, b) => b.per - a.per);
+
+  const venueTotals = new Map<string, { matches: number; crowd: number }>();
+  for (const m of finished) {
+    const v = m.venue?.trim();
+    if (!v) continue;
+    const cur = venueTotals.get(v) ?? { matches: 0, crowd: 0 };
+    cur.matches += 1;
+    cur.crowd += m.spectators ?? 0;
+    venueTotals.set(v, cur);
+  }
+  const venueSortByCrowd = venueSort === "crowd";
+  const venueBoard = Array.from(venueTotals.entries())
+    .map(([name, v]) => ({ name, matches: v.matches, crowd: v.crowd }))
+    .sort((a, b) => (venueSortByCrowd ? b.crowd - a.crowd : b.matches - a.matches))
+    .slice(0, 8);
+
+  const attendanceLeague = leagues
+    .map((lg) => {
+      const ms = finished.filter((m) => m.leagueId === lg.id && (m.spectators ?? 0) > 0);
+      const crowd = ms.reduce((s, m) => s + (m.spectators ?? 0), 0);
+      return { id: lg.id, name: lg.name, matches: ms.length, crowd, avg: ms.length > 0 ? crowd / ms.length : 0 };
+    })
+    .filter((l) => l.matches > 0)
+    .sort((a, b) => b.avg - a.avg)[0];
+
+  const topScorerGoals = topScorers[0]?._count.playerId ?? 0;
+  const scorerMilestone =
+    topScorerGoals >= 20
+      ? { label: "ชมรม 20+ ประตู", cls: "border-accent/60 bg-accent/15 text-accent" }
+      : topScorerGoals >= 10
+        ? { label: "ชมรม 10+ ประตู", cls: "border-yellow-400/40 bg-yellow-400/10 text-yellow-300" }
+        : null;
 
   const scorerPlayers = await prisma.player.findMany({
     where: {
@@ -376,6 +420,63 @@ export default async function GlobalStatsPage() {
             </Link>
           )}
 
+          {attendanceLeague && (
+            <Link
+              href={`/leagues/${attendanceLeague.id}`}
+              className="rounded-xl border border-accent/30 bg-card p-5 hover:border-accent/60"
+            >
+              <div className="text-xs text-foreground/50 mb-1">📣 ลีกคนดูเยอะสุด (เฉลี่ย/นัด)</div>
+              <div className="font-display font-bold">{attendanceLeague.name}</div>
+              <div className="text-xs text-foreground/45 mt-1">
+                {Math.round(attendanceLeague.avg).toLocaleString()} คน/นัด ·{" "}
+                {attendanceLeague.crowd.toLocaleString()} คนรวม ({attendanceLeague.matches} นัด)
+              </div>
+            </Link>
+          )}
+
+          {venueBoard.length > 0 && (
+            <div className="rounded-xl border border-white/10 bg-card p-5">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="font-display font-bold">สนามที่จัดบ่อยสุดในระบบ</h2>
+                <form method="get" className="flex gap-1 text-xs">
+                  <button
+                    name="venueSort"
+                    value="matches"
+                    className={`rounded-md px-2 py-1 ${
+                      !venueSortByCrowd ? "bg-accent text-black" : "bg-white/5 text-foreground/60"
+                    }`}
+                  >
+                    ตามจำนวนนัด
+                  </button>
+                  <button
+                    name="venueSort"
+                    value="crowd"
+                    className={`rounded-md px-2 py-1 ${
+                      venueSortByCrowd ? "bg-accent text-black" : "bg-white/5 text-foreground/60"
+                    }`}
+                  >
+                    ตามผู้ชม
+                  </button>
+                </form>
+              </div>
+              <div className="space-y-2 text-sm">
+                {venueBoard.map((v, i) => (
+                  <div
+                    key={v.name}
+                    className="flex items-center gap-3 rounded-md bg-white/5 px-3 py-2"
+                  >
+                    <span className="w-5 font-display font-bold text-foreground/50">{i + 1}</span>
+                    <span className="flex-1 truncate">{v.name}</span>
+                    <span className="text-xs text-foreground/45">{v.matches} นัด</span>
+                    <span className="font-display font-bold text-accent">
+                      {v.crowd > 0 ? v.crowd.toLocaleString() : "-"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="rounded-xl border border-white/10 bg-card p-5">
             <h2 className="font-display font-bold mb-3">แอสซิสต์สูงสุดข้ามลีก</h2>
             <div className="space-y-3 text-sm">
@@ -441,7 +542,16 @@ export default async function GlobalStatsPage() {
           </div>
 
           <div className="rounded-xl border border-white/10 bg-card p-5">
-            <h2 className="font-display font-bold mb-3">ดาวซัลโวข้ามทุกลีก</h2>
+            <div className="mb-3 flex items-center gap-2">
+              <h2 className="font-display font-bold">ดาวซัลโวข้ามทุกลีก</h2>
+              {scorerMilestone && (
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-display font-bold ${scorerMilestone.cls}`}
+                >
+                  {scorerMilestone.label}
+                </span>
+              )}
+            </div>
             <div className="space-y-3 text-sm">
               {topScorers.map((g, i) => {
                 const p = byId.get(g.playerId!);

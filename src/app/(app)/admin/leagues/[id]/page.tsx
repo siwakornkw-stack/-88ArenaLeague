@@ -69,7 +69,9 @@ export default async function LeagueDetailPage({
   const league = await prisma.league.findUnique({
     where: { id },
     include: {
-      teams: true,
+      teams: {
+        include: { _count: { select: { managers: true, players: true } } },
+      },
       news: { orderBy: { createdAt: "desc" } },
       sponsors: { orderBy: { createdAt: "asc" } },
     },
@@ -194,6 +196,34 @@ export default async function LeagueDetailPage({
               </p>
             );
           })()}
+          {(() => {
+            const orphan = league.teams.filter((t) => t._count.managers === 0);
+            return orphan.length > 0 ? (
+              <p className="mt-2 text-xs text-orange-400">
+                👤 {orphan.length} ทีมยังไม่มีผู้จัดการ ({orphan.map((t) => t.name).join(", ")}) —{" "}
+                <Link
+                  href={`/admin/leagues/${id}/teams`}
+                  className="underline hover:text-accent"
+                >
+                  มอบหมายผู้จัดการ
+                </Link>
+              </p>
+            ) : null;
+          })()}
+          {(() => {
+            const nextEntry = matches
+              .filter((m) => m.status === "SCHEDULED" || m.status === "LIVE")
+              .sort((a, b) => a.kickoffAt.getTime() - b.kickoffAt.getTime())[0];
+            return nextEntry ? (
+              <Link
+                href={`/admin/matches/${nextEntry.id}`}
+                className="mt-2 inline-block rounded-md bg-accent/15 border border-accent/40 px-3 py-1.5 text-xs text-accent hover:bg-accent/25"
+              >
+                {nextEntry.status === "LIVE" ? "🔴 บันทึกผลนัดที่กำลังแข่ง" : "▶ ไปบันทึกผลนัดถัดไป"} ·{" "}
+                {nextEntry.homeTeam.name} พบ {nextEntry.awayTeam.name}
+              </Link>
+            ) : null;
+          })()}
         </div>
         <div className="flex items-center gap-3">
           {league.status !== "FINISHED" &&
@@ -298,6 +328,36 @@ export default async function LeagueDetailPage({
           )}
         </div>
       )}
+
+      {(() => {
+        if (leagueStageMatches.length === 0) return null;
+        const balance = new Map<string, { name: string; home: number; away: number }>();
+        for (const t of league.teams) balance.set(t.id, { name: t.name, home: 0, away: 0 });
+        for (const m of leagueStageMatches) {
+          const h = balance.get(m.homeTeamId);
+          const a = balance.get(m.awayTeamId);
+          if (h) h.home += 1;
+          if (a) a.away += 1;
+        }
+        const unbalanced = [...balance.values()]
+          .filter((b) => Math.abs(b.home - b.away) > 1)
+          .sort((x, y) => Math.abs(y.home - y.away) - Math.abs(x.home - x.away));
+        if (unbalanced.length === 0) return null;
+        return (
+          <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 space-y-1.5">
+            <div className="text-xs font-semibold text-yellow-400">
+              ⚖ ตารางไม่สมดุล — {unbalanced.length} ทีมมีนัดเหย้า/เยือนต่างกันเกิน 1 นัด
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-foreground/60">
+              {unbalanced.map((b) => (
+                <span key={b.name}>
+                  {b.name}: เหย้า {b.home} · เยือน {b.away}
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {matches.length === 0 ? (
         <div className="rounded-lg bg-card border border-white/10 p-6 max-w-md space-y-5">

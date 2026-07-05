@@ -50,7 +50,7 @@ export default async function PublicTeamPage({
   });
   if (!team) notFound();
 
-  const [standings, matches, appsGrouped, eventsGrouped] = await Promise.all([
+  const [standings, matches, appsGrouped, eventsGrouped, goalEvents] = await Promise.all([
     computeStandings(id),
     prisma.match.findMany({
       where: { leagueId: id, OR: [{ homeTeamId: teamId }, { awayTeamId: teamId }] },
@@ -70,6 +70,18 @@ export default async function PublicTeamPage({
         player: { teamId },
       },
       _count: { playerId: true },
+    }),
+    prisma.matchEvent.findMany({
+      where: {
+        type: { in: ["GOAL", "OWN_GOAL"] },
+        match: {
+          leagueId: id,
+          status: "FINISHED",
+          OR: [{ homeTeamId: teamId }, { awayTeamId: teamId }],
+        },
+      },
+      select: { matchId: true, minute: true, side: true, type: true },
+      orderBy: { minute: "asc" },
     }),
   ]);
 
@@ -150,6 +162,68 @@ export default async function PublicTeamPage({
     const ga = isHome ? m.awayScore : m.homeScore;
     return gf > ga ? "W" : gf < ga ? "L" : "D";
   };
+
+  // Feature: longest scoring run (consecutive finished matches scoring >= 1)
+  const scoringRun = (() => {
+    const chrono = [...allFinished].sort(
+      (a, b) => a.kickoffAt.getTime() - b.kickoffAt.getTime()
+    );
+    let best = 0;
+    let cur = 0;
+    for (const m of chrono) {
+      const gf = m.homeTeamId === teamId ? m.homeScore : m.awayScore;
+      if (gf > 0) {
+        cur++;
+        if (cur > best) best = cur;
+      } else {
+        cur = 0;
+      }
+    }
+    return { best, current: cur };
+  })();
+
+  // Feature: scoring by half + comebacks/blown leads, both derived from goal timeline.
+  // side on GOAL/OWN_GOAL is the pitch side of the scoring event; OWN_GOAL counts for the opposite side.
+  const goalsByMatch = new Map<string, { minute: number; forTeam: boolean }[]>();
+  const matchSideById = new Map(
+    allFinished.map((m) => [m.id, m.homeTeamId === teamId ? "HOME" : "AWAY"] as const)
+  );
+  for (const e of goalEvents) {
+    const teamSide = matchSideById.get(e.matchId);
+    if (!teamSide) continue;
+    // scoring side after own-goal inversion
+    const creditSide =
+      e.type === "OWN_GOAL" ? (e.side === "HOME" ? "AWAY" : "HOME") : e.side;
+    const forTeam = creditSide === teamSide;
+    const arr = goalsByMatch.get(e.matchId) ?? [];
+    arr.push({ minute: e.minute, forTeam });
+    goalsByMatch.set(e.matchId, arr);
+  }
+
+  const half = { first: { gf: 0, ga: 0 }, second: { gf: 0, ga: 0 } };
+  let comebackWins = 0;
+  let blownLeads = 0;
+  for (const m of allFinished) {
+    const events = (goalsByMatch.get(m.id) ?? []).sort((a, b) => a.minute - b.minute);
+    for (const g of events) {
+      const bucket = g.minute <= 45 ? half.first : half.second;
+      if (g.forTeam) bucket.gf++;
+      else bucket.ga++;
+    }
+    let diff = 0;
+    let trailed = false;
+    let led = false;
+    for (const g of events) {
+      diff += g.forTeam ? 1 : -1;
+      if (diff < 0) trailed = true;
+      if (diff > 0) led = true;
+    }
+    const res = resultFor(m);
+    if (res === "W" && trailed) comebackWins++;
+    if (res === "L" && led) blownLeads++;
+  }
+  const halfTotal =
+    half.first.gf + half.second.gf + half.first.ga + half.second.ga;
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -382,6 +456,75 @@ export default async function PublicTeamPage({
               </p>
             ) : null;
           })()}
+
+        {scoringRun.best >= 2 && (
+          <p className="text-xs text-foreground/50">
+            🎯 ยิงประตูต่อเนื่องยาวนานสุด{" "}
+            <b className="text-accent">{scoringRun.best}</b> นัดติด
+            {scoringRun.current >= 2 && (
+              <>
+                {" "}
+                · สตรีคยิงปัจจุบัน <b className="text-foreground">{scoringRun.current}</b> นัด
+              </>
+            )}
+          </p>
+        )}
+
+        {halfTotal > 0 && (
+          <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">
+            <div className="text-xs text-foreground/50 mb-2">⏱ ประตูแยกตามครึ่งเวลา (ได้ / เสีย)</div>
+            <div className="grid grid-cols-2 gap-3">
+              {(
+                [
+                  ["ครึ่งแรก", half.first],
+                  ["ครึ่งหลัง", half.second],
+                ] as const
+              ).map(([label, h2]) => (
+                <div key={label} className="rounded-md bg-white/5 px-3 py-2">
+                  <div className="text-xs text-foreground/50 mb-1">{label}</div>
+                  <div className="font-display font-bold">
+                    <span className="text-accent">{h2.gf}</span>
+                    <span className="text-foreground/30"> / </span>
+                    <span className="text-red-400">{h2.ga}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {(() => {
+              const gfTot = half.first.gf + half.second.gf;
+              const gaTot = half.first.ga + half.second.ga;
+              const strongScore =
+                gfTot > 0 && half.second.gf > half.first.gf
+                  ? "ยิงหนักครึ่งหลัง"
+                  : gfTot > 0 && half.first.gf > half.second.gf
+                    ? "ออกตัวแรงครึ่งแรก"
+                    : null;
+              const weakDef =
+                gaTot > 0 && half.second.ga > half.first.ga ? "มักเสียครึ่งหลัง" : null;
+              const tags = [strongScore, weakDef].filter(Boolean) as string[];
+              return tags.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {tags.map((t) => (
+                    <span
+                      key={t}
+                      className="text-[10px] rounded-full bg-white/10 text-foreground/70 px-2 py-0.5"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              ) : null;
+            })()}
+          </div>
+        )}
+
+        {(comebackWins > 0 || blownLeads > 0) && (
+          <p className="text-xs text-foreground/50">
+            🔄 พลิกกลับมาชนะ (เคยตามหลังก่อน){" "}
+            <b className="text-accent">{comebackWins}</b> นัด · โดนพลิกแพ้ (เคยนำก่อน){" "}
+            <b className="text-red-400">{blownLeads}</b> นัด
+          </p>
+        )}
 
         {leagueOnly.length > 0 && (
           <p className="text-sm text-foreground/60">

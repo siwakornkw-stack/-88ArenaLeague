@@ -47,6 +47,7 @@ export default async function MyTeamPage({
   const { status, imported, skipped, sort } = await searchParams;
   const statusFilter = status ?? "all";
   const sortByGoals = sort === "goals";
+  const sortByApps = sort === "apps";
 
   const team = await prisma.team.findFirst({
     where: { managers: { some: { id: session.userId } } },
@@ -138,6 +139,10 @@ export default async function MyTeamPage({
   if (sortByGoals) {
     filteredPlayers.sort(
       (a, b) => (goalsByPlayer.get(b.id) ?? 0) - (goalsByPlayer.get(a.id) ?? 0)
+    );
+  } else if (sortByApps) {
+    filteredPlayers.sort(
+      (a, b) => (appsByPlayer.get(b.id) ?? 0) - (appsByPlayer.get(a.id) ?? 0)
     );
   }
 
@@ -264,6 +269,48 @@ export default async function MyTeamPage({
           )}
         </div>
       )}
+
+      {(() => {
+        const ranked = team.players
+          .map((p) => ({
+            player: p,
+            goals: goalsByPlayer.get(p.id) ?? 0,
+            apps: appsByPlayer.get(p.id) ?? 0,
+          }))
+          .filter((r) => r.goals > 0 || r.apps > 0)
+          .sort((a, b) => b.goals - a.goals || b.apps - a.apps);
+        const star = ranked[0];
+        if (!star || (star.goals === 0 && star.apps === 0)) return null;
+        return (
+          <Link
+            href={`/leagues/${team.leagueId}/players/${star.player.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-4 rounded-lg border border-accent/30 bg-accent/10 px-5 py-4 hover:bg-accent/15"
+          >
+            <span className="text-3xl">🌟</span>
+            <div className="min-w-0">
+              <div className="text-xs text-foreground/50">ดาวเด่นของฤดูกาล</div>
+              <div className="font-display font-bold text-lg truncate">
+                #{star.player.number} {star.player.name}
+              </div>
+              <div className="text-sm text-foreground/70">
+                {star.goals > 0 ? (
+                  <>
+                    <span className="text-accent font-semibold">{star.goals}</span> ประตู
+                    {star.apps > 0 && ` จาก ${star.apps} นัด`}
+                  </>
+                ) : (
+                  <>
+                    ลงสนาม <span className="text-accent font-semibold">{star.apps}</span> นัด
+                  </>
+                )}
+              </div>
+            </div>
+            <span className="ml-auto text-xs text-foreground/40 shrink-0">ดูโปรไฟล์ →</span>
+          </Link>
+        );
+      })()}
 
       {(() => {
         const finishedLeague = teamMatches.filter(
@@ -665,7 +712,7 @@ export default async function MyTeamPage({
             {STATUS_FILTERS.map((f) => (
               <Link
                 key={f.value}
-                href={`/teams/mine?status=${f.value}${sortByGoals ? "&sort=goals" : ""}`}
+                href={`/teams/mine?status=${f.value}${sort ? `&sort=${sort}` : ""}`}
                 className={`rounded-full px-3 py-1 text-xs ${
                   statusFilter === f.value ? "bg-accent text-black" : "bg-white/5 text-foreground/60"
                 }`}
@@ -681,6 +728,14 @@ export default async function MyTeamPage({
             >
               ⚽ เรียงตามประตู
             </Link>
+            <Link
+              href={`/teams/mine?status=${statusFilter}${sortByApps ? "" : "&sort=apps"}`}
+              className={`rounded-full px-3 py-1 text-xs ${
+                sortByApps ? "bg-accent text-black" : "bg-white/5 text-foreground/60"
+              }`}
+            >
+              🏃 เรียงตามลงสนาม
+            </Link>
           </div>
         </div>
 
@@ -690,6 +745,7 @@ export default async function MyTeamPage({
           <span className="w-16">ตำแหน่ง</span>
           <span className="w-10 text-center">ลงสนาม</span>
           <span className="w-10 text-center">ประตู</span>
+          <span className="w-12 text-center">ป/นัด</span>
           <span className="w-10 text-center">เหลือง</span>
         </div>
 
@@ -773,6 +829,13 @@ export default async function MyTeamPage({
               )}
               <span className="w-10 text-center text-foreground/70">{appsByPlayer.get(p.id) ?? 0}</span>
               <span className="w-10 text-center text-accent">{goalsByPlayer.get(p.id) ?? 0}</span>
+              <span className="w-12 text-center text-foreground/50">
+                {(() => {
+                  const apps = appsByPlayer.get(p.id) ?? 0;
+                  const goals = goalsByPlayer.get(p.id) ?? 0;
+                  return apps > 0 && goals > 0 ? (goals / apps).toFixed(2) : "-";
+                })()}
+              </span>
               <span className="w-10 text-center text-yellow-400">{yellowsByPlayer.get(p.id) ?? 0}</span>
               <form action={updatePlayerStatus.bind(null, p.id)} className="flex items-center gap-1">
                 <select

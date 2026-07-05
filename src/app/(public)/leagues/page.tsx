@@ -10,11 +10,13 @@ function LeagueCard({
   lastPlayed,
   goalStats,
   nextKickoff,
+  isBiggest,
 }: {
   lg: FeaturedLeague;
   lastPlayed?: Date | null;
   goalStats?: { goals: number; avg: number };
   nextKickoff?: Date | null;
+  isBiggest?: boolean;
 }) {
   const progressPct =
     lg.totalRounds > 0 ? Math.min(100, Math.round((lg.round / lg.totalRounds) * 100)) : 0;
@@ -28,6 +30,11 @@ function LeagueCard({
         {lg.registrationOpen && (
           <span className="ml-2 align-middle text-[10px] font-sans not-italic font-semibold rounded-full bg-yellow-400/15 text-yellow-400 px-2 py-0.5">
             เปิดรับสมัคร
+          </span>
+        )}
+        {isBiggest && (
+          <span className="ml-2 align-middle text-[10px] font-sans not-italic font-semibold rounded-full bg-accent/15 text-accent px-2 py-0.5">
+            👑 ลีกใหญ่สุด
           </span>
         )}
       </div>
@@ -155,12 +162,23 @@ export default async function LeaguesIndexPage({
     })
   );
 
+  const goalsOf = (id: string) => goalsMap.get(id)?.goals ?? 0;
+
   let filtered = query
     ? leagues.filter((lg) => lg.name.toLowerCase().includes(query.toLowerCase()))
     : leagues;
   if (sort === "name") {
     filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name, "th"));
+  } else if (sort === "goals") {
+    filtered = [...filtered].sort((a, b) => goalsOf(b.id) - goalsOf(a.id));
   }
+
+  // Biggest league by team count (across the visible set), for a milestone badge.
+  const biggestLeagueId = filtered.reduce<{ id: string; teams: number } | null>(
+    (best, lg) => (lg.teams > (best?.teams ?? 0) ? { id: lg.id, teams: lg.teams } : best),
+    null
+  )?.id;
+
   const active = filtered.filter((lg) => !finishedSet.has(lg.id));
   const finished = filtered.filter((lg) => finishedSet.has(lg.id));
 
@@ -193,6 +211,7 @@ export default async function LeaguesIndexPage({
           >
             <option value="latest">ล่าสุดก่อน</option>
             <option value="name">เรียงตามชื่อ</option>
+            <option value="goals">ยิงประตูมากสุด</option>
           </select>
           <button type="submit" className="rounded-md bg-accent text-black font-semibold px-5 py-2 text-sm">
             ค้นหา
@@ -218,6 +237,7 @@ export default async function LeaguesIndexPage({
                   lastPlayed={lastPlayedMap.get(lg.id)}
                   goalStats={goalsMap.get(lg.id)}
                   nextKickoff={nextKickoffMap.get(lg.id)}
+                  isBiggest={lg.id === biggestLeagueId}
                 />
               ))}
             </div>
@@ -237,6 +257,7 @@ export default async function LeaguesIndexPage({
                   lastPlayed={lastPlayedMap.get(lg.id)}
                   goalStats={goalsMap.get(lg.id)}
                   nextKickoff={nextKickoffMap.get(lg.id)}
+                  isBiggest={lg.id === biggestLeagueId}
                 />
               ))}
             </div>

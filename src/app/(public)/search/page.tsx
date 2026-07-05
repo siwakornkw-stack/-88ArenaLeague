@@ -6,10 +6,11 @@ import { MobileNav } from "@/components/mobile-nav";
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; league?: string }>;
+  searchParams: Promise<{ q?: string; league?: string; sort?: string }>;
 }) {
-  const { q = "", league: leagueParam = "" } = await searchParams;
+  const { q = "", league: leagueParam = "", sort = "" } = await searchParams;
   const query = q.trim();
+  const playerSort = sort === "goals" || sort === "number" ? sort : "relevance";
   const allLeagues = await prisma.league.findMany({
     where: { status: { not: "DRAFT" } },
     select: { id: true, name: true },
@@ -82,6 +83,15 @@ export default async function SearchPage({
       if (row.playerId) playerGoals.set(row.playerId, row._count._all);
     }
   }
+
+  const sortedPlayers =
+    playerSort === "goals"
+      ? [...players].sort(
+          (a, b) => (playerGoals.get(b.id) ?? 0) - (playerGoals.get(a.id) ?? 0),
+        )
+      : playerSort === "number"
+        ? [...players].sort((a, b) => a.number - b.number)
+        : players;
 
   const suggestions = query.length < 2 ? await getFeaturedLeagues(6) : [];
 
@@ -235,9 +245,49 @@ export default async function SearchPage({
                   </span>
                 );
               })()}
+              <form method="get" className="ml-auto flex items-center gap-1.5">
+                <input type="hidden" name="q" value={query} />
+                {leagueScope && <input type="hidden" name="league" value={leagueScope} />}
+                <label className="text-[11px] font-normal text-foreground/45">เรียงโดย</label>
+                <select
+                  name="sort"
+                  defaultValue={playerSort}
+                  className="rounded-md bg-black/30 border border-white/10 px-2 py-1 text-[11px] font-normal outline-none focus:border-accent"
+                >
+                  <option value="relevance">ตรงคำค้น</option>
+                  <option value="goals">ประตูมากสุด</option>
+                  <option value="number">เบอร์เสื้อ</option>
+                </select>
+                <button
+                  type="submit"
+                  className="rounded-md border border-white/15 px-2 py-1 text-[11px] font-normal text-foreground/70 hover:border-accent/50 hover:text-accent"
+                >
+                  เรียง
+                </button>
+              </form>
             </h2>
+            {(() => {
+              let topName = "";
+              let topGoals = 0;
+              for (const p of players) {
+                const g = playerGoals.get(p.id) ?? 0;
+                if (g > topGoals) {
+                  topGoals = g;
+                  topName = p.name;
+                }
+              }
+              if (topGoals === 0) return null;
+              return (
+                <p className="mb-3 -mt-1 text-xs text-foreground/55">
+                  <span className="rounded-full bg-accent/15 text-accent px-2 py-0.5 font-semibold">
+                    ⚽ ดาวซัลโวในผลลัพธ์
+                  </span>{" "}
+                  {topName} — {topGoals} ประตู
+                </p>
+              );
+            })()}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {players.map((p) => (
+              {sortedPlayers.map((p) => (
                 <Link
                   key={p.id}
                   href={`/leagues/${p.team.leagueId}/players/${p.id}`}

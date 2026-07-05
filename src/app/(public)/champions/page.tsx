@@ -9,10 +9,11 @@ export const dynamic = "force-dynamic";
 export default async function ChampionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string }>;
+  searchParams: Promise<{ year?: string; sort?: string }>;
 }) {
-  const { year } = await searchParams;
+  const { year, sort } = await searchParams;
   const yearFilter = Number(year) || null;
+  const sortMode = sort === "points" ? "points" : "year";
 
   const leagues = await prisma.league.findMany({
     where: { status: "FINISHED", hidden: false, ...(yearFilter ? { seasonYear: yearFilter } : {}) },
@@ -49,6 +50,8 @@ export default async function ChampionsPage({
         finalMargin = Math.abs(finalMatch.homeScore - finalMatch.awayScore);
       }
 
+      const leader = standings[0] ?? null;
+
       return {
         league,
         championName,
@@ -57,9 +60,18 @@ export default async function ChampionsPage({
         topScorer: topScorers[0] ?? null,
         finalMatch,
         finalMargin,
+        championPoints: leader?.points ?? null,
+        championPlayed: leader?.played ?? 0,
+        championLost: leader?.lost ?? 0,
       };
     })
   );
+
+  // season grid order: default newest-first (entries already sorted), or by champion's league points
+  const sortedEntries =
+    sortMode === "points"
+      ? [...entries].sort((a, b) => (b.championPoints ?? -1) - (a.championPoints ?? -1))
+      : entries;
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -82,20 +94,32 @@ export default async function ChampionsPage({
             </>
           )}
         </p>
-        {allYears.length > 1 && (
-          <form method="get" className="mt-4 flex items-center gap-2">
-            <select
-              name="year"
-              defaultValue={yearFilter ?? ""}
-              className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
-            >
-              <option value="">ทุกปี</option>
-              {allYears.map((y) => (
-                <option key={y.seasonYear} value={y.seasonYear}>
-                  ฤดูกาล {y.seasonYear}
-                </option>
-              ))}
-            </select>
+        {(allYears.length > 1 || entries.length > 1) && (
+          <form method="get" className="mt-4 flex flex-wrap items-center gap-2">
+            {allYears.length > 1 && (
+              <select
+                name="year"
+                defaultValue={yearFilter ?? ""}
+                className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              >
+                <option value="">ทุกปี</option>
+                {allYears.map((y) => (
+                  <option key={y.seasonYear} value={y.seasonYear}>
+                    ฤดูกาล {y.seasonYear}
+                  </option>
+                ))}
+              </select>
+            )}
+            {entries.length > 1 && (
+              <select
+                name="sort"
+                defaultValue={sortMode}
+                className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              >
+                <option value="year">เรียงตามปีล่าสุด</option>
+                <option value="points">เรียงตามแต้มแชมป์</option>
+              </select>
+            )}
             <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
               ดู
             </button>
@@ -268,7 +292,17 @@ export default async function ChampionsPage({
           <p className="text-foreground/50 text-sm">ยังไม่มีฤดูกาลที่จบการแข่งขัน</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
-            {entries.map(({ league, championName, runnerUp, note, topScorer }) => (
+            {sortedEntries.map(
+              ({
+                league,
+                championName,
+                runnerUp,
+                note,
+                topScorer,
+                championPoints,
+                championPlayed,
+                championLost,
+              }) => (
               <Link
                 key={league.id}
                 href={`/leagues/${league.id}`}
@@ -285,8 +319,19 @@ export default async function ChampionsPage({
                       {championName ?? "-"}
                     </div>
                     {note && <div className="text-xs text-foreground/60">{note}</div>}
+                    {championPlayed > 0 && championLost === 0 && (
+                      <div className="mt-1 inline-block rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">
+                        🛡️ ไร้พ่ายทั้งฤดูกาล
+                      </div>
+                    )}
                   </div>
                 </div>
+                {championPoints !== null && (
+                  <div className="mt-2 text-xs text-foreground/60">
+                    🧮 แต้มลีก: <span className="text-foreground">{championPoints}</span> แต้ม
+                    {championPlayed > 0 && <> ({championPlayed} นัด)</>}
+                  </div>
+                )}
                 {runnerUp && (
                   <div className="mt-3 text-xs text-foreground/60">
                     🥈 รองแชมป์: <span className="text-foreground">{runnerUp}</span>

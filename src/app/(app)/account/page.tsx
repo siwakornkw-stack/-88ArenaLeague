@@ -55,6 +55,15 @@ export default async function AccountPage({
     ? Math.floor((Date.now() - user.createdAt.getTime()) / 86_400_000)
     : 0;
 
+  const TENURE_TIERS = [
+    { days: 730, label: "สมาชิกระดับตำนาน", emoji: "🏆" },
+    { days: 365, label: "สมาชิกอาวุโส", emoji: "🥇" },
+    { days: 180, label: "สมาชิกครึ่งปี", emoji: "🥈" },
+    { days: 30, label: "สมาชิกใหม่", emoji: "🥉" },
+  ] as const;
+  const tenureTier = TENURE_TIERS.find((t) => memberDays >= t.days) ?? null;
+  const nextTier = [...TENURE_TIERS].reverse().find((t) => t.days > memberDays) ?? null;
+
   const loginDaysAgo = user?.lastLoginAt
     ? Math.floor((Date.now() - user.lastLoginAt.getTime()) / 86_400_000)
     : null;
@@ -137,6 +146,23 @@ export default async function AccountPage({
               )}
             </p>
           )}
+          {tenureTier && (
+            <div className="pt-1.5 mt-1.5 border-t border-white/10">
+              <div className="flex items-center gap-2">
+                <span className="text-foreground/50">ระดับสมาชิก:</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
+                  <span aria-hidden>{tenureTier.emoji}</span>
+                  {tenureTier.label}
+                </span>
+              </div>
+              {nextTier && (
+                <p className="text-xs text-foreground/40 mt-1.5">
+                  อีก {nextTier.days - memberDays} วัน จะได้ระดับ{" "}
+                  <span className="text-foreground/60">{nextTier.label}</span> {nextTier.emoji}
+                </p>
+              )}
+            </div>
+          )}
           <div className="pt-1.5 mt-1.5 border-t border-white/10 flex items-center gap-2">
             <span className="text-foreground/50">สถานะบัญชี:</span>
             <span
@@ -156,6 +182,35 @@ export default async function AccountPage({
           </div>
         </div>
       )}
+
+      <div className="rounded-lg bg-card border border-white/10 p-5">
+        <h2 className="font-semibold mb-3">ทางลัด</h2>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          {(session.role === "SUPER_ADMIN"
+            ? [
+                { href: "/dashboard", label: "แดชบอร์ด", icon: "📊" },
+                { href: "/admin/logs", label: "บันทึกกิจกรรม", icon: "📜" },
+                { href: "/leagues", label: "ลีกทั้งหมด", icon: "🏟️" },
+                { href: "/search", label: "ค้นหา", icon: "🔍" },
+              ]
+            : [
+                { href: "/teams/mine", label: "จัดการทีม", icon: "🛡️" },
+                { href: "/leagues", label: "ลีกทั้งหมด", icon: "🏟️" },
+                { href: "/champions", label: "หอเกียรติยศ", icon: "🏆" },
+                { href: "/help", label: "คู่มือการใช้งาน", icon: "❓" },
+              ]
+          ).map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="flex items-center gap-2 rounded-md bg-black/30 border border-white/10 px-3 py-2 hover:border-accent/50 transition-colors"
+            >
+              <span aria-hidden>{link.icon}</span>
+              <span>{link.label}</span>
+            </a>
+          ))}
+        </div>
+      </div>
 
       {squadTotal > 0 && (
         <div className="rounded-lg bg-card border border-white/10 p-5">

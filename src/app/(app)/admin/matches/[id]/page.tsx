@@ -161,6 +161,30 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
       : [];
   const readyCount = readiness.filter((r) => r.done).length;
 
+  const eventCounts = {
+    goals: match.events.filter((e) => e.type === "GOAL" || e.type === "OWN_GOAL").length,
+    yellow: match.events.filter((e) => e.type === "YELLOW_CARD").length,
+    red: match.events.filter((e) => e.type === "RED_CARD").length,
+    subs: match.events.filter((e) => e.type === "SUBSTITUTION").length,
+  };
+  const loggedGoals = {
+    HOME:
+      match.events.filter(
+        (e) =>
+          (e.type === "GOAL" && e.side === "HOME") ||
+          (e.type === "OWN_GOAL" && e.side === "AWAY")
+      ).length,
+    AWAY:
+      match.events.filter(
+        (e) =>
+          (e.type === "GOAL" && e.side === "AWAY") ||
+          (e.type === "OWN_GOAL" && e.side === "HOME")
+      ).length,
+  };
+  const scoreMismatch =
+    match.status !== "SCHEDULED" &&
+    (loggedGoals.HOME !== match.homeScore || loggedGoals.AWAY !== match.awayScore);
+
   const goalEvents = match.events.filter(
     (e) => e.type === "GOAL" || e.type === "OWN_GOAL"
   );
@@ -289,6 +313,35 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
           </p>
         )}
       </div>
+
+      {scoreMismatch && (
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          ⚠ สกอร์ไม่ตรงกับเหตุการณ์: กระดานคือ {match.homeScore}-{match.awayScore} แต่นับจากประตูที่บันทึกได้{" "}
+          {loggedGoals.HOME}-{loggedGoals.AWAY}
+          <span className="block text-[11px] text-red-300/70 mt-0.5">
+            ตรวจไทม์ไลน์ด้านล่าง อาจมีประตูที่ยังไม่ได้ระบุผู้ยิงหรือฝั่งผิด
+          </span>
+        </div>
+      )}
+
+      {match.status !== "SCHEDULED" && (
+        <div className="rounded-lg bg-card border border-white/10 p-4">
+          <h3 className="text-sm font-semibold mb-2">เหตุการณ์ที่บันทึกแล้ว</h3>
+          <div className="grid grid-cols-4 gap-2 text-center">
+            {[
+              { label: "ประตู", value: eventCounts.goals, tone: "text-accent" },
+              { label: "ใบเหลือง", value: eventCounts.yellow, tone: "text-yellow-400" },
+              { label: "ใบแดง", value: eventCounts.red, tone: "text-red-400" },
+              { label: "เปลี่ยนตัว", value: eventCounts.subs, tone: "text-foreground/80" },
+            ].map((c) => (
+              <div key={c.label} className="rounded-md bg-black/30 border border-white/10 py-2">
+                <div className={`font-display font-bold text-2xl ${c.tone}`}>{c.value}</div>
+                <div className="text-[11px] text-foreground/50">{c.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {match.status === "LIVE" && (
         <div className="rounded-lg bg-card border border-white/10 p-4">

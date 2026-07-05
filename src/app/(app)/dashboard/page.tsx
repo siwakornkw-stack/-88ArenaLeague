@@ -33,12 +33,12 @@ export default async function DashboardPage() {
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const endOfDay = new Date(startOfDay.getTime() + 86400000);
 
-  const [leagues, todayMatches, attentionMatches, adminLogs, users, tomorrowMatches, totalEvents, totalGoals] = await Promise.all([
+  const [leagues, todayMatches, attentionMatches, adminLogs, users, tomorrowMatches, totalEvents, totalGoals, cardEventsByMatch] = await Promise.all([
     prisma.league.findMany({
       orderBy: { createdAt: "desc" },
       include: {
         teams: { select: { id: true } },
-        matches: { select: { round: true, status: true, kickoffAt: true, id: true } },
+        matches: { select: { round: true, status: true, kickoffAt: true, id: true, stage: true } },
       },
     }),
     prisma.match.findMany({
@@ -78,6 +78,11 @@ export default async function DashboardPage() {
     }),
     prisma.matchEvent.count(),
     prisma.matchEvent.count({ where: { type: { in: ["GOAL", "OWN_GOAL"] } } }),
+    prisma.matchEvent.groupBy({
+      by: ["matchId"],
+      where: { type: { in: ["YELLOW_CARD", "RED_CARD"] } },
+      _count: { _all: true },
+    }),
   ]);
 
   const tasks = [
@@ -130,6 +135,44 @@ export default async function DashboardPage() {
     finishedMatches > 0 ? (totalGoals / finishedMatches).toFixed(2) : "0.00";
 
   const openRegLeagues = leagues.filter((lg) => lg.registrationOpen && !lg.hidden);
+
+  const avgMatchesPerLeague =
+    leagues.length > 0 ? Math.round(totalMatches / leagues.length) : 0;
+
+  // Leagues whose LEAGUE stage is fully played but no playoff match exists yet.
+  const playoffReadyLeagues = leagues.filter((lg) => {
+    if (lg.status !== "IN_PROGRESS") return false;
+    const leagueMatches = lg.matches.filter((m) => m.stage === "LEAGUE");
+    if (leagueMatches.length === 0) return false;
+    const allPlayed = leagueMatches.every((m) => m.status === "FINISHED");
+    const hasPlayoff = lg.matches.some((m) => m.stage !== "LEAGUE");
+    return allPlayed && !hasPlayoff;
+  });
+
+  // Most-carded league: sum YELLOW_CARD + RED_CARD events per league via matchId map.
+  const matchLeagueMap = new Map<string, string>();
+  for (const lg of leagues) {
+    for (const m of lg.matches) matchLeagueMap.set(m.id, lg.id);
+  }
+  const cardsByLeague = new Map<string, number>();
+  for (const row of cardEventsByMatch) {
+    const leagueId = matchLeagueMap.get(row.matchId);
+    if (!leagueId) continue;
+    cardsByLeague.set(leagueId, (cardsByLeague.get(leagueId) ?? 0) + row._count._all);
+  }
+  const mostCardedLeague = (() => {
+    let bestId: string | null = null;
+    let bestCount = 0;
+    for (const [leagueId, count] of cardsByLeague) {
+      if (count > bestCount) {
+        bestId = leagueId;
+        bestCount = count;
+      }
+    }
+    if (!bestId) return null;
+    const lg = leagues.find((l) => l.id === bestId);
+    return lg ? { league: lg, count: bestCount } : null;
+  })();
 
   const busiestDay = (() => {
     const buckets = new Map<string, number>();
@@ -199,6 +242,12 @@ export default async function DashboardPage() {
           <div className="text-xs text-foreground/55">ประตูเฉลี่ย/นัด</div>
         </div>
         <div>
+          <div className="font-display font-extrabold text-2xl text-accent">
+            {avgMatchesPerLeague}
+          </div>
+          <div className="text-xs text-foreground/55">นัดเฉลี่ย/ลีก</div>
+        </div>
+        <div>
           <div className="font-display font-extrabold text-2xl text-accent">{playedThisWeek}</div>
           <div className="text-xs text-foreground/55">แข่งใน 7 วันที่ผ่านมา</div>
         </div>
@@ -262,6 +311,54 @@ export default async function DashboardPage() {
               </Link>
             ))}
           </div>
+        </div>
+      )}
+
+      {playoffReadyLeagues.length > 0 && (
+        <div className="rounded-lg bg-card border border-white/10 p-5">
+          <h2 className="font-semibold mb-3 flex items-center gap-2">
+            พร้อมเข้าสู่รอบเพลย์ออฟ
+            <span className="rounded-full bg-accent/15 text-accent px-2 py-0.5 text-[10px]">
+              {playoffReadyLeagues.length} ลีก
+            </span>
+          </h2>
+          <p className="text-xs text-foreground/50 mb-3">
+            รอบลีกจบครบทุกนัดแล้ว แต่ยังไม่ได้สร้างรอบรองฯ/รอบชิง
+          </p>
+          <div className="space-y-2">
+            {playoffReadyLeagues.map((lg) => (
+              <Link
+                key={lg.id}
+                href={`/admin/leagues/${lg.id}`}
+                className="flex items-center justify-between rounded-md bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+              >
+                <span>
+                  🏅 {lg.name}{" "}
+                  <span className="text-foreground/45">· ฤดูกาล {lg.seasonYear}</span>
+                </span>
+                <span className="text-accent">สร้างรอบเพลย์ออฟ →</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {mostCardedLeague !== null && mostCardedLeague.count > 0 && (
+        <div className="rounded-lg bg-card border border-white/10 p-5 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">ลีกใบเหลือง-แดงมากที่สุด</h2>
+            <Link
+              href={`/leagues/${mostCardedLeague.league.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-accent hover:underline mt-1 inline-block"
+            >
+              {mostCardedLeague.league.name} →
+            </Link>
+          </div>
+          <span className="rounded-full bg-red-500/15 text-red-400 px-3 py-1 text-sm font-semibold shrink-0">
+            🟨🟥 {mostCardedLeague.count} ใบ
+          </span>
         </div>
       )}
 

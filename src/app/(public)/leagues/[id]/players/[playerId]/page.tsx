@@ -9,10 +9,13 @@ import { MobileNav } from "@/components/mobile-nav";
 
 export default async function PublicPlayerPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; playerId: string }>;
+  searchParams: Promise<{ oppSort?: string }>;
 }) {
   const { id, playerId } = await params;
+  const { oppSort } = await searchParams;
 
   const player = await prisma.player.findFirst({
     where: { id: playerId, team: { leagueId: id } },
@@ -35,12 +38,12 @@ export default async function PublicPlayerPage({
     prisma.match.count({ where: { mvpPlayerId: playerId } }),
   ]);
 
-  const recentLineups = await prisma.matchLineup.findMany({
+  const allLineups = await prisma.matchLineup.findMany({
     where: { playerId, match: { status: { in: ["LIVE", "FINISHED"] } } },
     include: { match: { include: { homeTeam: true, awayTeam: true } } },
     orderBy: { match: { kickoffAt: "desc" } },
-    take: 5,
   });
+  const recentLineups = allLineups.slice(0, 5);
 
   const [startingApps, assistsGiven, subbedOff, teamLeagueGoals, crowdLineups] =
     await Promise.all([
@@ -382,6 +385,98 @@ export default async function PublicPlayerPage({
         )}
 
         {(() => {
+          const koGoals = events.filter(
+            (e) => e.type === "GOAL" && e.match.stage !== "LEAGUE"
+          );
+          const koAssists = events.filter(
+            (e) =>
+              e.type === "GOAL" &&
+              e.match.stage !== "LEAGUE" &&
+              e.relatedPlayerId === playerId
+          );
+          const koApps = new Set(
+            allLineups
+              .filter((l) => l.match.stage !== "LEAGUE")
+              .map((l) => l.matchId)
+          ).size;
+          if (koGoals.length === 0 && koApps === 0) return null;
+          const finalGoals = koGoals.filter((e) => e.match.stage === "FINAL").length;
+          return (
+            <div className="rounded-xl border border-accent/30 bg-card p-4 text-sm max-w-md flex flex-wrap items-center gap-x-6 gap-y-2">
+              🏆
+              <span>
+                รอบเพลย์ออฟ: ลงสนาม{" "}
+                <b className="font-display font-bold text-accent">{koApps}</b> นัด
+              </span>
+              {koGoals.length > 0 && (
+                <span>
+                  ยิง{" "}
+                  <b className="font-display font-bold text-accent">
+                    {koGoals.length}
+                  </b>{" "}
+                  ประตู
+                </span>
+              )}
+              {koAssists.length > 0 && (
+                <span className="text-foreground/60">
+                  แอสซิสต์ {koAssists.length} ครั้ง
+                </span>
+              )}
+              {finalGoals > 0 && (
+                <span className="text-accent">⭐ ยิงในนัดชิงชนะเลิศ {finalGoals} ประตู</span>
+              )}
+            </div>
+          );
+        })()}
+
+        {(() => {
+          const leagueGoalEvents = events
+            .filter((e) => e.type === "GOAL" && e.match.stage === "LEAGUE")
+            .slice()
+            .reverse();
+          const MILESTONES = [1, 5, 10, 25, 50, 100];
+          const reached = MILESTONES.filter((m) => m <= leagueGoalEvents.length).map(
+            (m) => ({ n: m, ev: leagueGoalEvents[m - 1] })
+          );
+          if (reached.length === 0) return null;
+          const nextMilestone = MILESTONES.find((m) => m > leagueGoalEvents.length);
+          return (
+            <div className="rounded-xl border border-white/10 bg-card p-5 max-w-2xl">
+              <h2 className="font-display font-bold mb-3">หมุดหมายการยิงประตู (ลีก)</h2>
+              <div className="flex flex-col gap-2">
+                {reached.map(({ n, ev }) => (
+                  <Link
+                    key={n}
+                    href={`/matches/${ev.matchId}`}
+                    className="flex items-center gap-3 rounded-lg bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                  >
+                    <span className="w-14 font-display italic font-black text-accent">
+                      #{n}
+                    </span>
+                    <span className="flex-1 truncate">
+                      {ev.match.homeTeam.name} พบ {ev.match.awayTeam.name}
+                    </span>
+                    <span className="text-xs text-foreground/45">
+                      {ev.match.kickoffAt.toLocaleDateString("th-TH", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              {nextMilestone && (
+                <p className="mt-3 text-xs text-foreground/45">
+                  อีก {nextMilestone - leagueGoalEvents.length} ประตูถึงหมุดหมาย{" "}
+                  {nextMilestone} ลูก
+                </p>
+              )}
+            </div>
+          );
+        })()}
+
+        {(() => {
           const withCrowd = crowdLineups
             .map((l) => l.match)
             .filter((m): m is typeof m & { spectators: number } => m.spectators != null);
@@ -463,6 +558,80 @@ export default async function PublicPlayerPage({
             </div>
           </div>
         )}
+
+        {(() => {
+          type Row = { name: string; apps: number; goals: number; assists: number };
+          const rows = new Map<string, Row>();
+          const oppName = (m: {
+            homeTeamId: string;
+            homeTeam: { name: string };
+            awayTeam: { name: string };
+          }) => (m.homeTeamId === player.teamId ? m.awayTeam.name : m.homeTeam.name);
+          for (const l of allLineups) {
+            const name = oppName(l.match);
+            const r = rows.get(name) ?? { name, apps: 0, goals: 0, assists: 0 };
+            r.apps++;
+            rows.set(name, r);
+          }
+          for (const e of events) {
+            if (e.type !== "GOAL") continue;
+            const name = oppName(e.match);
+            const r = rows.get(name) ?? { name, apps: 0, goals: 0, assists: 0 };
+            if (e.playerId === playerId) r.goals++;
+            if (e.relatedPlayerId === playerId) r.assists++;
+            rows.set(name, r);
+          }
+          if (rows.size === 0) return null;
+          const sortKey =
+            oppSort === "apps" || oppSort === "assists" || oppSort === "name"
+              ? oppSort
+              : "goals";
+          const list = [...rows.values()].sort((a, b) =>
+            sortKey === "name"
+              ? a.name.localeCompare(b.name, "th")
+              : b[sortKey] - a[sortKey] || b.goals - a.goals
+          );
+          const SortHead = ({ k, label }: { k: string; label: string }) => (
+            <a
+              href={`?oppSort=${k}`}
+              className={`hover:text-accent ${sortKey === k ? "text-accent" : ""}`}
+            >
+              {label}
+              {sortKey === k ? " ▾" : ""}
+            </a>
+          );
+          return (
+            <div className="rounded-xl border border-white/10 bg-card p-5 max-w-2xl">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-display font-bold">สถิติแยกตามคู่แข่ง</h2>
+                <div className="flex gap-3 text-xs text-foreground/50">
+                  เรียง: <SortHead k="goals" label="ประตู" />
+                  <SortHead k="assists" label="แอสซิสต์" />
+                  <SortHead k="apps" label="นัด" />
+                  <SortHead k="name" label="ชื่อ" />
+                </div>
+              </div>
+              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-1.5 text-sm">
+                <span className="text-xs text-foreground/40">คู่แข่ง</span>
+                <span className="text-xs text-foreground/40 text-right">นัด</span>
+                <span className="text-xs text-foreground/40 text-right">ประตู</span>
+                <span className="text-xs text-foreground/40 text-right">แอสซิสต์</span>
+                {list.map((r) => (
+                  <div key={r.name} className="contents">
+                    <span className="truncate">{r.name}</span>
+                    <span className="text-right text-foreground/60">{r.apps}</span>
+                    <span className="text-right font-display font-bold text-accent">
+                      {r.goals || "-"}
+                    </span>
+                    <span className="text-right text-foreground/70">
+                      {r.assists || "-"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {recentLineups.length > 0 && (
           <div className="rounded-xl border border-white/10 bg-card p-5 max-w-2xl">

@@ -47,6 +47,27 @@ export default async function LivePage() {
 
   const todayGoals = todayPlayed.reduce((s, m) => s + m.homeScore + m.awayScore, 0);
 
+  // Feature: per-league upcoming counts across ALL future scheduled matches (not just the 6 shown)
+  const upcomingByLeagueRaw = await prisma.match.groupBy({
+    by: ["leagueId"],
+    where: { status: "SCHEDULED", kickoffAt: { gte: new Date() } },
+    _count: { _all: true },
+    _min: { kickoffAt: true },
+  });
+  const upcomingLeagueNames = await prisma.league.findMany({
+    where: { id: { in: upcomingByLeagueRaw.map((g) => g.leagueId) } },
+    select: { id: true, name: true },
+  });
+  const upcomingLeagueNameById = new Map(upcomingLeagueNames.map((l) => [l.id, l.name]));
+  const upcomingByLeague = upcomingByLeagueRaw
+    .map((g) => ({
+      leagueId: g.leagueId,
+      name: upcomingLeagueNameById.get(g.leagueId) ?? "",
+      count: g._count._all,
+      nextKickoff: g._min.kickoffAt,
+    }))
+    .sort((a, b) => b.count - a.count || (a.nextKickoff?.getTime() ?? 0) - (b.nextKickoff?.getTime() ?? 0));
+
   const todayFinished = await prisma.match.findMany({
     where: { status: "FINISHED", kickoffAt: { gte: dayStart, lt: dayEnd } },
     include: { homeTeam: true, awayTeam: true, league: true },
@@ -74,6 +95,16 @@ export default async function LivePage() {
       const mMin = mKick ? computeLiveMinute(mKick.createdAt) : 0;
       return mMin > bestMin ? m : best;
     }
+    return best;
+  }, null);
+
+  // Feature: longest-running live match — highest computed live minute across live games
+  const longestLive = live.reduce<
+    { match: (typeof live)[number]; minute: number } | null
+  >((best, m) => {
+    const k = m.events.find((e) => e.type === "KICK_OFF");
+    const minute = k ? computeLiveMinute(k.createdAt) : 0;
+    if (!best || minute > best.minute) return { match: m, minute };
     return best;
   }, null);
 
@@ -135,7 +166,7 @@ export default async function LivePage() {
 
       <div className="px-6 md:px-16 py-8 flex-1 space-y-10">
         {live.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-4xl">
             <div className="rounded-xl border border-white/10 bg-card p-4">
               <div className="text-xs text-foreground/45">ประตูในเกมสดตอนนี้</div>
               <div className="font-display italic font-black text-3xl text-accent mt-1">{liveGoalsNow}</div>
@@ -152,6 +183,20 @@ export default async function LivePage() {
                 <div className="text-xs text-red-400">🔥 คู่เดือดที่สุด</div>
                 <div className="text-sm mt-1 truncate">
                   {hottestLive.homeTeam.name} <span className="text-accent font-bold">{hottestLive.homeScore}-{hottestLive.awayScore}</span> {hottestLive.awayTeam.name}
+                </div>
+              </Link>
+            )}
+            {longestLive && longestLive.minute > 0 && (
+              <Link
+                href={`/matches/${longestLive.match.id}`}
+                className="rounded-xl border border-white/10 bg-card p-4 hover:border-accent/50"
+              >
+                <div className="text-xs text-foreground/45">⏱️ เตะมานานสุด</div>
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <span className="font-display italic font-black text-2xl text-foreground">{longestLive.minute}&apos;</span>
+                  <span className="text-sm truncate text-foreground/70">
+                    {longestLive.match.homeTeam.name} พบ {longestLive.match.awayTeam.name}
+                  </span>
                 </div>
               </Link>
             )}
@@ -288,6 +333,31 @@ export default async function LivePage() {
             </div>
             <div className="text-[11px] text-foreground/40 mt-0.5">{nextMatch.league.name}</div>
           </Link>
+        )}
+
+        {upcomingByLeague.length > 0 && (
+          <div>
+            <h2 className="font-display font-bold mb-4">คิวแข่งรอลงสนามแต่ละลีก</h2>
+            <div className="flex flex-wrap gap-2 max-w-2xl">
+              {upcomingByLeague.map((l) => (
+                <Link
+                  key={l.leagueId}
+                  href={`/leagues/${l.leagueId}`}
+                  className="rounded-lg bg-card border border-white/10 px-3 py-2 hover:border-accent/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm truncate max-w-[12rem]">{l.name}</span>
+                    <span className="font-display font-black text-accent">{l.count}</span>
+                  </div>
+                  {l.nextKickoff && (
+                    <div className="text-[10px] text-foreground/40 mt-0.5">
+                      เริ่มอีก {formatCountdown(minutesUntil(l.nextKickoff))}
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
         )}
 
         {upcoming.length > 0 && (

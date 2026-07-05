@@ -61,13 +61,17 @@ export default async function PublicLeaguePage({
     side?: string;
     view?: string;
     status?: string;
+    venue?: string;
+    sort?: string;
   }>;
 }) {
   const { id } = await params;
-  const { tab = "standings", round, team, asof, side, view, status } = await searchParams;
+  const { tab = "standings", round, team, asof, side, view, status, venue, sort } =
+    await searchParams;
   const gridView = view === "grid";
   const statusFilter = status === "upcoming" || status === "finished" ? status : null;
   const roundFilter = Number(round) || null;
+  const sortDesc = sort === "desc";
   const sideView = side === "home" ? "HOME" : side === "away" ? "AWAY" : null;
 
   const league = await prisma.league.findUnique({
@@ -83,6 +87,7 @@ export default async function PublicLeaguePage({
   const pageUrl = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "league-manager-app.vercel.app"}/leagues/${id}`;
 
   const teamFilter = team && league.teams.some((t) => t.id === team) ? team : null;
+  const venueFilter = venue?.trim() || null;
 
   const matches = await prisma.match.findMany({
     where: { leagueId: id },
@@ -1484,6 +1489,40 @@ export default async function PublicLeaguePage({
                 </div>
               )}
 
+              {!sideView && !asofRound && movement.size > 0 && (() => {
+                const moves = standings
+                  .map((r) => ({ name: r.teamName, d: movement.get(r.teamId) ?? 0 }))
+                  .filter((m) => m.d !== 0);
+                if (moves.length === 0) return null;
+                const climber = moves.reduce((a, b) => (b.d > a.d ? b : a));
+                const faller = moves.reduce((a, b) => (b.d < a.d ? b : a));
+                return (
+                  <div className="rounded-xl border border-white/10 bg-card p-5">
+                    <h3 className="font-display font-bold mb-3">📈 ขยับอันดับหลังนัดล่าสุด</h3>
+                    <div className="flex flex-col gap-2 text-sm">
+                      {climber.d > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-foreground/60">พุ่งแรงสุด</span>
+                          <span>
+                            <span className="font-display font-semibold">{climber.name}</span>{" "}
+                            <b className="text-accent">▲{climber.d} อันดับ</b>
+                          </span>
+                        </div>
+                      )}
+                      {faller.d < 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-foreground/60">ร่วงแรงสุด</span>
+                          <span>
+                            <span className="font-display font-semibold">{faller.name}</span>{" "}
+                            <b className="text-red-400">▼{-faller.d} อันดับ</b>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {(hotStreak || unbeatenStreak) && (
                 <div className="rounded-xl border border-accent/30 bg-card p-5">
                   <h3 className="font-display font-bold mb-3">🔥 ฟอร์มร้อนแรง</h3>
@@ -1690,9 +1729,38 @@ export default async function PublicLeaguePage({
                   </option>
                 ))}
               </select>
+              {(() => {
+                const venues = [
+                  ...new Set(
+                    matches.map((m) => m.venue?.trim()).filter((v): v is string => !!v)
+                  ),
+                ].sort((a, b) => a.localeCompare(b, "th"));
+                return venues.length > 0 ? (
+                  <select
+                    name="venue"
+                    defaultValue={venueFilter ?? ""}
+                    className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+                  >
+                    <option value="">ทุกสนาม</option>
+                    {venues.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                ) : null;
+              })()}
               <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
                 ดู
               </button>
+              <Link
+                href={`/leagues/${id}?tab=fixtures${sortDesc ? "" : "&sort=desc"}${
+                  gridView ? "&view=grid" : ""
+                }`}
+                className="rounded-md bg-white/5 px-3 py-2 text-xs text-foreground/60 hover:text-accent"
+              >
+                {sortDesc ? "↑ นัดเก่าก่อน" : "↓ นัดล่าสุดก่อน"}
+              </Link>
               <Link
                 href={`/leagues/${id}?tab=fixtures${gridView ? "" : "&view=grid"}`}
                 className="rounded-md bg-white/5 px-3 py-2 text-xs text-foreground/60 hover:text-accent"
@@ -1727,6 +1795,7 @@ export default async function PublicLeaguePage({
             })()}
             {Array.from(matchesByRound.entries())
               .filter(([round]) => roundFilter === null || round === roundFilter)
+              .sort(([a], [b]) => (sortDesc ? b - a : a - b))
               .map(([round, roundMatches]) => {
                 let shown = teamFilter
                   ? roundMatches.filter(
@@ -1735,6 +1804,7 @@ export default async function PublicLeaguePage({
                   : roundMatches;
                 if (statusFilter === "upcoming") shown = shown.filter((m) => m.status !== "FINISHED");
                 if (statusFilter === "finished") shown = shown.filter((m) => m.status === "FINISHED");
+                if (venueFilter) shown = shown.filter((m) => m.venue?.trim() === venueFilter);
                 if (shown.length === 0) return null;
                 if (gridView) {
                   return (
@@ -1815,6 +1885,28 @@ export default async function PublicLeaguePage({
               </div>
                 );
               })}
+            {(() => {
+              const matched = matches.filter((m) => {
+                if (roundFilter !== null && m.round !== roundFilter) return false;
+                if (teamFilter && m.homeTeamId !== teamFilter && m.awayTeamId !== teamFilter)
+                  return false;
+                if (statusFilter === "upcoming" && m.status === "FINISHED") return false;
+                if (statusFilter === "finished" && m.status !== "FINISHED") return false;
+                if (venueFilter && m.venue?.trim() !== venueFilter) return false;
+                return true;
+              });
+              return matched.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/15 bg-card/50 p-8 text-center">
+                  <p className="text-foreground/60 text-sm">ไม่พบแมตช์ที่ตรงกับตัวกรอง</p>
+                  <Link
+                    href={`/leagues/${id}?tab=fixtures`}
+                    className="mt-3 inline-block rounded-md bg-white/10 px-4 py-2 text-xs text-accent hover:bg-white/15"
+                  >
+                    ล้างตัวกรอง
+                  </Link>
+                </div>
+              ) : null;
+            })()}
           </div>
         )}
       </div>

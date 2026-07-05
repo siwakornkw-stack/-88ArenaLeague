@@ -174,7 +174,7 @@ export default async function PublicMatchPage({
     else h2hDraws++;
   }
 
-  const [homeNextMatch, awayNextMatch, leagueAttendance] = await Promise.all([
+  const [homeNextMatch, awayNextMatch, leagueAttendance, refereeMatches] = await Promise.all([
     prisma.match.findFirst({
       where: {
         status: "SCHEDULED",
@@ -199,8 +199,30 @@ export default async function PublicMatchPage({
       where: { leagueId: match.leagueId, status: "FINISHED", spectators: { gt: 0 } },
       _avg: { spectators: true },
     }),
+    match.refereeName
+      ? prisma.match.findMany({
+          where: {
+            leagueId: match.leagueId,
+            status: "FINISHED",
+            refereeName: match.refereeName,
+          },
+          select: {
+            id: true,
+            events: { where: { type: { in: ["YELLOW_CARD", "RED_CARD"] } }, select: { type: true } },
+          },
+        })
+      : Promise.resolve([]),
   ]);
   const avgSpectators = leagueAttendance._avg.spectators ?? 0;
+
+  const refYellow = refereeMatches.reduce(
+    (s, m) => s + m.events.filter((e) => e.type === "YELLOW_CARD").length,
+    0
+  );
+  const refRed = refereeMatches.reduce(
+    (s, m) => s + m.events.filter((e) => e.type === "RED_CARD").length,
+    0
+  );
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -479,6 +501,42 @@ export default async function PublicMatchPage({
           );
         })()}
 
+        {match.status !== "SCHEDULED" &&
+          (() => {
+            const goals = match.events.filter(
+              (e) => (e.type === "GOAL" || e.type === "OWN_GOAL") && e.player
+            );
+            const scoredFor = (e: (typeof goals)[number]) =>
+              e.type === "OWN_GOAL" ? (e.side === "HOME" ? "AWAY" : "HOME") : e.side;
+            const names = (side: "HOME" | "AWAY") =>
+              goals
+                .filter((g) => scoredFor(g) === side)
+                .sort((a, b) => a.minute - b.minute)
+                .map((g) => `${g.player!.name} ${g.minute}'${g.type === "OWN_GOAL" ? " (OG)" : ""}`)
+                .join(", ");
+            const homeScorers = names("HOME");
+            const awayScorers = names("AWAY");
+            const dateStr = match.kickoffAt.toLocaleDateString("th-TH", { dateStyle: "medium" });
+            const lines = [
+              `${match.league.name} · นัดที่ ${match.round} · ${dateStr}`,
+              `${match.homeTeam.name} ${match.homeScore}-${match.awayScore} ${match.awayTeam.name}`,
+            ];
+            if (homeScorers) lines.push(`⚽ ${match.homeTeam.name}: ${homeScorers}`);
+            if (awayScorers) lines.push(`⚽ ${match.awayTeam.name}: ${awayScorers}`);
+            lines.push(pageUrl);
+            return (
+              <div className="rounded-xl border border-white/10 bg-card p-5">
+                <h2 className="font-display font-bold mb-2 text-sm">คัดลอกผลไปแชร์ 📋</h2>
+                <pre className="whitespace-pre-wrap select-all rounded-lg bg-black/40 p-3 text-xs text-foreground/75 font-mono leading-relaxed">
+                  {lines.join("\n")}
+                </pre>
+                <p className="mt-2 text-[10px] text-foreground/35">
+                  แตะค้างเพื่อเลือกทั้งหมด แล้วคัดลอกไปวางในแชท
+                </p>
+              </div>
+            );
+          })()}
+
         {match.status === "SCHEDULED" &&
           homeForm.length + awayForm.length > 0 &&
           (() => {
@@ -671,6 +729,114 @@ export default async function PublicMatchPage({
 
         {match.status !== "SCHEDULED" &&
           (() => {
+            const goals = match.events
+              .filter((e) => (e.type === "GOAL" || e.type === "OWN_GOAL") && e.minute != null)
+              .sort((a, b) => a.minute - b.minute);
+            if (goals.length < 2) return null;
+            const first = goals[0].minute ?? 0;
+            const last = goals[goals.length - 1].minute ?? 0;
+            let maxGap = first;
+            let gapStart = 0;
+            let gapEnd = first;
+            for (let i = 1; i < goals.length; i++) {
+              const gap = (goals[i].minute ?? 0) - (goals[i - 1].minute ?? 0);
+              if (gap > maxGap) {
+                maxGap = gap;
+                gapStart = goals[i - 1].minute ?? 0;
+                gapEnd = goals[i].minute ?? 0;
+              }
+            }
+            const cards: { label: string; value: string; sub: string }[] = [
+              { label: "ประตูเร็วสุด", value: `${first}'`, sub: goals[0].player?.name ?? "-" },
+              { label: "ประตูช้าสุด", value: `${last}'`, sub: goals[goals.length - 1].player?.name ?? "-" },
+              {
+                label: "ช่วงไร้ประตูนานสุด",
+                value: `${maxGap}′`,
+                sub: `นาที ${gapStart}-${gapEnd}`,
+              },
+            ];
+            return (
+              <div className="rounded-xl border border-white/10 bg-card p-5 max-w-xl mx-auto w-full">
+                <h2 className="font-display font-bold mb-3 text-sm">สถิติเด่นในนัดนี้ ⏱️</h2>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  {cards.map((c) => (
+                    <div key={c.label} className="rounded-lg bg-white/5 px-2 py-3">
+                      <div className="font-display italic font-extrabold text-2xl text-accent">
+                        {c.value}
+                      </div>
+                      <div className="text-[11px] text-foreground/45 mt-0.5">{c.label}</div>
+                      <div className="text-[10px] text-foreground/35 truncate mt-0.5">{c.sub}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+        {match.status !== "SCHEDULED" &&
+          (() => {
+            const goals = match.events.filter(
+              (e) => (e.type === "GOAL" || e.type === "OWN_GOAL") && e.minute != null
+            );
+            if (goals.length === 0) return null;
+            const scoredFor = (e: (typeof goals)[number]) =>
+              e.type === "OWN_GOAL" ? (e.side === "HOME" ? "AWAY" : "HOME") : e.side;
+            const bins = [
+              { label: "0-15", from: 0, to: 15 },
+              { label: "16-30", from: 16, to: 30 },
+              { label: "31-45", from: 31, to: 45 },
+              { label: "46-60", from: 46, to: 60 },
+              { label: "61-75", from: 61, to: 75 },
+              { label: "76+", from: 76, to: 200 },
+            ].map((b) => {
+              const h = goals.filter(
+                (g) => scoredFor(g) === "HOME" && (g.minute ?? 0) >= b.from && (g.minute ?? 0) <= b.to
+              ).length;
+              const a = goals.filter(
+                (g) => scoredFor(g) === "AWAY" && (g.minute ?? 0) >= b.from && (g.minute ?? 0) <= b.to
+              ).length;
+              return { ...b, h, a };
+            });
+            const peak = bins.reduce((m, b) => Math.max(m, b.h + b.a), 0) || 1;
+            const busiest = bins.reduce((m, b) => (b.h + b.a > m.h + m.a ? b : m), bins[0]);
+            return (
+              <div className="rounded-xl border border-white/10 bg-card p-5">
+                <h2 className="font-display font-bold mb-4">จังหวะการทำประตูรายช่วงเวลา 📊</h2>
+                <div className="grid grid-cols-6 gap-2 items-end h-28">
+                  {bins.map((b) => (
+                    <div key={b.label} className="flex flex-col items-center justify-end gap-1 h-full">
+                      <div className="flex-1 flex flex-col justify-end w-full items-center gap-0.5">
+                        {b.h > 0 && (
+                          <div
+                            className="w-4/5 bg-accent rounded-t"
+                            style={{ height: `${(b.h / peak) * 100}%` }}
+                            title={`${match.homeTeam.name} ${b.h} ประตู`}
+                          />
+                        )}
+                        {b.a > 0 && (
+                          <div
+                            className="w-4/5 bg-red-400 rounded-t"
+                            style={{ height: `${(b.a / peak) * 100}%` }}
+                            title={`${match.awayTeam.name} ${b.a} ประตู`}
+                          />
+                        )}
+                      </div>
+                      <span className="text-[9px] text-foreground/40">{b.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-center text-[10px] text-foreground/35">
+                  ■ {match.homeTeam.name} · ■ {match.awayTeam.name}
+                  {busiest.h + busiest.a > 0 && (
+                    <> · ช่วงที่มีประตูมากสุด: นาที {busiest.label}</>
+                  )}
+                </p>
+              </div>
+            );
+          })()}
+
+        {match.status !== "SCHEDULED" &&
+          (() => {
             const assists = match.events.filter(
               (e) => e.type === "GOAL" && e.relatedPlayer
             );
@@ -768,6 +934,33 @@ export default async function PublicMatchPage({
               </div>
             );
           })()}
+
+        {match.refereeName && refereeMatches.length > 1 && (
+          <div className="rounded-xl border border-white/10 bg-card p-5 max-w-xl mx-auto w-full">
+            <h2 className="font-display font-bold mb-3 text-sm">โปรไฟล์ผู้ตัดสิน 🧑‍⚖️</h2>
+            <p className="text-center text-sm text-foreground/70 mb-3">{match.refereeName}</p>
+            <div className="grid grid-cols-3 text-center">
+              <div>
+                <div className="font-display italic font-extrabold text-2xl text-foreground">
+                  {refereeMatches.length}
+                </div>
+                <div className="text-[11px] text-foreground/45">นัดในลีกนี้</div>
+              </div>
+              <div>
+                <div className="font-display italic font-extrabold text-2xl text-yellow-300">
+                  {(refYellow / refereeMatches.length).toFixed(1)}
+                </div>
+                <div className="text-[11px] text-foreground/45">🟨 เฉลี่ย/นัด</div>
+              </div>
+              <div>
+                <div className="font-display italic font-extrabold text-2xl text-red-400">
+                  {refRed}
+                </div>
+                <div className="text-[11px] text-foreground/45">🟥 รวม</div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {(() => {
           const subs = match.events.filter((e) => e.type === "SUBSTITUTION");
