@@ -582,6 +582,30 @@ export default async function MyTeamPage({
               />
             </div>
           </div>
+          <div className="flex gap-2">
+            <div className="flex-1 space-y-1">
+              <label className="text-sm text-foreground/70" htmlFor="heightCm">
+                ส่วนสูง (ซม.)
+              </label>
+              <input
+                id="heightCm"
+                name="heightCm"
+                type="number"
+                className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
+            <div className="flex-1 space-y-1">
+              <label className="text-sm text-foreground/70" htmlFor="weightKg">
+                น้ำหนัก (กก.)
+              </label>
+              <input
+                id="weightKg"
+                name="weightKg"
+                type="number"
+                className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
+          </div>
           <div className="space-y-1">
             <label className="text-sm text-foreground/70" htmlFor="photo">
               รูปนักเตะ (ไม่บังคับ)

@@ -37,7 +37,11 @@ export default async function SearchPage({
             take: 20,
           }),
           prisma.league.findMany({
-            where: { name: { contains: query, mode: "insensitive" }, status: { not: "DRAFT" } },
+            where: {
+              name: { contains: query, mode: "insensitive" },
+              status: { not: "DRAFT" },
+              hidden: false,
+            },
             include: { teams: { select: { id: true } } },
             take: 10,
           }),

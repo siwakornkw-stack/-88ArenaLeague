@@ -7,7 +7,10 @@ export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [leagues, teams, matches, players] = await Promise.all([
-    prisma.league.findMany({ where: { status: { not: "DRAFT" } }, select: { id: true } }),
+    prisma.league.findMany({
+      where: { status: { not: "DRAFT" }, hidden: false },
+      select: { id: true },
+    }),
     prisma.team.findMany({
       where: { league: { status: { not: "DRAFT" } } },
       select: { id: true, leagueId: true },

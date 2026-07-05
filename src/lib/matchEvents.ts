@@ -3,6 +3,7 @@ export const EVENT_ICON: Record<string, string> = {
   GOAL: "⚽",
   OWN_GOAL: "⚽",
   PENALTY_MISSED: "❌",
+  INJURY: "🚑",
   YELLOW_CARD: "🟨",
   RED_CARD: "🟥",
   SUBSTITUTION: "🔄",

@@ -206,7 +206,7 @@ export async function updateStats(matchId: string, formData: FormData) {
   revalidatePath(`/admin/matches/${matchId}`);
 }
 
-export async function halfTime(matchId: string) {
+export async function halfTime(matchId: string, formData?: FormData) {
   await assertSuperAdmin();
   if ((await getMatchStatus(matchId)) !== "LIVE") throw new Error("Match is not live");
 
@@ -217,7 +217,8 @@ export async function halfTime(matchId: string) {
     prisma.match.findUniqueOrThrow({ where: { id: matchId } }),
     prisma.matchEvent.findFirst({ where: { matchId, type: "KICK_OFF" } }),
   ]);
-  const minute = kickoffEvent ? computeLiveMinute(kickoffEvent.createdAt) : 0;
+  const fixed45 = formData?.get("fixed45") === "1";
+  const minute = fixed45 ? 45 : kickoffEvent ? computeLiveMinute(kickoffEvent.createdAt) : 0;
 
   await prisma.matchEvent.create({
     data: {
@@ -238,7 +239,22 @@ const DELETABLE_EVENT_TYPES = [
   "YELLOW_CARD",
   "RED_CARD",
   "SUBSTITUTION",
+  "INJURY",
 ];
+
+export async function recordInjury(matchId: string, formData: FormData) {
+  await assertSuperAdmin();
+  if ((await getMatchStatus(matchId)) !== "LIVE") throw new Error("Match is not live");
+
+  const side = getSide(formData);
+  const playerId = getPlayerId(formData);
+  const minute = getMinute(formData);
+
+  await prisma.matchEvent.create({
+    data: { matchId, minute, label: "บาดเจ็บ", type: "INJURY", side, playerId },
+  });
+  revalidatePath(`/admin/matches/${matchId}`);
+}
 
 export async function deleteEvent(matchId: string, formData: FormData) {
   await assertSuperAdmin();
@@ -373,7 +389,8 @@ export async function endMatch(matchId: string) {
   await logAdmin(
     session,
     "จบการแข่งขัน",
-    `${match.homeTeam.name} ${match.homeScore}-${match.awayScore} ${match.awayTeam.name}`
+    `${match.homeTeam.name} ${match.homeScore}-${match.awayScore} ${match.awayTeam.name} · #${matchId}`,
+    match.leagueId
   );
   revalidatePath(`/admin/matches/${matchId}`);
 }

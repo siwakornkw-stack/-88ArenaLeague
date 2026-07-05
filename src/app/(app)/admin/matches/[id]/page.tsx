@@ -19,6 +19,7 @@ import {
   quickStat,
   updateEventMinute,
   swapSides,
+  recordInjury,
 } from "./actions";
 
 const STAT_FIELDS = [
@@ -76,6 +77,7 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
   const addGoalWithId = addGoal.bind(null, id);
   const addCardWithId = addCard.bind(null, id);
   const addSubWithId = addSubstitution.bind(null, id);
+  const recordInjuryWithId = recordInjury.bind(null, id);
   const endMatchWithId = endMatch.bind(null, id);
   const updateStatsWithId = updateStats.bind(null, id);
   const updateMatchInfoWithId = updateMatchInfo.bind(null, id);
@@ -296,6 +298,7 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             addGoal={addGoalWithId}
             addCard={addCardWithId}
             addSub={addSubWithId}
+            addInjury={recordInjuryWithId}
             defaultMinute={liveMinute}
           />
           <MatchActionForms
@@ -306,6 +309,7 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
             addGoal={addGoalWithId}
             addCard={addCardWithId}
             addSub={addSubWithId}
+            addInjury={recordInjuryWithId}
             defaultMinute={liveMinute}
           />
         </div>
@@ -314,11 +318,19 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
       {match.status === "LIVE" && (
         <div className="flex gap-3">
           {!hasHalfTime && (
-            <form action={halfTimeWithId}>
-              <button type="submit" className="rounded-md bg-white/10 px-5 py-2 text-sm">
-                ⏸ พักครึ่ง
-              </button>
-            </form>
+            <>
+              <form action={halfTimeWithId}>
+                <button type="submit" className="rounded-md bg-white/10 px-5 py-2 text-sm">
+                  ⏸ พักครึ่ง (นาทีจริง)
+                </button>
+              </form>
+              <form action={halfTimeWithId}>
+                <input type="hidden" name="fixed45" value="1" />
+                <button type="submit" className="rounded-md bg-white/10 px-5 py-2 text-sm">
+                  ⏸ พักครึ่งที่ 45&apos;
+                </button>
+              </form>
+            </>
           )}
           <form action={endMatchWithId}>
             <button type="submit" className="rounded-md bg-white/10 px-5 py-2 text-sm">
@@ -442,6 +454,7 @@ function MatchActionForms({
   addGoal,
   addCard,
   addSub,
+  addInjury,
   defaultMinute,
 }: {
   side: "HOME" | "AWAY";
@@ -451,6 +464,7 @@ function MatchActionForms({
   addGoal: (formData: FormData) => Promise<void>;
   addCard: (formData: FormData) => Promise<void>;
   addSub: (formData: FormData) => Promise<void>;
+  addInjury: (formData: FormData) => Promise<void>;
   defaultMinute: number;
 }) {
   return (
@@ -536,6 +550,14 @@ function MatchActionForms({
             🔄 เปลี่ยนตัว
           </button>
         </div>
+      </form>
+
+      <form action={addInjury} className="flex gap-2 items-end">
+        <input type="hidden" name="side" value={side} />
+        <PlayerAndMinuteFields players={players} defaultMinute={defaultMinute} />
+        <button type="submit" className="rounded-md bg-white/10 text-xs px-3 py-2">
+          🚑 บาดเจ็บ
+        </button>
       </form>
     </div>
   );

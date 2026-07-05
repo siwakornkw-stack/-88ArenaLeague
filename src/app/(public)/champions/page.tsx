@@ -15,7 +15,7 @@ export default async function ChampionsPage({
   const yearFilter = Number(year) || null;
 
   const leagues = await prisma.league.findMany({
-    where: { status: "FINISHED", ...(yearFilter ? { seasonYear: yearFilter } : {}) },
+    where: { status: "FINISHED", hidden: false, ...(yearFilter ? { seasonYear: yearFilter } : {}) },
     orderBy: [{ seasonYear: "desc" }, { createdAt: "desc" }],
   });
   const allYears = await prisma.league.findMany({

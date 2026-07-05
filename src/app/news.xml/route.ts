@@ -12,6 +12,10 @@ function esc(s: string) {
 
 export async function GET() {
   const news = await prisma.leagueNews.findMany({
+    where: {
+      OR: [{ publishAt: null }, { publishAt: { lte: new Date() } }],
+      league: { hidden: false },
+    },
     include: { league: true },
     orderBy: { createdAt: "desc" },
     take: 50,

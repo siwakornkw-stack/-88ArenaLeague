@@ -160,6 +160,22 @@ export async function generateFinal(leagueId: string) {
   revalidatePath(`/leagues/${leagueId}`);
 }
 
+export async function setLeagueVenue(leagueId: string, formData: FormData) {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
+
+  const venue = String(formData.get("venue") ?? "").trim();
+  if (!venue) return;
+
+  const res = await prisma.match.updateMany({
+    where: { leagueId, status: "SCHEDULED" },
+    data: { venue },
+  });
+  await logAdmin(session, "ตั้งสนามทั้งลีก", `${venue} · ${res.count} แมตช์`, leagueId);
+  revalidatePath(`/admin/leagues/${leagueId}`);
+  revalidatePath(`/leagues/${leagueId}`);
+}
+
 export async function shiftSeason(leagueId: string, formData: FormData) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
@@ -225,6 +241,10 @@ export async function updateLeague(leagueId: string, formData: FormData) {
       promotedCount: clampZone("promotedCount"),
       relegatedCount: clampZone("relegatedCount"),
       registrationOpen: formData.get("registrationOpen") === "on",
+      hidden: formData.get("hidden") === "on",
+      rulesUrl: /^https?:\/\//.test(String(formData.get("rulesUrl") ?? "").trim())
+        ? String(formData.get("rulesUrl")).trim()
+        : null,
     },
   });
   revalidatePath(`/admin/leagues/${leagueId}`);
@@ -276,9 +296,19 @@ export async function createNews(leagueId: string, formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
   const pinned = formData.get("pinned") === "on";
+  const publishRaw = String(formData.get("publishAt") ?? "").trim();
+  const publishDate = publishRaw ? new Date(publishRaw) : null;
   if (!title || !body) return;
 
-  await prisma.leagueNews.create({ data: { leagueId, title, body, pinned } });
+  await prisma.leagueNews.create({
+    data: {
+      leagueId,
+      title,
+      body,
+      pinned,
+      publishAt: publishDate && !isNaN(publishDate.getTime()) ? publishDate : null,
+    },
+  });
   revalidatePath(`/admin/leagues/${leagueId}`);
   revalidatePath(`/leagues/${leagueId}`);
 }

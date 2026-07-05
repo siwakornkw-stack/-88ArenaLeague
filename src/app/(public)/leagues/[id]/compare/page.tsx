@@ -227,6 +227,27 @@ export default async function ComparePage({
                   <div className="text-xs text-foreground/50">{teamB.name} ชนะ</div>
                 </div>
               </div>
+              {(() => {
+                let gA = 0;
+                let gB = 0;
+                for (const m of h2h) {
+                  gA += m.homeTeamId === teamA?.id ? m.homeScore : m.awayScore;
+                  gB += m.homeTeamId === teamA?.id ? m.awayScore : m.homeScore;
+                }
+                const total = gA + gB || 1;
+                return (
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs text-foreground/50 mb-1">
+                      <span>ประตูรวม {gA}</span>
+                      <span>{gB} ประตูรวม</span>
+                    </div>
+                    <div className="flex h-2 rounded-full overflow-hidden bg-white/10">
+                      <div className="bg-accent" style={{ width: `${(gA / total) * 100}%` }} />
+                      <div className="bg-white/30" style={{ width: `${(gB / total) * 100}%` }} />
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="flex flex-col gap-2">
                 {h2h.map((m) => (
                   <Link

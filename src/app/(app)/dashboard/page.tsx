@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { computeLiveMinute } from "@/lib/matchClock";
-import { createLeague, createAdmin, resetUserPassword } from "./actions";
+import { createLeague, createAdmin, resetUserPassword, setUserActive } from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "ฉบับร่าง",
@@ -303,6 +303,19 @@ export default async function DashboardPage() {
                   ? `ล็อกอินล่าสุด ${u.lastLoginAt.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}`
                   : "ยังไม่เคยล็อกอิน"}
               </span>
+              {!u.isActive && (
+                <span className="text-[10px] rounded-full bg-red-500/15 text-red-400 px-2 py-0.5">
+                  ระงับอยู่
+                </span>
+              )}
+              <form action={setUserActive.bind(null, u.id, !u.isActive)}>
+                <button
+                  type="submit"
+                  className={`text-xs ${u.isActive ? "text-foreground/40 hover:text-red-400" : "text-accent"}`}
+                >
+                  {u.isActive ? "ระงับ" : "เปิดใช้"}
+                </button>
+              </form>
               <form
                 action={resetUserPassword.bind(null, u.id)}
                 className="flex items-center gap-1"

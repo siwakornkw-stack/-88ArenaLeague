@@ -219,11 +219,31 @@ export default async function Home() {
                     {lg.live > 0 && <span className="text-accent">● {lg.live} แมตช์สด</span>}
                   </div>
                   {lg.leaderName && (
-                    <div className="mt-4 flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm">
-                      <span className="font-display font-semibold text-foreground">
-                        {lg.leaderName}
-                      </span>
-                      <span className="text-foreground/50 text-xs">จ่าฝูง · {lg.leaderPoints} แต้ม</span>
+                    <div className="mt-4 rounded-lg bg-white/5 px-3 py-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-display font-semibold text-foreground">
+                          {lg.leaderName}
+                        </span>
+                        <span className="text-foreground/50 text-xs">จ่าฝูง · {lg.leaderPoints} แต้ม</span>
+                      </div>
+                      {lg.leaderForm.length > 0 && (
+                        <div className="flex gap-1 mt-1.5">
+                          {lg.leaderForm.map((f, i) => (
+                            <span
+                              key={i}
+                              className={`w-4 h-4 rounded text-[9px] font-bold grid place-items-center ${
+                                f === "W"
+                                  ? "bg-accent text-black"
+                                  : f === "L"
+                                    ? "bg-red-500 text-white"
+                                    : "bg-white/15 text-foreground"
+                              }`}
+                            >
+                              {f === "W" ? "ช" : f === "L" ? "พ" : "ส"}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

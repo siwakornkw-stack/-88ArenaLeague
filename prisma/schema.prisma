@@ -45,6 +45,7 @@ enum EventType {
   GOAL
   OWN_GOAL
   PENALTY_MISSED
+  INJURY
   YELLOW_CARD
   RED_CARD
   SUBSTITUTION
@@ -65,6 +66,7 @@ model User {
   name         String
   role         Role
   lastLoginAt  DateTime?
+  isActive     Boolean  @default(true)
   managedTeams Team[]   @relation("TeamManagers")
   createdAt    DateTime @default(now())
 }
@@ -79,6 +81,8 @@ model League {
   promotedCount  Int     @default(2)
   relegatedCount Int     @default(2)
   registrationOpen Boolean @default(false)
+  rulesUrl  String?
+  hidden    Boolean @default(false)
   status    LeagueStatus @default(DRAFT)
   createdAt DateTime     @default(now())
   teams     Team[]
@@ -94,6 +98,7 @@ model LeagueSponsor {
   name      String
   url       String?
   logoUrl   String?
+  clicks    Int      @default(0)
   createdAt DateTime @default(now())
 }
 
@@ -104,6 +109,7 @@ model LeagueNews {
   title     String
   body      String
   pinned    Boolean  @default(false)
+  publishAt DateTime?
   createdAt DateTime @default(now())
 }
 
@@ -133,6 +139,8 @@ model Player {
   photoUrl  String?
   nickname  String?
   birthYear Int?
+  heightCm  Int?
+  weightKg  Int?
   status    PlayerStatus @default(ACTIVE)
   team      Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
   teamId    String
@@ -202,6 +210,7 @@ model AdminLog {
   userName  String
   action    String
   detail    String
+  leagueId  String?
   createdAt DateTime @default(now())
 }
 
@@ -212,6 +221,7 @@ model MatchLineup {
   player     Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
   playerId   String
   isStarting Boolean @default(true)
+  shirtNumber Int?
 
   @@unique([matchId, playerId])
 }

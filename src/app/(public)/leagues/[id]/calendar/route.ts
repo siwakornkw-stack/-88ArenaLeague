@@ -15,6 +15,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const league = await prisma.league.findUnique({ where: { id } });
   if (!league) return new Response("Not found", { status: 404 });
 
+  const filterTeam = teamId
+    ? await prisma.team.findFirst({ where: { id: teamId, leagueId: id } })
+    : null;
+
   const matches = await prisma.match.findMany({
     where: {
       leagueId: id,
@@ -38,7 +42,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       `DTSTAMP:${stamp}`,
       `DTSTART:${fmt(m.kickoffAt)}`,
       `DTEND:${fmt(new Date(m.kickoffAt.getTime() + 2 * 3600000))}`,
-      `SUMMARY:${esc(`${m.homeTeam.name} vs ${m.awayTeam.name}`)}`,
+      `SUMMARY:${esc(`${filterTeam ? `[${filterTeam.abbr}] ` : ""}${m.homeTeam.name} vs ${m.awayTeam.name}`)}`,
       `DESCRIPTION:${esc(
         m.status === "FINISHED"
           ? `จบแล้ว ${m.homeScore}-${m.awayScore} · ${league.name}`

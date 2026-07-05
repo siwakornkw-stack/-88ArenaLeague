@@ -330,6 +330,24 @@ export default async function PublicTeamPage({
           </div>
         )}
 
+        {oppCount.size >= 2 && (
+          <div className="rounded-xl border border-white/10 bg-card p-4 max-w-2xl">
+            <div className="text-xs text-foreground/50 mb-2">สถิติกับทุกคู่แข่ง (ช-ส-พ)</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              {[...oppCount.values()]
+                .sort((a, b) => b.games - a.games)
+                .map((o) => (
+                  <div key={o.name} className="rounded-md bg-white/5 px-2.5 py-1.5 flex justify-between gap-2">
+                    <span className="truncate">{o.name}</span>
+                    <span className="shrink-0 text-foreground/60">
+                      {o.wins}-{o.draws}-{o.losses}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
         {rival && rival.games >= 2 && (
           <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">
             ⚔ คู่ปรับที่เจอบ่อยสุด:{" "}

@@ -41,6 +41,9 @@ export async function login(_prevState: LoginState, formData: FormData): Promise
     recordFailure(email);
     return { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
   }
+  if (!user.isActive) {
+    return { error: "บัญชีนี้ถูกระงับการใช้งาน ติดต่อผู้ดูแลระบบ" };
+  }
 
   attempts.delete(email);
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });

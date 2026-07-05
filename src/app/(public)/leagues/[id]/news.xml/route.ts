@@ -17,7 +17,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!league) return new Response("Not found", { status: 404 });
 
   const news = await prisma.leagueNews.findMany({
-    where: { leagueId: id },
+    where: { leagueId: id, OR: [{ publishAt: null }, { publishAt: { lte: new Date() } }] },
     orderBy: { createdAt: "desc" },
     take: 30,
   });

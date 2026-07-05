@@ -171,6 +171,11 @@ export default async function PublicMatchPage({
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
     { icon: "🏆", label: "ตาราง", href: `/leagues/${match.leagueId}?tab=standings` },
+    {
+      icon: "↗",
+      label: "แชร์",
+      href: `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(pageUrl)}`,
+    },
   ];
 
   return (
@@ -315,9 +320,54 @@ export default async function PublicMatchPage({
           );
         })()}
 
+        {match.status === "SCHEDULED" &&
+          homeForm.length + awayForm.length > 0 &&
+          (() => {
+            const pts = (f: ("W" | "D" | "L")[]) =>
+              f.reduce((s, r) => s + (r === "W" ? 3 : r === "D" ? 1 : 0), 0) + 1;
+            const hp = pts(homeForm);
+            const ap = pts(awayForm);
+            const draw = 22;
+            const rest = 100 - draw;
+            const homePct = Math.round((hp / (hp + ap)) * rest);
+            const awayPct = rest - homePct;
+            return (
+              <div className="rounded-xl border border-white/10 bg-card p-5 max-w-xl mx-auto w-full">
+                <h2 className="font-display font-bold mb-3 text-center text-sm">
+                  โอกาสชนะ (ประเมินจากฟอร์ม 5 นัด)
+                </h2>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-accent font-display font-bold">{homePct}%</span>
+                  <span className="text-foreground/50">เสมอ {draw}%</span>
+                  <span className="font-display font-bold">{awayPct}%</span>
+                </div>
+                <div className="flex h-2 rounded-full overflow-hidden bg-white/10">
+                  <div className="bg-accent" style={{ width: `${homePct}%` }} />
+                  <div className="bg-white/25" style={{ width: `${draw}%` }} />
+                  <div className="bg-white/50" style={{ width: `${awayPct}%` }} />
+                </div>
+              </div>
+            );
+          })()}
+
         {match.status !== "SCHEDULED" && (
           <div>
-            <h2 className="font-display font-bold mb-4">สถิติแมตช์</h2>
+            <h2 className="font-display font-bold mb-4 flex items-center gap-3">
+              สถิติแมตช์
+              {(() => {
+                const total = match.homePossession + match.awayPossession || 1;
+                const homeDeg = (match.homePossession / total) * 360;
+                return (
+                  <span
+                    className="w-8 h-8 rounded-full shrink-0"
+                    title={`ครองบอล ${match.homePossession}% / ${match.awayPossession}%`}
+                    style={{
+                      background: `conic-gradient(var(--accent) 0deg ${homeDeg}deg, rgba(255,255,255,.2) ${homeDeg}deg 360deg)`,
+                    }}
+                  />
+                );
+              })()}
+            </h2>
             <div className="rounded-xl border border-white/10 bg-card p-5 space-y-4">
               {STAT_FIELDS.map((f) => {
                 const home = match[`home${f.key}` as keyof typeof match] as number;

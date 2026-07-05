@@ -137,6 +137,8 @@ export default async function PublicPlayerPage({
             </span>
             {player.team.name} · {player.team.league.name}
             {player.birthYear && <> · อายุ {new Date().getFullYear() - player.birthYear} ปี</>}
+            {player.heightCm && <> · {player.heightCm} ซม.</>}
+            {player.weightKg && <> · {player.weightKg} กก.</>}
             {scorerRank && scorerRank <= 10 && (
               <span className="text-accent"> · ดาวซัลโวอันดับ {scorerRank} ของลีก</span>
             )}

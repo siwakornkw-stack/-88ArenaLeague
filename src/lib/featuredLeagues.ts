@@ -13,11 +13,12 @@ export type FeaturedLeague = {
   leaderPoints: number;
   top3: { name: string; points: number }[];
   registrationOpen: boolean;
+  leaderForm: ("W" | "D" | "L")[];
 };
 
 export async function getFeaturedLeagues(limit = 3): Promise<FeaturedLeague[]> {
   const leagues = await prisma.league.findMany({
-    where: { status: { not: "DRAFT" } },
+    where: { status: { not: "DRAFT" }, hidden: false },
     include: { teams: true },
     orderBy: { createdAt: "desc" },
     take: limit,
@@ -49,6 +50,7 @@ export async function getFeaturedLeagues(limit = 3): Promise<FeaturedLeague[]> {
         leaderPoints: leader?.points ?? 0,
         top3: standings.slice(0, 3).map((r) => ({ name: r.teamName, points: r.points })),
         registrationOpen: league.registrationOpen,
+        leaderForm: leader?.form ?? [],
       };
     })
   );

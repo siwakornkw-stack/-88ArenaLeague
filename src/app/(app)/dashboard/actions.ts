@@ -42,6 +42,16 @@ export async function resetUserPassword(userId: string, formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+export async function setUserActive(userId: string, active: boolean) {
+  const session = await getSession();
+  if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
+  if (userId === session.userId) throw new Error("ปิดบัญชีตัวเองไม่ได้");
+
+  const user = await prisma.user.update({ where: { id: userId }, data: { isActive: active } });
+  await logAdmin(session, active ? "เปิดใช้บัญชี" : "ระงับบัญชี", user.email);
+  revalidatePath("/dashboard");
+}
+
 export async function createLeague(formData: FormData) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");

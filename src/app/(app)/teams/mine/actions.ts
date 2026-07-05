@@ -134,6 +134,8 @@ export async function addPlayer(teamId: string, formData: FormData) {
 
   const nickname = String(formData.get("nickname") ?? "").trim();
   const birthYearRaw = Number(formData.get("birthYear"));
+  const heightRaw = Number(formData.get("heightCm"));
+  const weightRaw = Number(formData.get("weightKg"));
   const photoUrl = await uploadImage(`player-photos/${teamId}`, formData.get("photo"));
   await prisma.player.create({
     data: {
@@ -143,6 +145,8 @@ export async function addPlayer(teamId: string, formData: FormData) {
       position,
       nickname: nickname || null,
       birthYear: Number.isInteger(birthYearRaw) && birthYearRaw > 1900 ? birthYearRaw : null,
+      heightCm: Number.isInteger(heightRaw) && heightRaw > 100 ? heightRaw : null,
+      weightKg: Number.isInteger(weightRaw) && weightRaw > 30 ? weightRaw : null,
       ...(photoUrl ? { photoUrl } : {}),
     },
   });

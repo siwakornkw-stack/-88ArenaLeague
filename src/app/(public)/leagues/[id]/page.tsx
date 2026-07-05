@@ -59,10 +59,12 @@ export default async function PublicLeaguePage({
     team?: string;
     asof?: string;
     side?: string;
+    view?: string;
   }>;
 }) {
   const { id } = await params;
-  const { tab = "standings", round, team, asof, side } = await searchParams;
+  const { tab = "standings", round, team, asof, side, view } = await searchParams;
+  const gridView = view === "grid";
   const roundFilter = Number(round) || null;
   const sideView = side === "home" ? "HOME" : side === "away" ? "AWAY" : null;
 
@@ -127,7 +129,10 @@ export default async function PublicLeaguePage({
   const news =
     tab === "news"
       ? await prisma.leagueNews.findMany({
-          where: { leagueId: id },
+          where: {
+            leagueId: id,
+            OR: [{ publishAt: null }, { publishAt: { lte: new Date() } }],
+          },
           orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
         })
       : [];
@@ -297,6 +302,16 @@ export default async function PublicLeaguePage({
             ฤดูกาล {league.seasonYear} · {league.teams.length} ทีม · {STATUS_LABEL[league.status]}
             {totalRounds > 0 && <> · นัดที่ {currentRound} จาก {totalRounds}</>}
           </p>
+          {league.rulesUrl && (
+            <a
+              href={league.rulesUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block text-xs text-accent hover:underline"
+            >
+              📄 กติกาฉบับเต็ม ↗
+            </a>
+          )}
           {league.description && (
             <p className="mt-2 text-sm text-foreground/60 max-w-xl whitespace-pre-line">
               {league.description}
@@ -336,6 +351,14 @@ export default async function PublicLeaguePage({
               >
                 ⬇ CSV นักเตะ
               </a>
+              <a
+                href={`/leagues/${id}/print`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-md border border-white/25 px-3 py-2 text-xs text-foreground/70 hover:border-accent/50 hover:text-accent"
+              >
+                🖨 พิมพ์
+              </a>
             </div>
           )}
           <ShareLinks url={pageUrl} text={league.name} />
@@ -355,18 +378,10 @@ export default async function PublicLeaguePage({
                 {s.name}
               </span>
             );
-            return s.url ? (
-              <a
-                key={s.id}
-                href={s.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-accent"
-              >
+            return (
+              <a key={s.id} href={`/sponsors/${s.id}`} className="hover:text-accent">
                 {inner}
               </a>
-            ) : (
-              <span key={s.id}>{inner}</span>
             );
           })}
         </div>
@@ -609,6 +624,13 @@ export default async function PublicLeaguePage({
             </div>
           </div>
         ) : tab === "players" && playerBoards ? (
+          <div className="space-y-4">
+          <Link
+            href={`/leagues/${id}/players/compare`}
+            className="inline-block rounded-md border border-white/20 px-4 py-2 text-sm text-foreground/75 hover:border-accent/50 hover:text-accent"
+          >
+            ⚖ เปรียบเทียบนักเตะ
+          </Link>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <PlayerBoard title="ดาวซัลโว" unit="ประตู" rows={playerBoards.scorers} />
             <PlayerBoard title="ดาวแอสซิสต์" unit="ครั้ง" rows={playerBoards.assists} />
@@ -639,6 +661,7 @@ export default async function PublicLeaguePage({
               unit="ครั้ง"
               rows={playerBoards.contributions}
             />
+          </div>
           </div>
         ) : tab === "stats" ? (
           charts ? (
@@ -1007,6 +1030,58 @@ export default async function PublicLeaguePage({
               )}
             </div>
 
+            {finishedLeagueMatches.length > 0 && standings.length >= 4 && !sideView && !asofRound && (
+              <div className="lg:col-span-2 rounded-xl border border-white/10 bg-card overflow-x-auto">
+                <h3 className="font-display font-bold px-4 pt-4">ผลงานกับ Top 4</h3>
+                <table className="text-[11px] m-4 mt-3">
+                  <thead>
+                    <tr>
+                      <th className="p-1.5 text-left text-foreground/45">ทีม</th>
+                      {standings.slice(0, 4).map((t) => (
+                        <th key={t.teamId} className="p-1.5 text-foreground/60 font-display">
+                          {t.teamAbbr}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {standings.map((row) => (
+                      <tr key={row.teamId} className="border-t border-white/5">
+                        <td className="p-1.5 font-display font-semibold text-foreground/80">
+                          {row.teamAbbr}
+                        </td>
+                        {standings.slice(0, 4).map((top) => {
+                          if (top.teamId === row.teamId)
+                            return <td key={top.teamId} className="p-1.5 text-center bg-white/5" />;
+                          let w = 0,
+                            d = 0,
+                            l = 0;
+                          for (const m of finishedLeagueMatches) {
+                            const isRowHome =
+                              m.homeTeamId === row.teamId && m.awayTeamId === top.teamId;
+                            const isRowAway =
+                              m.awayTeamId === row.teamId && m.homeTeamId === top.teamId;
+                            if (!isRowHome && !isRowAway) continue;
+                            const gf = isRowHome ? m.homeScore : m.awayScore;
+                            const ga = isRowHome ? m.awayScore : m.homeScore;
+                            if (gf > ga) w++;
+                            else if (gf < ga) l++;
+                            else d++;
+                          }
+                          return (
+                            <td key={top.teamId} className="p-1.5 text-center text-foreground/60">
+                              {w + d + l === 0 ? "·" : `${w}-${d}-${l}`}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="px-4 pb-3 text-[10px] text-foreground/40">ชนะ-เสมอ-แพ้ กับ 4 อันดับแรก</p>
+              </div>
+            )}
+
             {finishedLeagueMatches.length > 0 && (
               <div className="lg:col-span-2 rounded-xl border border-white/10 bg-card overflow-x-auto">
                 <h3 className="font-display font-bold px-4 pt-4">ตารางผลเหย้า-เยือน</h3>
@@ -1084,6 +1159,12 @@ export default async function PublicLeaguePage({
               <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
                 ดู
               </button>
+              <Link
+                href={`/leagues/${id}?tab=fixtures${gridView ? "" : "&view=grid"}`}
+                className="rounded-md bg-white/5 px-3 py-2 text-xs text-foreground/60 hover:text-accent"
+              >
+                {gridView ? "☰ มุมมองลิสต์" : "▦ มุมมองตาราง"}
+              </Link>
             </form>
             {Array.from(matchesByRound.entries())
               .filter(([round]) => roundFilter === null || round === roundFilter)
@@ -1094,6 +1175,40 @@ export default async function PublicLeaguePage({
                     )
                   : roundMatches;
                 if (shown.length === 0) return null;
+                if (gridView) {
+                  return (
+                    <div
+                      key={round}
+                      className="rounded-xl border border-white/10 bg-card p-4 inline-block w-full sm:w-[calc(50%-0.5rem)] align-top mr-0 sm:odd:mr-4"
+                    >
+                      <div className="flex justify-between mb-2">
+                        <span className="font-display font-bold text-accent text-sm">
+                          {STAGE_LABEL[roundMatches[0].stage] ?? `นัดที่ ${round}`}
+                        </span>
+                        <span className="text-xs text-foreground/45">
+                          {shown[0].kickoffAt.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {shown.map((m) => (
+                          <Link
+                            key={m.id}
+                            href={`/matches/${m.id}`}
+                            className="grid grid-cols-[1fr_52px_1fr] items-center gap-1.5 rounded-md bg-white/5 px-2 py-1.5 text-xs hover:bg-white/10"
+                          >
+                            <span className="text-right truncate">{m.homeTeam.name}</span>
+                            <span className="text-center rounded bg-accent text-black font-bold py-0.5">
+                              {m.status === "SCHEDULED"
+                                ? m.kickoffAt.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })
+                                : `${m.homeScore}-${m.awayScore}`}
+                            </span>
+                            <span className="truncate">{m.awayTeam.name}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
                 return (
               <div key={round}>
                 <h3 className="text-sm text-foreground/50 mb-2">

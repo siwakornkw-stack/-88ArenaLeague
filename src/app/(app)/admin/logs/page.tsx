@@ -16,24 +16,30 @@ function relativeTime(d: Date) {
 export default async function AdminLogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ action?: string; page?: string }>;
+  searchParams: Promise<{ action?: string; page?: string; league?: string }>;
 }) {
   const session = await getSession();
   if (session?.role !== "SUPER_ADMIN") redirect("/teams/mine");
 
-  const { action, page } = await searchParams;
+  const { action, page, league } = await searchParams;
   const actionFilter = action?.trim() || null;
+  const leagueFilter = league?.trim() || null;
   const pageNum = Math.max(1, Number(page) || 1);
+  const where = {
+    ...(actionFilter ? { action: actionFilter } : {}),
+    ...(leagueFilter ? { leagueId: leagueFilter } : {}),
+  };
 
-  const [logs, actions, total] = await Promise.all([
+  const [logs, actions, total, leagues] = await Promise.all([
     prisma.adminLog.findMany({
-      where: actionFilter ? { action: actionFilter } : undefined,
+      where,
       orderBy: { createdAt: "desc" },
       take: PAGE_SIZE,
       skip: (pageNum - 1) * PAGE_SIZE,
     }),
     prisma.adminLog.findMany({ distinct: ["action"], select: { action: true } }),
-    prisma.adminLog.count({ where: actionFilter ? { action: actionFilter } : undefined }),
+    prisma.adminLog.count({ where }),
+    prisma.league.findMany({ select: { id: true, name: true }, orderBy: { createdAt: "desc" } }),
   ]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -59,9 +65,24 @@ export default async function AdminLogsPage({
             </option>
           ))}
         </select>
+        <select
+          name="league"
+          defaultValue={leagueFilter ?? ""}
+          className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+        >
+          <option value="">ทุกลีก</option>
+          {leagues.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </select>
         <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
           กรอง
         </button>
+        <a href="/admin/logs/export" className="text-xs text-foreground/60 hover:text-accent ml-auto">
+          ⬇ Export CSV
+        </a>
       </form>
 
       <div className="rounded-lg bg-card border border-white/10 divide-y divide-white/5">
@@ -75,7 +96,22 @@ export default async function AdminLogsPage({
             </span>
             <span className="text-foreground/70 shrink-0">{log.userName}</span>
             <span className="text-accent shrink-0">{log.action}</span>
-            <span className="text-foreground/50 truncate">{log.detail}</span>
+            <span className="text-foreground/50 truncate">
+              {(() => {
+                const m = log.detail.match(/^(.*) · #([a-z0-9]+)$/);
+                if (m) {
+                  return (
+                    <>
+                      {m[1]}{" "}
+                      <a href={`/admin/matches/${m[2]}`} className="text-accent hover:underline">
+                        เปิดแมตช์ →
+                      </a>
+                    </>
+                  );
+                }
+                return log.detail;
+              })()}
+            </span>
           </div>
         ))}
         {logs.length === 0 && (

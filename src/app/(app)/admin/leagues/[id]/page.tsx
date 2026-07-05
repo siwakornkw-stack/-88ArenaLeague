@@ -20,6 +20,7 @@ import {
   deleteSchedule,
   updateNews,
   shiftSeason,
+  setLeagueVenue,
 } from "./actions";
 
 const STAGE_LABEL: Record<string, string> = {
@@ -470,6 +471,14 @@ export default async function LeagueDetailPage({
           <label className="flex items-center gap-2 text-xs text-foreground/60">
             <input type="checkbox" name="pinned" /> 📌 ปักหมุดประกาศนี้
           </label>
+          <div className="flex items-center gap-2 text-xs text-foreground/60">
+            <span>ตั้งเวลาเผยแพร่ (เว้นว่าง = ทันที)</span>
+            <input
+              type="datetime-local"
+              name="publishAt"
+              className="rounded-md bg-black/30 border border-white/10 px-2 py-1 text-xs"
+            />
+          </div>
           <button
             type="submit"
             className="rounded-md bg-accent text-black font-semibold px-4 py-2 text-sm"
@@ -560,6 +569,7 @@ export default async function LeagueDetailPage({
                 <img src={s.logoUrl} alt={s.name} className="h-6 w-6 rounded object-cover" />
               )}
               <span>{s.name}</span>
+              <span className="text-xs text-foreground/40">({s.clicks} คลิก)</span>
               <form action={deleteSponsor.bind(null, id, s.id)}>
                 <button type="submit" className="text-xs text-foreground/50 hover:text-red-400">
                   ลบ
@@ -621,6 +631,21 @@ export default async function LeagueDetailPage({
             />
             เปิดรับสมัครทีม (โชว์ป้ายบนหน้า public)
           </label>
+          <label className="flex items-center gap-2 text-sm text-foreground/70">
+            <input type="checkbox" name="hidden" defaultChecked={league.hidden} />
+            ซ่อนจากหน้ารวมลีก (archive — URL ตรงยังเข้าได้)
+          </label>
+          <div className="space-y-1">
+            <label className="text-sm text-foreground/70" htmlFor="league-rules">
+              ลิงก์กติกาฉบับเต็ม (https://...)
+            </label>
+            <input
+              id="league-rules"
+              name="rulesUrl"
+              defaultValue={league.rulesUrl ?? ""}
+              className="w-full rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
           <div className="flex gap-3">
             <div className="flex-1 space-y-1">
               <label className="text-sm text-foreground/70" htmlFor="league-promoted">
@@ -659,6 +684,21 @@ export default async function LeagueDetailPage({
 
         {matches.some((m) => m.status === "SCHEDULED") && (
           <div className="border-t border-white/10 pt-4">
+            <form
+              action={setLeagueVenue.bind(null, id)}
+              className="flex items-center gap-2 text-sm mb-3"
+            >
+              <span className="text-foreground/70">ตั้งสนามทุกนัดที่เหลือ</span>
+              <input
+                name="venue"
+                required
+                placeholder="ชื่อสนาม"
+                className="flex-1 min-w-32 rounded-md bg-black/30 border border-white/10 px-2 py-1.5 text-sm"
+              />
+              <button type="submit" className="rounded-md bg-white/10 px-3 py-1.5 text-xs">
+                ตั้ง
+              </button>
+            </form>
             <form action={shiftSeason.bind(null, id)} className="flex items-center gap-2 text-sm">
               <span className="text-foreground/70">เลื่อนนัดที่เหลือทั้งหมด</span>
               <input
