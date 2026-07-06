@@ -108,6 +108,14 @@ export default async function MyTeamPage({
 
   const hdrs = await headers();
   const publicTeamUrl = `${hdrs.get("x-forwarded-proto") ?? "https"}://${hdrs.get("host") ?? "league-manager-app.vercel.app"}/leagues/${team.leagueId}/teams/${team.id}`;
+  const appsByPlayer = new Map(appsGrouped.map((g) => [g.playerId, g._count.playerId]));
+  const goalsByPlayer = new Map<string, number>();
+  const yellowsByPlayer = new Map<string, number>();
+  for (const g of eventsGrouped) {
+    if (!g.playerId) continue;
+    if (g.type === "GOAL") goalsByPlayer.set(g.playerId, g._count.playerId);
+    if (g.type === "YELLOW_CARD") yellowsByPlayer.set(g.playerId, g._count.playerId);
+  }
   const myTopScorers = team.players
     .map((p) => ({ name: p.name, goals: goalsByPlayer.get(p.id) ?? 0 }))
     .filter((p) => p.goals > 0)
@@ -121,14 +129,6 @@ export default async function MyTeamPage({
     const prev = await computeStandingsUpTo(team.leagueId, lastFinRound);
     const prevIdx = prev.findIndex((r) => r.teamId === team.id);
     if (prevIdx >= 0 && teamRank > 0) rankDelta = prevIdx - (teamRank - 1);
-  }
-  const appsByPlayer = new Map(appsGrouped.map((g) => [g.playerId, g._count.playerId]));
-  const goalsByPlayer = new Map<string, number>();
-  const yellowsByPlayer = new Map<string, number>();
-  for (const g of eventsGrouped) {
-    if (!g.playerId) continue;
-    if (g.type === "GOAL") goalsByPlayer.set(g.playerId, g._count.playerId);
-    if (g.type === "YELLOW_CARD") yellowsByPlayer.set(g.playerId, g._count.playerId);
   }
 
   const filteredPlayers = team.players.filter((p) => {
