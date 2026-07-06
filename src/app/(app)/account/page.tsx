@@ -68,6 +68,55 @@ export default async function AccountPage({
     ? Math.floor((Date.now() - user.lastLoginAt.getTime()) / 86_400_000)
     : null;
 
+  // Feature: security tip based on real lastLoginAt recency (integrity callout).
+  const STALE_LOGIN_DAYS = 30;
+  const securityTip =
+    loginDaysAgo === null
+      ? {
+          text: "ยังไม่มีบันทึกการเข้าสู่ระบบครั้งก่อน แนะนำให้ตั้งรหัสผ่านที่คาดเดายากและจดจำไว้ให้ดี",
+          level: "warn" as const,
+        }
+      : loginDaysAgo >= STALE_LOGIN_DAYS
+        ? {
+            text: `เข้าสู่ระบบครั้งก่อนเมื่อ ${loginDaysAgo} วันที่แล้ว หากไม่ได้ใช้งานบ่อย แนะนำให้เปลี่ยนรหัสผ่านเพื่อความปลอดภัย`,
+            level: "warn" as const,
+          }
+        : {
+            text: "การเข้าสู่ระบบของคุณเป็นปัจจุบัน ควรเปลี่ยนรหัสผ่านเป็นระยะและไม่ใช้รหัสซ้ำกับบริการอื่น",
+            level: "ok" as const,
+          };
+
+  // Feature: 7-day activity heat for SUPER_ADMIN (own AdminLog actions per day).
+  const HEAT_DAYS = 7;
+  const heatStart = new Date();
+  heatStart.setHours(0, 0, 0, 0);
+  heatStart.setDate(heatStart.getDate() - (HEAT_DAYS - 1));
+  const weekLogs =
+    session.role === "SUPER_ADMIN"
+      ? await prisma.adminLog.findMany({
+          where: { userId: session.userId, createdAt: { gte: heatStart } },
+          select: { action: true, createdAt: true },
+        })
+      : [];
+  const heatCells = Array.from({ length: HEAT_DAYS }, (_, i) => {
+    const day = new Date(heatStart);
+    day.setDate(heatStart.getDate() + i);
+    const next = new Date(day);
+    next.setDate(day.getDate() + 1);
+    const count = weekLogs.filter(
+      (l) => l.createdAt >= day && l.createdAt < next
+    ).length;
+    return { day, count };
+  });
+  const heatMax = Math.max(1, ...heatCells.map((c) => c.count));
+  const weekTotal = weekLogs.length;
+  const topAction = Object.entries(
+    weekLogs.reduce<Record<string, number>>((acc, l) => {
+      acc[l.action] = (acc[l.action] ?? 0) + 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1])[0] ?? null;
+
   const nextMatch =
     managedTeamIds.length > 0
       ? await prisma.match.findFirst({
@@ -183,6 +232,31 @@ export default async function AccountPage({
         </div>
       )}
 
+      <div
+        className={`rounded-lg border p-5 text-sm flex items-start gap-3 ${
+          securityTip.level === "ok"
+            ? "bg-accent/5 border-accent/25"
+            : "bg-amber-400/5 border-amber-400/25"
+        }`}
+      >
+        <span aria-hidden className="text-lg shrink-0">
+          {securityTip.level === "ok" ? "🔒" : "⚠️"}
+        </span>
+        <div>
+          <p
+            className={`font-medium ${
+              securityTip.level === "ok" ? "text-accent" : "text-amber-400"
+            }`}
+          >
+            คำแนะนำด้านความปลอดภัย
+          </p>
+          <p className="text-foreground/60 mt-0.5">{securityTip.text}</p>
+          <a href="#" className="text-xs text-accent hover:underline mt-1 inline-block">
+            เปลี่ยนรหัสผ่านด้านล่าง ↓
+          </a>
+        </div>
+      </div>
+
       <div className="rounded-lg bg-card border border-white/10 p-5">
         <h2 className="font-semibold mb-3">ทางลัด</h2>
         <div className="grid grid-cols-2 gap-2 text-sm">
@@ -293,6 +367,53 @@ export default async function AccountPage({
           </button>
         </form>
       </div>
+
+      {session.role === "SUPER_ADMIN" && (
+        <div className="rounded-lg bg-card border border-white/10 p-5">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="font-semibold">กิจกรรม 7 วันล่าสุด</h2>
+            <span className="text-xs text-foreground/45">
+              รวม {weekTotal} ครั้ง
+            </span>
+          </div>
+          {weekTotal > 0 ? (
+            <>
+              <div className="flex items-end gap-1.5">
+                {heatCells.map((c, i) => {
+                  const ratio = c.count / heatMax;
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <span className="text-[10px] text-foreground/40">
+                        {c.count > 0 ? c.count : ""}
+                      </span>
+                      <div
+                        className="w-full rounded-sm bg-accent"
+                        style={{
+                          height: `${8 + ratio * 40}px`,
+                          opacity: c.count === 0 ? 0.12 : 0.35 + ratio * 0.65,
+                        }}
+                      />
+                      <span className="text-[10px] text-foreground/40">
+                        {c.day.toLocaleDateString("th-TH", { weekday: "narrow" })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {topAction && (
+                <p className="text-xs text-foreground/40 mt-3">
+                  ทำบ่อยที่สุด:{" "}
+                  <span className="text-accent">{topAction[0]}</span> ({topAction[1]} ครั้ง)
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-foreground/40">
+              ยังไม่มีกิจกรรมในสัปดาห์นี้ เริ่มจัดการลีกได้จากแดชบอร์ด
+            </p>
+          )}
+        </div>
+      )}
 
       {myLogs.length > 0 && (
         <div className="rounded-lg bg-card border border-white/10 p-5">

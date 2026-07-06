@@ -98,7 +98,8 @@ export default async function LeagueDetailPage({
   const yellowCards = cardEvents.find((c) => c.type === "YELLOW_CARD")?._count._all ?? 0;
   const redCards = cardEvents.find((c) => c.type === "RED_CARD")?._count._all ?? 0;
 
-  const standings = tab === "standings" ? await computeStandings(id) : [];
+  const standings =
+    tab === "standings" || tab === "fixtures" ? await computeStandings(id) : [];
   const generateWithId = generateSchedule.bind(null, id, dayOfWeek ?? 0, start ?? "");
 
   const leagueStageMatches = matches.filter((m) => m.stage === "LEAGUE");
@@ -359,6 +360,35 @@ export default async function LeagueDetailPage({
         );
       })()}
 
+      {(() => {
+        if (leagueStageMatches.length === 0) return null;
+        const teamNameById = new Map(league.teams.map((t) => [t.id, t.name]));
+        const pairCount = new Map<string, number>();
+        for (const m of leagueStageMatches) {
+          const key = `${m.homeTeamId}|${m.awayTeamId}`;
+          pairCount.set(key, (pairCount.get(key) ?? 0) + 1);
+        }
+        const dupes = [...pairCount.entries()].filter(([, c]) => c > league.legs);
+        if (dupes.length === 0) return null;
+        return (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-1.5">
+            <div className="text-xs font-semibold text-red-400">
+              ⛔ พบคู่แข่งซ้ำ — {dupes.length} คู่ถูกจัดเจอกันเกิน {league.legs} ครั้ง (ควรตรวจสอบตาราง)
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-foreground/60">
+              {dupes.map(([key, c]) => {
+                const [homeId, awayId] = key.split("|");
+                return (
+                  <span key={key}>
+                    {teamNameById.get(homeId) ?? "-"} พบ {teamNameById.get(awayId) ?? "-"}: {c} นัด
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {matches.length === 0 ? (
         <div className="rounded-lg bg-card border border-white/10 p-6 max-w-md space-y-5">
           {league.teams.length < 2 ? (
@@ -527,6 +557,39 @@ export default async function LeagueDetailPage({
             </table>
           ) : (
             <div className="space-y-6">
+              {standings.some((r) => r.played > 0) && (
+                <div className="rounded-xl border border-white/10 bg-card p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-xs font-semibold text-foreground/50">
+                      🏅 จ่าฝูงตอนนี้
+                    </div>
+                    <Link
+                      href={`/admin/leagues/${id}?tab=standings`}
+                      className="text-xs text-accent hover:underline"
+                    >
+                      ดูตารางคะแนนเต็ม →
+                    </Link>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {standings.slice(0, 3).map((r, i) => (
+                      <div
+                        key={r.teamId}
+                        className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm ${
+                          i === 0 ? "bg-accent/15 border border-accent/40" : "bg-white/5"
+                        }`}
+                      >
+                        <span className="font-display font-bold text-foreground/50">{i + 1}</span>
+                        <span>{r.teamName}</span>
+                        <span className="font-semibold text-accent">{r.points}</span>
+                        <span className="text-[11px] text-foreground/40">
+                          {r.goalDiff >= 0 ? "+" : ""}
+                          {r.goalDiff}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-foreground/50 mr-1">ความคืบหน้าแต่ละนัด:</span>
                 {Array.from(matchesByRound.entries()).map(([r, rm]) => {
@@ -821,6 +884,34 @@ export default async function LeagueDetailPage({
           )}
         </div>
       </div>
+
+      {matches.length > 0 && (
+        <div className="rounded-lg bg-card border border-white/10 p-5 space-y-3">
+          <h2 className="font-semibold">ส่งออกข้อมูล</h2>
+          <p className="text-xs text-foreground/50">
+            ดาวน์โหลดข้อมูลลีกเป็นไฟล์ (เปิดหน้าสาธารณะในแท็บใหม่)
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { href: `/leagues/${id}/export/standings`, label: "📊 ตารางคะแนน (CSV)" },
+              { href: `/leagues/${id}/export/results`, label: "⚽ ผลการแข่งขัน (CSV)" },
+              { href: `/leagues/${id}/export/players`, label: "👥 นักเตะ (CSV)" },
+              { href: `/leagues/${id}/export/json`, label: "🧾 ข้อมูลลีก (JSON)" },
+              { href: `/leagues/${id}/calendar`, label: "📅 ปฏิทินนัดแข่ง (ICS)" },
+            ].map((x) => (
+              <a
+                key={x.href}
+                href={x.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-md border border-white/15 px-3 py-1.5 text-xs text-foreground/80 hover:border-accent/50 hover:text-accent"
+              >
+                {x.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="rounded-lg bg-card border border-white/10 p-5 max-w-sm space-y-4">
         <h2 className="font-semibold">ตั้งค่าลีก</h2>

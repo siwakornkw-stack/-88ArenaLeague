@@ -39,10 +39,13 @@ export async function generateMetadata({
 
 export default async function PublicTeamPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; teamId: string }>;
+  searchParams: Promise<{ squad?: string }>;
 }) {
   const { id, teamId } = await params;
+  const { squad } = await searchParams;
 
   const team = await prisma.team.findFirst({
     where: { id: teamId, leagueId: id },
@@ -66,7 +69,7 @@ export default async function PublicTeamPage({
       by: ["playerId", "type"],
       where: {
         playerId: { not: null },
-        type: { in: ["GOAL", "YELLOW_CARD"] },
+        type: { in: ["GOAL", "YELLOW_CARD", "RED_CARD"] },
         player: { teamId },
       },
       _count: { playerId: true },
@@ -102,10 +105,12 @@ export default async function PublicTeamPage({
   const appsByPlayer = new Map(appsGrouped.map((g) => [g.playerId, g._count.playerId]));
   const goalsByPlayer = new Map<string, number>();
   const yellowsByPlayer = new Map<string, number>();
+  const redsByPlayer = new Map<string, number>();
   for (const g of eventsGrouped) {
     if (!g.playerId) continue;
     if (g.type === "GOAL") goalsByPlayer.set(g.playerId, g._count.playerId);
     if (g.type === "YELLOW_CARD") yellowsByPlayer.set(g.playerId, g._count.playerId);
+    if (g.type === "RED_CARD") redsByPlayer.set(g.playerId, g._count.playerId);
   }
 
   const allFinished = matches.filter((m) => m.status === "FINISHED");
@@ -224,6 +229,50 @@ export default async function PublicTeamPage({
   }
   const halfTotal =
     half.first.gf + half.second.gf + half.first.ga + half.second.ga;
+
+  // Feature: late-goal drama (minute >= 75) derived from the goal timeline
+  const late = { gf: 0, ga: 0 };
+  let lateWinners = 0; // matches whose result flipped W after a 75'+ goal
+  for (const m of allFinished) {
+    const events = (goalsByMatch.get(m.id) ?? []).sort((a, b) => a.minute - b.minute);
+    let diffBefore = 0;
+    let flipped = false;
+    for (const g of events) {
+      if (g.minute >= 75) {
+        if (g.forTeam) late.gf++;
+        else late.ga++;
+        if (g.forTeam && diffBefore <= 0) flipped = true;
+      }
+      diffBefore += g.forTeam ? 1 : -1;
+    }
+    if (flipped && resultFor(m) === "W") lateWinners++;
+  }
+  const lateTotal = late.gf + late.ga;
+
+  // Feature: team discipline totals (yellow/red across all comps, including playoffs)
+  const totalYellows = [...yellowsByPlayer.values()].reduce((s, n) => s + n, 0);
+  const totalReds = [...redsByPlayer.values()].reduce((s, n) => s + n, 0);
+  const mostBookedEntry = team.players
+    .map((p) => ({ p, y: yellowsByPlayer.get(p.id) ?? 0, r: redsByPlayer.get(p.id) ?? 0 }))
+    .filter((x) => x.y + x.r > 0)
+    .sort((a, b) => b.r * 2 + b.y - (a.r * 2 + a.y))[0];
+
+  // Feature: sortable roster via <form method="get"> + searchParams
+  const squadSorts = {
+    number: (a: (typeof team.players)[number], b: (typeof team.players)[number]) =>
+      a.number - b.number,
+    goals: (a: (typeof team.players)[number], b: (typeof team.players)[number]) =>
+      (goalsByPlayer.get(b.id) ?? 0) - (goalsByPlayer.get(a.id) ?? 0),
+    apps: (a: (typeof team.players)[number], b: (typeof team.players)[number]) =>
+      (appsByPlayer.get(b.id) ?? 0) - (appsByPlayer.get(a.id) ?? 0),
+    cards: (a: (typeof team.players)[number], b: (typeof team.players)[number]) =>
+      (yellowsByPlayer.get(b.id) ?? 0) + (redsByPlayer.get(b.id) ?? 0) * 2 -
+      ((yellowsByPlayer.get(a.id) ?? 0) + (redsByPlayer.get(a.id) ?? 0) * 2),
+  } as const;
+  const squadSort = (squad === "goals" || squad === "apps" || squad === "cards"
+    ? squad
+    : "number") as keyof typeof squadSorts;
+  const sortedPlayers = [...team.players].sort(squadSorts[squadSort]);
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -518,6 +567,20 @@ export default async function PublicTeamPage({
           </div>
         )}
 
+        {lateTotal > 0 && (
+          <p className="text-xs text-foreground/50">
+            ⏳ ช่วงท้ายเกม (นาที 75+): ยิงได้{" "}
+            <b className="text-accent">{late.gf}</b> ประตู · เสีย{" "}
+            <b className="text-red-400">{late.ga}</b> ประตู
+            {lateWinners > 0 && (
+              <>
+                {" "}
+                · แซงชนะช่วงท้าย <b className="text-accent">{lateWinners}</b> นัด
+              </>
+            )}
+          </p>
+        )}
+
         {(comebackWins > 0 || blownLeads > 0) && (
           <p className="text-xs text-foreground/50">
             🔄 พลิกกลับมาชนะ (เคยตามหลังก่อน){" "}
@@ -689,6 +752,39 @@ export default async function PublicTeamPage({
             ) : null;
           })()}
 
+        {(totalYellows > 0 || totalReds > 0) && (
+          <div className="rounded-xl border border-white/10 bg-card p-4 text-sm max-w-md">
+            <div className="text-xs text-foreground/50 mb-2">🟨 วินัยของทีม</div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded-md bg-yellow-400/10 px-2.5 py-1.5 flex items-center gap-1.5">
+                <span className="text-foreground/70">ใบเหลือง</span>
+                <span className="font-display font-bold text-yellow-400">{totalYellows}</span>
+              </span>
+              <span className="rounded-md bg-red-500/10 px-2.5 py-1.5 flex items-center gap-1.5">
+                <span className="text-foreground/70">ใบแดง</span>
+                <span className="font-display font-bold text-red-400">{totalReds}</span>
+              </span>
+              {allFinished.length > 0 && (
+                <span className="text-xs text-foreground/50">
+                  เฉลี่ย {((totalYellows + totalReds) / allFinished.length).toFixed(1)} ใบ/นัด
+                </span>
+              )}
+            </div>
+            {mostBookedEntry && (
+              <div className="text-xs text-foreground/50 mt-2">
+                เจ้าปัญหาสุด:{" "}
+                <Link
+                  href={`/leagues/${id}/players/${mostBookedEntry.p.id}`}
+                  className="text-foreground/80 hover:text-accent"
+                >
+                  {mostBookedEntry.p.name}
+                </Link>{" "}
+                ({mostBookedEntry.y} 🟨{mostBookedEntry.r > 0 && <> · {mostBookedEntry.r} 🟥</>})
+              </div>
+            )}
+          </div>
+        )}
+
         {(() => {
           const attended = allFinished.filter((m) => m.spectators != null);
           if (attended.length === 0) return null;
@@ -741,9 +837,32 @@ export default async function PublicTeamPage({
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <div className="rounded-xl border border-white/10 bg-card overflow-hidden">
-            <h2 className="font-display font-bold px-5 py-4 border-b border-white/10">
-              รายชื่อนักเตะ
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4 border-b border-white/10">
+              <h2 className="font-display font-bold">รายชื่อนักเตะ</h2>
+              <form method="get" className="flex items-center gap-1 text-[11px]">
+                {(
+                  [
+                    ["number", "เบอร์"],
+                    ["apps", "ลงสนาม"],
+                    ["goals", "ประตู"],
+                    ["cards", "ใบเตือน"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    name="squad"
+                    value={key}
+                    className={`rounded-full px-2.5 py-1 ${
+                      squadSort === key
+                        ? "bg-accent text-black font-bold"
+                        : "bg-white/5 text-foreground/60 hover:bg-white/10"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </form>
+            </div>
             <div className="flex items-center gap-3 px-5 py-2 text-xs text-foreground/40">
               <span className="w-8">#</span>
               <span className="flex-1">ชื่อ</span>
@@ -752,7 +871,7 @@ export default async function PublicTeamPage({
               <span className="w-8 text-center">⚽</span>
               <span className="w-8 text-center">🟨</span>
             </div>
-            {team.players.map((p) => (
+            {sortedPlayers.map((p) => (
               <Link
                 key={p.id}
                 href={`/leagues/${id}/players/${p.id}`}

@@ -123,9 +123,9 @@ function LeagueCard({
 export default async function LeaguesIndexPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; sort?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string; show?: string }>;
 }) {
-  const { q = "", sort = "latest" } = await searchParams;
+  const { q = "", sort = "latest", show = "all" } = await searchParams;
   const query = q.trim();
 
   const [leagues, finishedIds, liveNow, totalTeams, lastPlayedRows, goalRows, nextKickoffRows] =
@@ -167,6 +167,12 @@ export default async function LeaguesIndexPage({
   let filtered = query
     ? leagues.filter((lg) => lg.name.toLowerCase().includes(query.toLowerCase()))
     : leagues;
+  // Feature: quick filter by live-now / registration-open state.
+  if (show === "live") {
+    filtered = filtered.filter((lg) => lg.live > 0);
+  } else if (show === "registration") {
+    filtered = filtered.filter((lg) => lg.registrationOpen);
+  }
   if (sort === "name") {
     filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name, "th"));
   } else if (sort === "goals") {
@@ -178,6 +184,18 @@ export default async function LeaguesIndexPage({
     (best, lg) => (lg.teams > (best?.teams ?? 0) ? { id: lg.id, teams: lg.teams } : best),
     null
   )?.id;
+
+  // Feature: aggregate stats bar totals across the visible leagues.
+  const filteredIds = new Set(filtered.map((lg) => lg.id));
+  const aggTeams = filtered.reduce((sum, lg) => sum + lg.teams, 0);
+  let aggMatches = 0;
+  let aggGoals = 0;
+  for (const r of goalRows) {
+    if (!filteredIds.has(r.leagueId)) continue;
+    aggMatches += r._count._all;
+    aggGoals += (r._sum.homeScore ?? 0) + (r._sum.awayScore ?? 0);
+  }
+  const aggAvg = aggMatches > 0 ? aggGoals / aggMatches : 0;
 
   const active = filtered.filter((lg) => !finishedSet.has(lg.id));
   const finished = filtered.filter((lg) => finishedSet.has(lg.id));
@@ -213,10 +231,45 @@ export default async function LeaguesIndexPage({
             <option value="name">เรียงตามชื่อ</option>
             <option value="goals">ยิงประตูมากสุด</option>
           </select>
+          <select
+            name="show"
+            defaultValue={show}
+            className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+          >
+            <option value="all">ทุกลีก</option>
+            <option value="live">มีแมตช์สด</option>
+            <option value="registration">เปิดรับสมัคร</option>
+          </select>
           <button type="submit" className="rounded-md bg-accent text-black font-semibold px-5 py-2 text-sm">
             ค้นหา
           </button>
         </form>
+        {filtered.length > 0 && (
+          <div className="mt-5 flex flex-wrap gap-3">
+            {[
+              { label: "ทีมทั้งหมด", value: aggTeams.toLocaleString("th-TH") },
+              { label: "แมตช์ที่แข่งแล้ว", value: aggMatches.toLocaleString("th-TH") },
+              {
+                label: "ประตูรวม",
+                value: aggGoals.toLocaleString("th-TH"),
+                sub: `${aggAvg.toFixed(1)}/นัด`,
+              },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="rounded-xl border border-white/10 bg-black/20 px-4 py-2.5"
+              >
+                <div className="font-display font-black text-xl text-accent leading-none">
+                  {s.value}
+                </div>
+                <div className="mt-1 text-[11px] text-foreground/55">
+                  {s.label}
+                  {s.sub && <span className="text-foreground/35"> · {s.sub}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="px-6 md:px-16 py-8 flex-1 space-y-10">

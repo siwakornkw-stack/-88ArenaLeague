@@ -11,6 +11,8 @@ export default async function SearchPage({
   const { q = "", league: leagueParam = "", sort = "" } = await searchParams;
   const query = q.trim();
   const playerSort = sort === "goals" || sort === "number" ? sort : "relevance";
+  // Shirt-number search: a purely numeric query also matches Player.number
+  const numericQuery = /^\d{1,3}$/.test(query) ? Number(query) : null;
   const allLeagues = await prisma.league.findMany({
     where: { status: { not: "DRAFT" } },
     select: { id: true, name: true },
@@ -18,8 +20,9 @@ export default async function SearchPage({
   });
   const leagueScope = allLeagues.some((l) => l.id === leagueParam) ? leagueParam : null;
 
+  const searchable = query.length >= 2 || numericQuery !== null;
   const [teams, players, leagues, venueMatches, coachTeams, teamMatches] =
-    query.length >= 2
+    searchable
       ? await Promise.all([
           prisma.team.findMany({
             where: {
@@ -31,7 +34,10 @@ export default async function SearchPage({
           }),
           prisma.player.findMany({
             where: {
-              name: { contains: query, mode: "insensitive" },
+              OR: [
+                { name: { contains: query, mode: "insensitive" } },
+                ...(numericQuery !== null ? [{ number: numericQuery }] : []),
+              ],
               ...(leagueScope ? { team: { leagueId: leagueScope } } : {}),
             },
             include: { team: { include: { league: true } } },
@@ -93,7 +99,7 @@ export default async function SearchPage({
         ? [...players].sort((a, b) => a.number - b.number)
         : players;
 
-  const suggestions = query.length < 2 ? await getFeaturedLeagues(6) : [];
+  const suggestions = !searchable ? await getFeaturedLeagues(6) : [];
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -110,7 +116,7 @@ export default async function SearchPage({
           <input
             name="q"
             defaultValue={query}
-            placeholder="พิมพ์ชื่อทีมหรือนักเตะ (อย่างน้อย 2 ตัวอักษร)"
+            placeholder="พิมพ์ชื่อทีม นักเตะ หรือเบอร์เสื้อ (เช่น 10)"
             className="flex-1 min-w-48 rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <select
@@ -132,13 +138,63 @@ export default async function SearchPage({
       </div>
 
       <div className="px-6 md:px-16 py-8 flex-1 space-y-8">
-        {query.length >= 2 && (
+        {searchable && (
           <p className="text-sm text-foreground/50">
+            {numericQuery !== null && (
+              <span className="mr-1 rounded-full bg-accent/15 text-accent px-2 py-0.5 text-xs font-semibold">
+                เบอร์เสื้อ #{numericQuery}
+              </span>
+            )}
             พบ {leagues.length + teams.length + players.length + venueMatches.length} ผลลัพธ์:
             ลีก {leagues.length} · ทีม {teams.length} · นักเตะ {players.length} · แมตช์{" "}
             {venueMatches.length}
           </p>
         )}
+        {searchable &&
+          !leagueScope &&
+          (() => {
+            const counts = new Map<string, { name: string; n: number }>();
+            for (const t of teams) {
+              const e = counts.get(t.leagueId) ?? { name: t.league.name, n: 0 };
+              e.n += 1;
+              counts.set(t.leagueId, e);
+            }
+            for (const p of players) {
+              const lid = p.team.leagueId;
+              const e = counts.get(lid) ?? { name: p.team.league.name, n: 0 };
+              e.n += 1;
+              counts.set(lid, e);
+            }
+            const chips = [...counts.entries()].sort((a, b) => b[1].n - a[1].n);
+            if (chips.length < 2) return null;
+            return (
+              <div>
+                <h2 className="text-sm text-foreground/50 mb-3">กรองตามลีก:</h2>
+                <div className="flex flex-wrap gap-2">
+                  {chips.map(([lid, info]) => (
+                    <Link
+                      key={lid}
+                      href={`/search?q=${encodeURIComponent(query)}&league=${lid}${sort ? `&sort=${sort}` : ""}`}
+                      className="rounded-full border border-white/15 px-4 py-1.5 text-sm text-foreground/75 hover:border-accent/50 hover:text-accent"
+                    >
+                      {info.name}
+                      <span className="ml-1.5 text-foreground/40">{info.n}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+        {searchable && leagueScope && (
+          <Link
+            href={`/search?q=${encodeURIComponent(query)}${sort ? `&sort=${sort}` : ""}`}
+            className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-4 py-1.5 text-sm text-accent hover:border-accent"
+          >
+            × ล้างตัวกรองลีก — ดูทุกลีก
+          </Link>
+        )}
+
         {suggestions.length > 0 && (
           <div>
             <h2 className="text-sm text-foreground/50 mb-3">ลองดูลีกยอดนิยม:</h2>
@@ -155,7 +211,7 @@ export default async function SearchPage({
             </div>
           </div>
         )}
-        {query.length >= 2 &&
+        {searchable &&
           teams.length === 0 &&
           players.length === 0 &&
           leagues.length === 0 &&

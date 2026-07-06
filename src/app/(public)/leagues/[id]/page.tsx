@@ -686,6 +686,15 @@ export default async function PublicLeaguePage({
                 </span>
               );
             })()}
+            {(() => {
+              const coached = league.teams.filter((t) => t.coachName?.trim());
+              if (coached.length === 0) return null;
+              return (
+                <span className="text-xs rounded-full bg-white/5 text-foreground/60 px-3 py-1">
+                  🎽 มีโค้ช {coached.length}/{league.teams.length} ทีม
+                </span>
+              );
+            })()}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...league.teams]
@@ -851,6 +860,52 @@ export default async function PublicLeaguePage({
                     </div>
                   </div>
                 ) : null;
+              })()}
+
+              {(() => {
+                const fouls = new Map<string, { n: number; matches: number }>();
+                for (const m of finishedLeagueMatches) {
+                  const h = fouls.get(m.homeTeamId) ?? { n: 0, matches: 0 };
+                  h.n += m.homeFouls;
+                  h.matches++;
+                  fouls.set(m.homeTeamId, h);
+                  const a = fouls.get(m.awayTeamId) ?? { n: 0, matches: 0 };
+                  a.n += m.awayFouls;
+                  a.matches++;
+                  fouls.set(m.awayTeamId, a);
+                }
+                const teamName = new Map(league.teams.map((t) => [t.id, t.name]));
+                const rows = [...fouls.entries()]
+                  .filter(([, v]) => v.matches > 0)
+                  .map(([teamId, v]) => ({
+                    name: teamName.get(teamId) ?? "-",
+                    avg: v.n / v.matches,
+                  }));
+                if (rows.length < 2 || rows.every((r) => r.avg === 0)) return null;
+                const dirtiest = rows.reduce((a, b) => (b.avg > a.avg ? b : a));
+                const cleanest = rows.reduce((a, b) => (b.avg < a.avg ? b : a));
+                return (
+                  <div className="rounded-xl border border-white/10 bg-card p-5">
+                    <h3 className="font-display font-bold mb-1">🦶 ฟาวล์เฉลี่ยต่อนัด</h3>
+                    <p className="text-xs text-foreground/45 mb-2">อ้างอิงจากผลลีกที่จบแล้ว</p>
+                    <div className="flex flex-col gap-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-foreground/60">ฟาวล์เยอะสุด</span>
+                        <span>
+                          <span className="font-display font-semibold">{dirtiest.name}</span>{" "}
+                          <b className="text-red-400">{dirtiest.avg.toFixed(1)} ครั้ง</b>
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-foreground/60">ฟาวล์น้อยสุด</span>
+                        <span>
+                          <span className="font-display font-semibold">{cleanest.name}</span>{" "}
+                          <b className="text-accent">{cleanest.avg.toFixed(1)} ครั้ง</b>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
               })()}
 
               {discipline.teams.length > 0 && (
@@ -1094,6 +1149,47 @@ export default async function PublicLeaguePage({
                     </div>
                   ) : null;
                 })()}
+                {(() => {
+                  const shots = finishedLeagueMatches.reduce(
+                    (s, m) => s + m.homeShots + m.awayShots,
+                    0
+                  );
+                  const onTarget = finishedLeagueMatches.reduce(
+                    (s, m) => s + m.homeShotsOnTarget + m.awayShotsOnTarget,
+                    0
+                  );
+                  if (shots === 0) return null;
+                  return (
+                    <>
+                      <div>
+                        <div className="font-display italic font-extrabold text-2xl text-accent">
+                          {(shots / finishedLeagueMatches.length).toFixed(1)}
+                        </div>
+                        <div className="text-xs text-foreground/55">ยิงเฉลี่ย/นัด</div>
+                      </div>
+                      <div>
+                        <div className="font-display italic font-extrabold text-2xl text-accent">
+                          {Math.round((onTarget / shots) * 100)}%
+                        </div>
+                        <div className="text-xs text-foreground/55">อัตราเข้ากรอบ</div>
+                      </div>
+                    </>
+                  );
+                })()}
+                {(() => {
+                  const corners = finishedLeagueMatches.reduce(
+                    (s, m) => s + m.homeCorners + m.awayCorners,
+                    0
+                  );
+                  return corners > 0 ? (
+                    <div>
+                      <div className="font-display italic font-extrabold text-2xl text-accent">
+                        {(corners / finishedLeagueMatches.length).toFixed(1)}
+                      </div>
+                      <div className="text-xs text-foreground/55">เตะมุมเฉลี่ย/นัด</div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -1294,6 +1390,11 @@ export default async function PublicLeaguePage({
                     <th className="text-center">แต้ม</th>
                     <th className="text-center">แต้ม/นัด</th>
                     <th className="text-center">เหลือ</th>
+                    {!sideView && !asofRound && (
+                      <th className="text-center" title="แต้มคาดการณ์เมื่อจบฤดูกาล คำนวณจากแต้มเฉลี่ยปัจจุบัน">
+                        คาด
+                      </th>
+                    )}
                     <th className="text-center">ฟอร์ม</th>
                   </tr>
                 </thead>
@@ -1359,6 +1460,17 @@ export default async function PublicLeaguePage({
                           </span>
                         )}
                       </td>
+                      {!sideView && !asofRound && (
+                        <td className="text-center text-foreground/60 text-xs font-display font-semibold">
+                          {row.played > 0
+                            ? Math.round(
+                                row.points +
+                                  (row.points / row.played) *
+                                    (remainingByTeam.get(row.teamId) ?? 0)
+                              )
+                            : "-"}
+                        </td>
+                      )}
                       <td>
                         <div className="flex gap-1 justify-center py-1">
                           {row.form.map((f, j) => (

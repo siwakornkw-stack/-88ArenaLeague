@@ -66,11 +66,12 @@ export default async function PublicMatchPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ events?: string }>;
+  searchParams: Promise<{ events?: string; order?: string }>;
 }) {
   const { id } = await params;
-  const { events: eventsFilter } = await searchParams;
+  const { events: eventsFilter, order: eventsOrder } = await searchParams;
   const goalsOnly = eventsFilter === "goals";
+  const newestFirst = eventsOrder === "desc";
 
   const match = await prisma.match.findUnique({
     where: { id },
@@ -669,6 +670,70 @@ export default async function PublicMatchPage({
         )}
 
         {match.status !== "SCHEDULED" &&
+          match.homeShots + match.awayShots > 0 &&
+          (() => {
+            // proxy xG: on-target shots weighted 0.3, off-target 0.05
+            const xg = (shots: number, onTarget: number) =>
+              onTarget * 0.3 + Math.max(0, shots - onTarget) * 0.05;
+            const homeXg = xg(match.homeShots, match.homeShotsOnTarget);
+            const awayXg = xg(match.awayShots, match.awayShotsOnTarget);
+            const totalXg = homeXg + awayXg || 1;
+            const rows = [
+              {
+                side: "HOME" as const,
+                name: match.homeTeam.name,
+                xg: homeXg,
+                goals: match.homeScore,
+              },
+              {
+                side: "AWAY" as const,
+                name: match.awayTeam.name,
+                xg: awayXg,
+                goals: match.awayScore,
+              },
+            ];
+            const verdict = (goals: number, x: number) => {
+              const diff = goals - x;
+              if (diff >= 1) return { t: "จบสกอร์เกินคาด", cls: "text-accent/80" };
+              if (diff <= -1) return { t: "จบสกอร์ต่ำกว่าคาด", cls: "text-red-400/80" };
+              return { t: "ตามคาด", cls: "text-foreground/40" };
+            };
+            return (
+              <div className="rounded-xl border border-white/10 bg-card p-5 max-w-xl mx-auto w-full">
+                <h2 className="font-display font-bold mb-1 text-sm">ดัชนีคุณภาพการยิง (xG โดยประมาณ) 🎯</h2>
+                <p className="text-[10px] text-foreground/35 mb-4">
+                  ประเมินจากยิงเข้ากรอบ x0.30 + ยิงนอกกรอบ x0.05 (ไม่ใช่ค่าจริง)
+                </p>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="font-display font-bold text-accent">{homeXg.toFixed(2)}</span>
+                  <span className="text-foreground/50 text-xs">xG โดยประมาณ</span>
+                  <span className="font-display font-bold">{awayXg.toFixed(2)}</span>
+                </div>
+                <div className="flex h-2 rounded-full overflow-hidden bg-white/10 mb-4">
+                  <div className="bg-accent" style={{ width: `${(homeXg / totalXg) * 100}%` }} />
+                  <div className="bg-white/40" style={{ width: `${(awayXg / totalXg) * 100}%` }} />
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  {rows.map((r) => {
+                    const v = verdict(r.goals, r.xg);
+                    return (
+                      <div key={r.side} className="rounded-lg bg-white/5 px-2 py-3">
+                        <div className="text-[11px] text-foreground/45 truncate mb-1">{r.name}</div>
+                        <div className="font-display font-bold text-sm">
+                          <span className="text-foreground">{r.goals} ยิงจริง</span>
+                          <span className="text-foreground/30"> / </span>
+                          <span className="text-foreground/60">{r.xg.toFixed(1)} คาด</span>
+                        </div>
+                        <div className={`text-[11px] mt-1 ${v.cls}`}>{v.t}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+        {match.status !== "SCHEDULED" &&
           (() => {
             const goals = match.events.filter(
               (e) => (e.type === "GOAL" || e.type === "OWN_GOAL") && e.player
@@ -1063,6 +1128,65 @@ export default async function PublicMatchPage({
             );
           })()}
 
+        {match.status === "FINISHED" &&
+          match.stage === "LEAGUE" &&
+          match.homeScore !== match.awayScore &&
+          homeRow &&
+          awayRow &&
+          standings.length > 1 &&
+          (() => {
+            // recompute points if this single result were reversed, then re-rank
+            const homeWon = match.homeScore > match.awayScore;
+            const delta = new Map<string, number>();
+            // winner loses 3, loser gains 3 (draw case excluded above)
+            delta.set(match.homeTeamId, homeWon ? -3 : 3);
+            delta.set(match.awayTeamId, homeWon ? 3 : -3);
+            const flipped = standings
+              .map((r) => ({ ...r, points: r.points + (delta.get(r.teamId) ?? 0) }))
+              .sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor);
+            const newRank = (teamId: string) => flipped.findIndex((r) => r.teamId === teamId) + 1;
+            const rows = [
+              { name: match.homeTeam.name, teamId: match.homeTeamId, old: homeRank, neu: newRank(match.homeTeamId) },
+              { name: match.awayTeam.name, teamId: match.awayTeamId, old: awayRank, neu: newRank(match.awayTeamId) },
+            ];
+            const anyMove = rows.some((r) => r.old !== r.neu);
+            return (
+              <div className="rounded-xl border border-white/10 bg-card p-5 max-w-xl mx-auto w-full">
+                <h2 className="font-display font-bold mb-1 text-sm">ถ้าผลนัดนี้กลับด้าน 🔀</h2>
+                <p className="text-[10px] text-foreground/35 mb-4">
+                  จำลองอันดับปัจจุบันหากทีมที่แพ้กลับเป็นฝ่ายชนะ
+                </p>
+                {anyMove ? (
+                  <div className="space-y-2 text-sm">
+                    {rows.map((r) => {
+                      const up = r.neu < r.old;
+                      const same = r.neu === r.old;
+                      return (
+                        <div
+                          key={r.teamId}
+                          className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2"
+                        >
+                          <span className="truncate">{r.name}</span>
+                          <span className="font-display font-bold shrink-0">
+                            อันดับ {r.old}
+                            <span className="text-foreground/30"> → </span>
+                            <span className={same ? "text-foreground/50" : up ? "text-accent" : "text-red-400"}>
+                              {r.neu} {same ? "" : up ? "▲" : "▼"}
+                            </span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-center text-xs text-foreground/40">
+                    อันดับของทั้งสองทีมจะไม่เปลี่ยนแม้ผลจะกลับด้าน
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
         {h2h.length > 0 && (
           <div>
             <h2 className="font-display font-bold mb-4">ผลเจอกันล่าสุด</h2>
@@ -1201,12 +1325,26 @@ export default async function PublicMatchPage({
             <h2 className="font-display font-bold">ไทม์ไลน์</h2>
             <span className="flex items-center gap-3 text-xs">
               <Link
-                href={`/matches/${id}${goalsOnly ? "" : "?events=goals"}`}
+                href={`/matches/${id}?${new URLSearchParams({
+                  ...(goalsOnly ? {} : { events: "goals" }),
+                  ...(newestFirst ? { order: "desc" } : {}),
+                }).toString()}`.replace(/\?$/, "")}
                 className={`rounded-full px-3 py-1 ${
                   goalsOnly ? "bg-accent text-black font-semibold" : "bg-white/5 text-foreground/60"
                 }`}
               >
                 ⚽ เฉพาะประตู
+              </Link>
+              <Link
+                href={`/matches/${id}?${new URLSearchParams({
+                  ...(goalsOnly ? { events: "goals" } : {}),
+                  ...(newestFirst ? {} : { order: "desc" }),
+                }).toString()}`.replace(/\?$/, "")}
+                className={`rounded-full px-3 py-1 ${
+                  newestFirst ? "bg-accent text-black font-semibold" : "bg-white/5 text-foreground/60"
+                }`}
+              >
+                🕐 ล่าสุดก่อน
               </Link>
               {match.status !== "SCHEDULED" && (
                 <span className="text-foreground/45">
@@ -1217,11 +1355,12 @@ export default async function PublicMatchPage({
           </div>
           <div className="rounded-xl border border-white/10 bg-card p-5">
             <MatchTimeline
-              events={
-                goalsOnly
+              events={(() => {
+                const list = goalsOnly
                   ? match.events.filter((e) => e.type === "GOAL" || e.type === "OWN_GOAL")
-                  : match.events
-              }
+                  : match.events;
+                return newestFirst ? list.slice().reverse() : list;
+              })()}
             />
           </div>
         </div>
@@ -1268,6 +1407,58 @@ export default async function PublicMatchPage({
             <span />
           )}
         </div>
+
+        {(homePlayers.some((p) => p.birthYear) || awayPlayers.some((p) => p.birthYear)) &&
+          (() => {
+            const nowYear = new Date().getFullYear();
+            const ageStats = (players: { name: string; birthYear: number | null }[]) => {
+              const withAge = players
+                .filter((p) => p.birthYear)
+                .map((p) => ({ name: p.name, age: nowYear - (p.birthYear as number) }));
+              if (withAge.length === 0) return null;
+              const avg = withAge.reduce((s, p) => s + p.age, 0) / withAge.length;
+              const youngest = withAge.reduce((m, p) => (p.age < m.age ? p : m), withAge[0]);
+              const oldest = withAge.reduce((m, p) => (p.age > m.age ? p : m), withAge[0]);
+              return { avg, youngest, oldest, count: withAge.length };
+            };
+            const home = ageStats(homePlayers);
+            const away = ageStats(awayPlayers);
+            if (!home && !away) return null;
+            const col = (
+              teamName: string,
+              s: ReturnType<typeof ageStats>,
+              align: string
+            ) => (
+              <div className={align}>
+                <div className="text-[11px] text-foreground/45 mb-1 truncate">{teamName}</div>
+                {s ? (
+                  <>
+                    <div className="font-display italic font-extrabold text-3xl text-accent">
+                      {s.avg.toFixed(1)}
+                    </div>
+                    <div className="text-[11px] text-foreground/40">อายุเฉลี่ย ({s.count} คน)</div>
+                    <div className="text-[11px] text-foreground/50 mt-1.5">
+                      อ่อนสุด: {s.youngest.name} ({s.youngest.age})
+                    </div>
+                    <div className="text-[11px] text-foreground/50">
+                      เก๋าสุด: {s.oldest.name} ({s.oldest.age})
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-foreground/35">ไม่มีข้อมูลปีเกิด</p>
+                )}
+              </div>
+            );
+            return (
+              <div className="rounded-xl border border-white/10 bg-card p-5">
+                <h2 className="font-display font-bold mb-4 text-sm">อายุตัวจริงในสนาม 🎂</h2>
+                <div className="grid grid-cols-2 gap-6">
+                  {col(match.homeTeam.name, home, "text-right")}
+                  {col(match.awayTeam.name, away, "text-left")}
+                </div>
+              </div>
+            );
+          })()}
 
         {(homePlayers.length > 0 || awayPlayers.length > 0) && (
           <div>

@@ -9,11 +9,12 @@ export const dynamic = "force-dynamic";
 export default async function ChampionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string; sort?: string }>;
+  searchParams: Promise<{ year?: string; sort?: string; champ?: string }>;
 }) {
-  const { year, sort } = await searchParams;
+  const { year, sort, champ } = await searchParams;
   const yearFilter = Number(year) || null;
   const sortMode = sort === "points" ? "points" : "year";
+  const champFilter = champ && champ.trim() ? champ : null;
 
   const leagues = await prisma.league.findMany({
     where: { status: "FINISHED", hidden: false, ...(yearFilter ? { seasonYear: yearFilter } : {}) },
@@ -68,10 +69,18 @@ export default async function ChampionsPage({
   );
 
   // season grid order: default newest-first (entries already sorted), or by champion's league points
-  const sortedEntries =
+  const orderedEntries =
     sortMode === "points"
       ? [...entries].sort((a, b) => (b.championPoints ?? -1) - (a.championPoints ?? -1))
       : entries;
+
+  // champion team filter: narrow the season grid to a single club's title seasons
+  const championNames = [...new Set(entries.map((e) => e.championName).filter(Boolean))].sort(
+    (a, b) => (a as string).localeCompare(b as string, "th")
+  ) as string[];
+  const sortedEntries = champFilter
+    ? orderedEntries.filter((e) => e.championName === champFilter)
+    : orderedEntries;
 
   const mobileNavItems = [
     { icon: "🏠", label: "หน้าแรก", href: "/" },
@@ -118,6 +127,20 @@ export default async function ChampionsPage({
               >
                 <option value="year">เรียงตามปีล่าสุด</option>
                 <option value="points">เรียงตามแต้มแชมป์</option>
+              </select>
+            )}
+            {championNames.length > 1 && (
+              <select
+                name="champ"
+                defaultValue={champFilter ?? ""}
+                className="rounded-md bg-black/30 border border-white/10 px-3 py-2 text-sm outline-none focus:border-accent"
+              >
+                <option value="">ทุกทีมแชมป์</option>
+                {championNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
               </select>
             )}
             <button type="submit" className="rounded-md bg-white/10 px-4 py-2 text-sm">
@@ -275,6 +298,40 @@ export default async function ChampionsPage({
           ) : null;
         })()}
 
+        {(() => {
+          // longest title drought: biggest gap in seasons between two titles for a returning champion
+          const yearsByTeam = new Map<string, number[]>();
+          for (const e of entries) {
+            if (!e.championName) continue;
+            const arr = yearsByTeam.get(e.championName) ?? [];
+            arr.push(e.league.seasonYear);
+            yearsByTeam.set(e.championName, arr);
+          }
+          let best: { name: string; gap: number; from: number; to: number } | null = null;
+          for (const [name, years] of yearsByTeam) {
+            const sorted = [...new Set(years)].sort((a, b) => a - b);
+            for (let i = 1; i < sorted.length; i++) {
+              const gap = sorted[i] - sorted[i - 1];
+              if (!best || gap > best.gap) best = { name, gap, from: sorted[i - 1], to: sorted[i] };
+            }
+          }
+          return best && best.gap > 1 ? (
+            <div className="rounded-xl border border-white/10 bg-card p-4 max-w-md text-sm">
+              <div className="text-xs text-foreground/50">
+                หวนคืนแชมป์หลังห่างหายนานสุด
+              </div>
+              <div className="mt-1">
+                ⏳ <span className="font-display font-bold text-foreground">{best.name}</span>{" "}
+                <span className="text-foreground/60">ทวงบัลลังก์คืนหลังเว้นวรรค</span>{" "}
+                <span className="text-accent font-bold">{best.gap} ปี</span>{" "}
+                <span className="text-foreground/50">
+                  (ฤดูกาล {best.from} → {best.to})
+                </span>
+              </div>
+            </div>
+          ) : null;
+        })()}
+
         {entries[0] && (
           <div className="rounded-2xl border border-accent/50 bg-gradient-to-r from-[#22380f] to-card p-6 max-w-2xl live-glow">
             <div className="text-xs text-foreground/50">แชมป์ล่าสุด · ฤดูกาล {entries[0].league.seasonYear}</div>
@@ -288,8 +345,31 @@ export default async function ChampionsPage({
           </div>
         )}
 
+        {champFilter && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-foreground/60">
+            <span>
+              กรองเฉพาะแชมป์ของ{" "}
+              <span className="font-display font-bold text-accent">{champFilter}</span> ·{" "}
+              {sortedEntries.length} ฤดูกาล
+            </span>
+            <Link
+              href="/champions"
+              className="rounded-full border border-white/10 px-2.5 py-0.5 hover:border-accent/60"
+            >
+              ล้างตัวกรอง ✕
+            </Link>
+          </div>
+        )}
+
         {entries.length === 0 ? (
           <p className="text-foreground/50 text-sm">ยังไม่มีฤดูกาลที่จบการแข่งขัน</p>
+        ) : sortedEntries.length === 0 ? (
+          <p className="text-foreground/50 text-sm">
+            ไม่พบฤดูกาลที่ตรงกับตัวกรอง ·{" "}
+            <Link href="/champions" className="text-accent hover:underline">
+              ดูทั้งหมด
+            </Link>
+          </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
             {sortedEntries.map(

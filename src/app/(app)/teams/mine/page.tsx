@@ -673,6 +673,71 @@ export default async function MyTeamPage({
       )}
 
       {(() => {
+        const now = Date.now();
+        const windowDays = 10;
+        const horizon = now + windowDays * 86400000;
+        const upcoming = teamMatches
+          .filter(
+            (m) =>
+              m.status === "SCHEDULED" &&
+              m.kickoffAt.getTime() >= now &&
+              m.kickoffAt.getTime() <= horizon
+          )
+          .sort((a, b) => a.kickoffAt.getTime() - b.kickoffAt.getTime());
+        if (upcoming.length < 2) return null;
+        return (
+          <div className="rounded-md bg-orange-400/10 border border-orange-400/30 px-4 py-3 text-sm text-orange-300">
+            <div className="font-semibold">
+              🗓 โปรแกรมแน่น: {upcoming.length} นัดภายใน {windowDays} วัน
+            </div>
+            <div className="mt-1.5 text-xs text-orange-200/80 flex flex-wrap gap-x-4 gap-y-1">
+              {upcoming.map((m) => {
+                const opp = m.homeTeamId === team.id ? m.awayTeam.name : m.homeTeam.name;
+                const d = Math.ceil((m.kickoffAt.getTime() - now) / 86400000);
+                return (
+                  <span key={m.id}>
+                    {m.homeTeamId === team.id ? "🏠" : "✈"} {opp}{" "}
+                    <span className="text-orange-200/60">
+                      ({d <= 0 ? "วันนี้" : `อีก ${d} วัน`})
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {(() => {
+        if (!nextMatch) return null;
+        const byPlayer = new Map(nextMatch.lineups.map((l) => [l.playerId, l.shirtNumber]));
+        const effective = team.players
+          .filter((p) => selectedPlayerIds.has(p.id))
+          .map((p) => ({
+            name: p.name,
+            num: byPlayer.get(p.id) ?? p.number,
+          }));
+        const counts = new Map<number, string[]>();
+        for (const e of effective) {
+          counts.set(e.num, [...(counts.get(e.num) ?? []), e.name]);
+        }
+        const clashes = [...counts.entries()].filter(([, names]) => names.length > 1);
+        if (clashes.length === 0) return null;
+        return (
+          <div className="rounded-md bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-sm text-red-300">
+            <div className="font-semibold">⚠ เบอร์เสื้อซ้ำในตัวจริงนัดถัดไป</div>
+            <div className="mt-1 text-xs text-red-200/80 space-y-0.5">
+              {clashes.map(([num, names]) => (
+                <div key={num}>
+                  เบอร์ {num}: {names.join(", ")}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {(() => {
         const todayMatch = teamMatches.find(
           (m) =>
             m.status !== "FINISHED" &&

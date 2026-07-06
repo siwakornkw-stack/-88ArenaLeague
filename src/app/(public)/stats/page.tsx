@@ -12,10 +12,10 @@ export const metadata = {
 export default async function GlobalStatsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ leagueSort?: string; venueSort?: string }>;
+  searchParams: Promise<{ leagueSort?: string; venueSort?: string; teamSort?: string }>;
 }) {
-  const { venueSort } = await searchParams;
-  const [finished, leagues, topScorers, yellowCount, redCount, scorerIds, cardsByLeague] = await Promise.all([
+  const { venueSort, teamSort } = await searchParams;
+  const [finished, leagues, topScorers, yellowCount, redCount, scorerIds, cardsByLeague, ownGoalCount, penMissCount, teamRows] = await Promise.all([
     prisma.match.findMany({
       where: { status: "FINISHED", league: { hidden: false } },
       select: {
@@ -56,6 +56,23 @@ export default async function GlobalStatsPage({
         match: { status: "FINISHED", league: { hidden: false } },
       },
       _count: { matchId: true },
+    }),
+    prisma.matchEvent.count({
+      where: { type: "OWN_GOAL", match: { league: { hidden: false } } },
+    }),
+    prisma.matchEvent.count({
+      where: { type: "PENALTY_MISSED", match: { league: { hidden: false } } },
+    }),
+    prisma.match.findMany({
+      where: { status: "FINISHED", league: { hidden: false } },
+      select: {
+        homeTeamId: true,
+        awayTeamId: true,
+        homeScore: true,
+        awayScore: true,
+        homeTeam: { select: { id: true, name: true, leagueId: true } },
+        awayTeam: { select: { id: true, name: true, leagueId: true } },
+      },
     }),
   ]);
 
@@ -158,6 +175,56 @@ export default async function GlobalStatsPage({
     })
     .filter((l) => l.matches > 0)
     .sort((a, b) => b.per - a.per);
+
+  const drawBoard = leagues
+    .map((lg) => {
+      const ms = finished.filter((m) => m.leagueId === lg.id);
+      const drawn = ms.filter((m) => m.homeScore === m.awayScore).length;
+      return {
+        id: lg.id,
+        name: lg.name,
+        matches: ms.length,
+        draws: drawn,
+        pct: ms.length > 0 ? (drawn / ms.length) * 100 : 0,
+      };
+    })
+    .filter((l) => l.matches > 0)
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, 6);
+
+  const teamGoals = new Map<
+    string,
+    { name: string; leagueId: string; scored: number; conceded: number; matches: number }
+  >();
+  for (const m of teamRows) {
+    const h = teamGoals.get(m.homeTeamId) ?? {
+      name: m.homeTeam.name,
+      leagueId: m.homeTeam.leagueId,
+      scored: 0,
+      conceded: 0,
+      matches: 0,
+    };
+    h.scored += m.homeScore;
+    h.conceded += m.awayScore;
+    h.matches += 1;
+    teamGoals.set(m.homeTeamId, h);
+    const a = teamGoals.get(m.awayTeamId) ?? {
+      name: m.awayTeam.name,
+      leagueId: m.awayTeam.leagueId,
+      scored: 0,
+      conceded: 0,
+      matches: 0,
+    };
+    a.scored += m.awayScore;
+    a.conceded += m.homeScore;
+    a.matches += 1;
+    teamGoals.set(m.awayTeamId, a);
+  }
+  const teamSortByAvg = teamSort === "avg";
+  const prolificTeams = Array.from(teamGoals.entries())
+    .map(([id, t]) => ({ id, ...t, avg: t.matches > 0 ? t.scored / t.matches : 0 }))
+    .sort((a, b) => (teamSortByAvg ? b.avg - a.avg : b.scored - a.scored))
+    .slice(0, 8);
 
   const venueTotals = new Map<string, { matches: number; crowd: number }>();
   for (const m of finished) {
@@ -277,6 +344,22 @@ export default async function GlobalStatsPage({
             </div>
             <div className="text-xs text-foreground/55">คลีนชีตทั้งระบบ</div>
           </div>
+          {ownGoalCount > 0 && (
+            <div>
+              <div className="font-display italic font-extrabold text-2xl text-red-400">
+                {ownGoalCount}
+              </div>
+              <div className="text-xs text-foreground/55">ทำเข้าประตูตัวเอง</div>
+            </div>
+          )}
+          {penMissCount > 0 && (
+            <div>
+              <div className="font-display italic font-extrabold text-2xl text-foreground/70">
+                {penMissCount}
+              </div>
+              <div className="text-xs text-foreground/55">ยิงจุดโทษพลาด</div>
+            </div>
+          )}
           <div>
             <div className="font-display italic font-extrabold text-2xl text-accent">
               {thrillers}
@@ -321,6 +404,76 @@ export default async function GlobalStatsPage({
                     <span className="text-xs text-foreground/45">{l.cards} ใบ</span>
                     <span className="font-display font-bold text-yellow-400">
                       {l.per.toFixed(2)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {prolificTeams.length > 0 && (
+            <div className="rounded-xl border border-white/10 bg-card p-5">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="font-display font-bold">ทีมยิงประตูเยอะสุดทั้งระบบ</h2>
+                <form method="get" className="flex gap-1 text-xs">
+                  <button
+                    name="teamSort"
+                    value="total"
+                    className={`rounded-md px-2 py-1 ${
+                      !teamSortByAvg ? "bg-accent text-black" : "bg-white/5 text-foreground/60"
+                    }`}
+                  >
+                    ประตูรวม
+                  </button>
+                  <button
+                    name="teamSort"
+                    value="avg"
+                    className={`rounded-md px-2 py-1 ${
+                      teamSortByAvg ? "bg-accent text-black" : "bg-white/5 text-foreground/60"
+                    }`}
+                  >
+                    เฉลี่ย/นัด
+                  </button>
+                </form>
+              </div>
+              <div className="space-y-2 text-sm">
+                {prolificTeams.map((t, i) => (
+                  <Link
+                    key={t.id}
+                    href={`/leagues/${t.leagueId}/teams/${t.id}`}
+                    className="flex items-center gap-3 rounded-md bg-white/5 px-3 py-2 hover:bg-white/10"
+                  >
+                    <span className="w-5 font-display font-bold text-foreground/50">{i + 1}</span>
+                    <span className="flex-1 truncate">{t.name}</span>
+                    <span className="text-xs text-foreground/45">
+                      {teamSortByAvg ? `${t.scored} ประตู` : `${t.avg.toFixed(1)}/นัด`}
+                    </span>
+                    <span className="font-display font-bold text-accent">
+                      {teamSortByAvg ? t.avg.toFixed(1) : t.scored}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {drawBoard.length > 0 && (
+            <div className="rounded-xl border border-white/10 bg-card p-5">
+              <h2 className="font-display font-bold mb-3">ลีกที่เสมอบ่อยสุด (% เสมอ)</h2>
+              <div className="space-y-2 text-sm">
+                {drawBoard.map((l, i) => (
+                  <Link
+                    key={l.id}
+                    href={`/leagues/${l.id}`}
+                    className="flex items-center gap-3 rounded-md bg-white/5 px-3 py-2 hover:bg-white/10"
+                  >
+                    <span className="w-5 font-display font-bold text-foreground/50">{i + 1}</span>
+                    <span className="flex-1 truncate">{l.name}</span>
+                    <span className="text-xs text-foreground/45">
+                      {l.draws}/{l.matches} นัด
+                    </span>
+                    <span className="font-display font-bold text-accent">
+                      {Math.round(l.pct)}%
                     </span>
                   </Link>
                 ))}

@@ -197,6 +197,33 @@ export default async function DashboardPage() {
     return bestKey ? { date: new Date(bestKey), count: bestCount } : null;
   })();
 
+  // Feature: overdue matches (SCHEDULED but kickoff already passed) grouped by league.
+  const overdueByLeague = leagues
+    .map((lg) => ({
+      league: lg,
+      count: lg.matches.filter(
+        (m) => m.status === "SCHEDULED" && m.kickoffAt < now
+      ).length,
+    }))
+    .filter((row) => row.count > 0)
+    .sort((a, b) => b.count - a.count);
+  const totalOverdue = overdueByLeague.reduce((sum, row) => sum + row.count, 0);
+
+  // Feature: most recently active team manager (last login).
+  const topManager = users
+    .filter((u) => u.role === "TEAM_MANAGER" && u.isActive && u.lastLoginAt)
+    .sort((a, b) => (b.lastLoginAt!.getTime() - a.lastLoginAt!.getTime()))[0];
+
+  // Feature: this-week vs last-week match volume (finished matches).
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 86400000);
+  const playedLastWeek = allMatches.filter(
+    (m) =>
+      m.status === "FINISHED" &&
+      m.kickoffAt >= fourteenDaysAgo &&
+      m.kickoffAt < sevenDaysAgo
+  ).length;
+  const weekDelta = playedThisWeek - playedLastWeek;
+
   return (
     <div className="max-w-4xl space-y-8">
       <div>
@@ -289,6 +316,76 @@ export default async function DashboardPage() {
           <span className="rounded-full bg-accent/15 text-accent px-3 py-1 text-sm font-semibold shrink-0">
             {busiestDay.count} นัด
           </span>
+        </div>
+      )}
+
+      {(playedThisWeek > 0 || playedLastWeek > 0) && (
+        <div className="rounded-lg bg-card border border-white/10 p-5 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">โมเมนตัมการแข่ง (สัปดาห์นี้ vs สัปดาห์ก่อน)</h2>
+            <p className="text-sm text-foreground/55 mt-1">
+              สัปดาห์นี้ {playedThisWeek} นัด · สัปดาห์ก่อน {playedLastWeek} นัด
+            </p>
+          </div>
+          <span
+            className={`rounded-full px-3 py-1 text-sm font-semibold shrink-0 ${
+              weekDelta > 0
+                ? "bg-emerald-400/15 text-emerald-400"
+                : weekDelta < 0
+                  ? "bg-red-500/15 text-red-400"
+                  : "bg-white/5 text-foreground/60"
+            }`}
+          >
+            {weekDelta > 0 ? "▲" : weekDelta < 0 ? "▼" : "="} {weekDelta > 0 ? "+" : ""}
+            {weekDelta}
+          </span>
+        </div>
+      )}
+
+      {topManager && (
+        <div className="rounded-lg bg-card border border-white/10 p-5 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">ผู้จัดการทีมที่แอ็กทีฟล่าสุด</h2>
+            <p className="text-sm text-foreground/55 mt-1">
+              {topManager.name}
+              {topManager.managedTeams[0] && (
+                <span className="text-foreground/45"> · {topManager.managedTeams[0].name}</span>
+              )}
+            </p>
+          </div>
+          <span className="rounded-full bg-accent/15 text-accent px-3 py-1 text-sm font-semibold shrink-0">
+            ⭐ ล็อกอิน{" "}
+            {topManager.lastLoginAt!.toLocaleDateString("th-TH", {
+              day: "numeric",
+              month: "short",
+            })}
+          </span>
+        </div>
+      )}
+
+      {totalOverdue > 0 && (
+        <div className="rounded-lg bg-card border border-red-500/20 p-5">
+          <h2 className="font-semibold mb-3 flex items-center gap-2">
+            แมตช์เกินกำหนดยังไม่เริ่ม
+            <span className="rounded-full bg-red-500/15 text-red-400 px-2 py-0.5 text-[10px]">
+              {totalOverdue} นัด
+            </span>
+          </h2>
+          <p className="text-xs text-foreground/50 mb-3">
+            แมตช์เหล่านี้ผ่านเวลาแข่งแล้วแต่ยังอยู่สถานะ &quot;จัดตารางแล้ว&quot; ควรเริ่มหรือเลื่อนเวลา
+          </p>
+          <div className="space-y-2">
+            {overdueByLeague.map((row) => (
+              <Link
+                key={row.league.id}
+                href={`/admin/leagues/${row.league.id}`}
+                className="flex items-center justify-between rounded-md bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+              >
+                <span>{row.league.name}</span>
+                <span className="text-red-400">{row.count} นัดค้าง →</span>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 

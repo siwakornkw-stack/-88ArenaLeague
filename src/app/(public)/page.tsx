@@ -182,6 +182,46 @@ export default async function Home({
     take: 6,
   });
 
+  // Feature A: "goal of the round" proxy — a goal from the highest-scoring recent finished match
+  const goalOfRoundMatch = recentResults
+    .map((m) => ({ match: m, goals: m.homeScore + m.awayScore }))
+    .filter((x) => x.goals > 0)
+    .sort((a, b) => b.goals - a.goals)[0];
+  const goalOfRound = goalOfRoundMatch
+    ? await prisma.matchEvent.findFirst({
+        where: { matchId: goalOfRoundMatch.match.id, type: "GOAL", playerId: { not: null } },
+        include: { player: { include: { team: true } } },
+        orderBy: { minute: "desc" },
+      })
+    : null;
+
+  // Feature B: "league of the week" — league with the most matches in the last 7 days
+  const weekAgo = new Date(Date.now() - 7 * 86400000);
+  const weekMatchGroups = await prisma.match.groupBy({
+    by: ["leagueId"],
+    where: { status: { in: ["LIVE", "FINISHED"] }, kickoffAt: { gte: weekAgo } },
+    _count: { leagueId: true },
+    orderBy: { _count: { leagueId: "desc" } },
+    take: 1,
+  });
+  const weekLeagueGroup = weekMatchGroups[0];
+  const leagueOfWeek = weekLeagueGroup
+    ? await prisma.league.findUnique({ where: { id: weekLeagueGroup.leagueId } })
+    : null;
+  const leagueOfWeekMatches = weekLeagueGroup?._count.leagueId ?? 0;
+
+  // Feature C: newest team and newest player to join the platform
+  const [newestTeam, newestPlayer] = await Promise.all([
+    prisma.team.findFirst({
+      orderBy: { createdAt: "desc" },
+      include: { league: true },
+    }),
+    prisma.player.findFirst({
+      orderBy: { createdAt: "desc" },
+      include: { team: { include: { league: true } } },
+    }),
+  ]);
+
   const topStandings = featuredLeagues[0] ? await getCachedTopStandings(featuredLeagues[0].id) : [];
   const featuredSponsors = featuredLeagues[0]
     ? await prisma.leagueSponsor.findMany({
@@ -478,6 +518,92 @@ export default async function Home({
                   </div>
                   <div className="text-[10px] text-foreground/50">อัตราชนะ</div>
                 </div>
+              </Link>
+            )}
+          </div>
+        </section>
+      )}
+
+      {(goalOfRound || leagueOfWeek) && (
+        <section className="px-6 md:px-16 py-8 border-b border-white/5">
+          <h2 className="font-display italic font-extrabold text-lg text-foreground mb-4">
+            ไฮไลต์<span className="text-accent">ประจำสัปดาห์</span>
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
+            {goalOfRound && goalOfRoundMatch && (
+              <Link
+                href={`/matches/${goalOfRoundMatch.match.id}`}
+                className="hover-lift flex items-center gap-4 rounded-2xl border border-accent/40 bg-accent/10 px-5 py-4 hover:border-accent"
+              >
+                <span className="text-3xl">🎯</span>
+                <div className="min-w-0">
+                  <div className="text-xs text-foreground/50">ประตูแห่งนัด</div>
+                  <div className="font-display italic font-extrabold text-lg text-foreground truncate">
+                    {goalOfRound.player?.name}
+                  </div>
+                  <div className="text-xs text-foreground/55 truncate">
+                    {goalOfRound.player?.team.name} · นาทีที่ {goalOfRound.minute}&apos;
+                  </div>
+                </div>
+                <div className="ml-auto text-right shrink-0">
+                  <div className="font-display italic font-black text-xl text-accent">
+                    {goalOfRoundMatch.match.homeScore}-{goalOfRoundMatch.match.awayScore}
+                  </div>
+                  <div className="text-[10px] text-foreground/50">{goalOfRoundMatch.goals} ประตูรวม</div>
+                </div>
+              </Link>
+            )}
+            {leagueOfWeek && (
+              <Link
+                href={`/leagues/${leagueOfWeek.id}`}
+                className="hover-lift flex items-center gap-4 rounded-2xl border border-white/15 bg-white/5 px-5 py-4 hover:border-accent/50"
+              >
+                <span className="text-3xl">📈</span>
+                <div className="min-w-0">
+                  <div className="text-xs text-foreground/50">ลีกคึกคักที่สุดสัปดาห์นี้</div>
+                  <div className="font-display italic font-extrabold text-lg text-foreground truncate">
+                    {leagueOfWeek.name}
+                  </div>
+                  <div className="text-xs text-foreground/55">ใน 7 วันที่ผ่านมา</div>
+                </div>
+                <div className="ml-auto text-right shrink-0">
+                  <div className="font-display italic font-black text-2xl text-accent">
+                    {leagueOfWeekMatches}
+                  </div>
+                  <div className="text-[10px] text-foreground/50">แมตช์</div>
+                </div>
+              </Link>
+            )}
+          </div>
+        </section>
+      )}
+
+      {(newestTeam || newestPlayer) && (
+        <section className="px-6 md:px-16 py-8 border-b border-white/5">
+          <h2 className="font-display italic font-extrabold text-lg text-foreground mb-4">
+            สมาชิก<span className="text-accent">ใหม่ล่าสุด</span>
+          </h2>
+          <div className="flex flex-wrap gap-2.5">
+            {newestTeam && (
+              <Link
+                href={`/leagues/${newestTeam.leagueId}/teams/${newestTeam.id}`}
+                className="hover-lift flex items-center gap-2 rounded-full border border-white/10 bg-card px-3.5 py-1.5 text-sm hover:border-accent/50"
+              >
+                <span>🆕</span>
+                <span className="font-display font-semibold">{newestTeam.name}</span>
+                <span className="text-xs text-foreground/45">ทีมใหม่ · {newestTeam.league.name}</span>
+              </Link>
+            )}
+            {newestPlayer && (
+              <Link
+                href={`/leagues/${newestPlayer.team.leagueId}/players/${newestPlayer.id}`}
+                className="hover-lift flex items-center gap-2 rounded-full border border-white/10 bg-card px-3.5 py-1.5 text-sm hover:border-accent/50"
+              >
+                <span>⭐</span>
+                <span className="font-display font-semibold">{newestPlayer.name}</span>
+                <span className="text-xs text-foreground/45">
+                  นักเตะใหม่ · {newestPlayer.team.name}
+                </span>
               </Link>
             )}
           </div>

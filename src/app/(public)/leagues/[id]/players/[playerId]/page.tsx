@@ -93,6 +93,66 @@ export default async function PublicPlayerPage({
   }
   const topPartners = [...assistPartners.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
 
+  // Goals by scoreline state: reconstruct the running score at the moment
+  // this player scored each of his goals.
+  const scoredMatchIds = [
+    ...new Set(events.filter((e) => e.type === "GOAL").map((e) => e.matchId)),
+  ];
+  const matchGoalTimeline = scoredMatchIds.length
+    ? await prisma.matchEvent.findMany({
+        where: {
+          matchId: { in: scoredMatchIds },
+          type: { in: ["GOAL", "OWN_GOAL"] },
+        },
+        select: {
+          id: true,
+          matchId: true,
+          minute: true,
+          type: true,
+          side: true,
+          createdAt: true,
+        },
+      })
+    : [];
+  const scorelineState = { leading: 0, level: 0, trailing: 0 };
+  {
+    // Order goals within each match, then walk them keeping running home/away
+    // totals; when we hit one of the player's own GOAL events, classify by the
+    // score BEFORE it counted (from his team's perspective).
+    const byMatch = new Map<string, typeof matchGoalTimeline>();
+    for (const g of matchGoalTimeline) {
+      const arr = byMatch.get(g.matchId) ?? [];
+      arr.push(g);
+      byMatch.set(g.matchId, arr);
+    }
+    const myGoalIds = new Set(
+      events.filter((e) => e.type === "GOAL").map((e) => e.id)
+    );
+    for (const [mid, arr] of byMatch) {
+      arr.sort(
+        (a, b) => a.minute - b.minute || a.createdAt.getTime() - b.createdAt.getTime()
+      );
+      const isHome = events.find((e) => e.matchId === mid)?.match.homeTeamId === player.teamId;
+      let home = 0;
+      let away = 0;
+      for (const g of arr) {
+        // OWN_GOAL counts for the opposite side of g.side.
+        const scoringSide = g.type === "OWN_GOAL" ? (g.side === "HOME" ? "AWAY" : "HOME") : g.side;
+        if (myGoalIds.has(g.id)) {
+          const mine = isHome ? home : away;
+          const theirs = isHome ? away : home;
+          if (mine > theirs) scorelineState.leading++;
+          else if (mine === theirs) scorelineState.level++;
+          else scorelineState.trailing++;
+        }
+        if (scoringSide === "HOME") home++;
+        else away++;
+      }
+    }
+  }
+  const scorelineTotal =
+    scorelineState.leading + scorelineState.level + scorelineState.trailing;
+
   const POSITION_COLOR: Record<string, string> = {
     GK: "bg-yellow-400/15 text-yellow-400",
     DF: "bg-blue-400/15 text-blue-300",
@@ -271,6 +331,58 @@ export default async function PublicPlayerPage({
           </div>
         )}
 
+        {scorelineTotal > 0 && (
+          <div className="rounded-xl border border-white/10 bg-card p-5 max-w-2xl">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display font-bold">ประตูตามสถานการณ์สกอร์</h2>
+              <span className="text-xs text-foreground/45">ณ เวลาที่ยิง</span>
+            </div>
+            <div className="flex h-3 w-full overflow-hidden rounded-full bg-white/5">
+              {[
+                { n: scorelineState.trailing, cls: "bg-red-400/70" },
+                { n: scorelineState.level, cls: "bg-yellow-400/70" },
+                { n: scorelineState.leading, cls: "bg-accent" },
+              ].map((s, i) =>
+                s.n > 0 ? (
+                  <div
+                    key={i}
+                    className={s.cls}
+                    style={{ width: `${(s.n / scorelineTotal) * 100}%` }}
+                  />
+                ) : null
+              )}
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-3 text-center text-sm">
+              <div>
+                <div className="font-display font-bold text-red-300">
+                  {scorelineState.trailing}
+                </div>
+                <div className="text-xs text-foreground/50">ตอนตามหลัง</div>
+              </div>
+              <div>
+                <div className="font-display font-bold text-yellow-300">
+                  {scorelineState.level}
+                </div>
+                <div className="text-xs text-foreground/50">ตอนเสมอ (ตีเสมอ/ขึ้นนำ)</div>
+              </div>
+              <div>
+                <div className="font-display font-bold text-accent">
+                  {scorelineState.leading}
+                </div>
+                <div className="text-xs text-foreground/50">ตอนนำอยู่แล้ว</div>
+              </div>
+            </div>
+            {scorelineState.trailing + scorelineState.level > 0 && (
+              <p className="mt-3 text-xs text-foreground/45">
+                {Math.round(
+                  ((scorelineState.trailing + scorelineState.level) / scorelineTotal) * 100
+                )}
+                % ของประตูยิงตอนทีมยังไม่นำ — ประตูที่มีน้ำหนักต่อผลการแข่งขัน
+              </p>
+            )}
+          </div>
+        )}
+
         {(() => {
           const goalEvents = events.filter((e) => e.type === "GOAL");
           const winWhenScores = goalEvents.filter((e) => {
@@ -299,6 +411,41 @@ export default async function PublicPlayerPage({
             )}
           </p>
         )}
+
+        {(() => {
+          const scoredMatchIdSet = new Set(
+            events.filter((e) => e.type === "GOAL").map((e) => e.matchId)
+          );
+          // Walk appearances oldest -> newest, count the longest run of
+          // consecutive matches in which the player scored.
+          const chrono = [...allLineups].reverse();
+          let best = 0;
+          let cur = 0;
+          let current = 0;
+          for (let i = 0; i < chrono.length; i++) {
+            if (scoredMatchIdSet.has(chrono[i].matchId)) {
+              cur++;
+              if (cur > best) best = cur;
+              if (i === chrono.length - 1) current = cur;
+            } else {
+              cur = 0;
+            }
+          }
+          if (best < 2) return null;
+          return (
+            <div className="rounded-xl border border-accent/30 bg-card p-4 text-sm max-w-md flex flex-wrap items-center gap-x-6 gap-y-2">
+              <span>
+                📈 ยิงต่อเนื่องสูงสุด{" "}
+                <b className="font-display font-bold text-accent">{best}</b> นัดติด
+              </span>
+              {current >= 2 && (
+                <span className="text-accent">
+                  🔥 กำลังต่อสตรีค {current} นัด
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         {(() => {
           const victims = new Map<string, number>();
@@ -558,6 +705,77 @@ export default async function PublicPlayerPage({
             </div>
           </div>
         )}
+
+        {(() => {
+          type Split = {
+            key: string;
+            label: string;
+            apps: number;
+            goals: number;
+            assists: number;
+            cards: number;
+          };
+          const stageOf = (s: string) => (s === "LEAGUE" ? "LEAGUE" : "PLAYOFF");
+          const splits: Record<string, Split> = {
+            LEAGUE: { key: "LEAGUE", label: "ลีก", apps: 0, goals: 0, assists: 0, cards: 0 },
+            PLAYOFF: {
+              key: "PLAYOFF",
+              label: "เพลย์ออฟ",
+              apps: 0,
+              goals: 0,
+              assists: 0,
+              cards: 0,
+            },
+          };
+          for (const l of allLineups) splits[stageOf(l.match.stage)].apps++;
+          for (const e of events) {
+            const bucket = splits[stageOf(e.match.stage)];
+            if (e.type === "GOAL") {
+              if (e.playerId === playerId) bucket.goals++;
+              if (e.relatedPlayerId === playerId) bucket.assists++;
+            }
+            if (
+              (e.type === "YELLOW_CARD" || e.type === "RED_CARD") &&
+              e.playerId === playerId
+            )
+              bucket.cards++;
+          }
+          // Only worth showing once the player has actually featured in a playoff;
+          // otherwise the table just repeats the season totals above.
+          if (splits.PLAYOFF.apps === 0 && splits.PLAYOFF.goals === 0) return null;
+          const list = [splits.LEAGUE, splits.PLAYOFF];
+          return (
+            <div className="rounded-xl border border-white/10 bg-card p-5 max-w-2xl">
+              <h2 className="font-display font-bold mb-3">สถิติแยกตามรอบ</h2>
+              <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 gap-y-1.5 text-sm">
+                <span className="text-xs text-foreground/40">รอบ</span>
+                <span className="text-xs text-foreground/40 text-right">นัด</span>
+                <span className="text-xs text-foreground/40 text-right">ประตู</span>
+                <span className="text-xs text-foreground/40 text-right">แอสซิสต์</span>
+                <span className="text-xs text-foreground/40 text-right">ใบเตือน</span>
+                {list.map((r) => (
+                  <div key={r.key} className="contents">
+                    <span
+                      className={r.key === "PLAYOFF" ? "text-accent" : undefined}
+                    >
+                      {r.label}
+                    </span>
+                    <span className="text-right text-foreground/60">{r.apps}</span>
+                    <span className="text-right font-display font-bold text-accent">
+                      {r.goals || "-"}
+                    </span>
+                    <span className="text-right text-foreground/70">
+                      {r.assists || "-"}
+                    </span>
+                    <span className="text-right text-foreground/60">
+                      {r.cards || "-"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {(() => {
           type Row = { name: string; apps: number; goals: number; assists: number };

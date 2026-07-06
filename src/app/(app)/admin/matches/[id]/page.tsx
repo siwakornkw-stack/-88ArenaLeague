@@ -185,6 +185,28 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
     match.status !== "SCHEDULED" &&
     (loggedGoals.HOME !== match.homeScore || loggedGoals.AWAY !== match.awayScore);
 
+  const lateEvents = match.events.filter(
+    (e) =>
+      e.type !== "KICK_OFF" &&
+      e.type !== "HALF_TIME" &&
+      e.type !== "FULL_TIME" &&
+      e.minute > liveMinute
+  );
+
+  const scorerTally = new Map<string, { name: string; goals: number }>();
+  for (const e of match.events) {
+    if (e.type === "GOAL" && e.player) {
+      const prev = scorerTally.get(e.player.id);
+      scorerTally.set(e.player.id, {
+        name: e.player.name,
+        goals: (prev?.goals ?? 0) + 1,
+      });
+    }
+  }
+  const topScorer = [...scorerTally.values()]
+    .filter((s) => s.goals >= 2)
+    .sort((a, b) => b.goals - a.goals)[0];
+
   const goalEvents = match.events.filter(
     (e) => e.type === "GOAL" || e.type === "OWN_GOAL"
   );
@@ -324,9 +346,28 @@ export default async function MatchLivePage({ params }: { params: Promise<{ id: 
         </div>
       )}
 
+      {lateEvents.length > 0 && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          ⚠ พบ {lateEvents.length} เหตุการณ์ที่นาทีเกินเวลาปัจจุบัน ({liveMinute}&apos;):{" "}
+          {lateEvents
+            .map((e) => `${e.player?.name ?? e.label} ${e.minute}'`)
+            .join(" · ")}
+          <span className="block text-[11px] text-amber-300/70 mt-0.5">
+            อาจกรอกนาทีผิด แก้ได้ในช่องนาทีของไทม์ไลน์ด้านล่าง
+          </span>
+        </div>
+      )}
+
       {match.status !== "SCHEDULED" && (
         <div className="rounded-lg bg-card border border-white/10 p-4">
-          <h3 className="text-sm font-semibold mb-2">เหตุการณ์ที่บันทึกแล้ว</h3>
+          <h3 className="text-sm font-semibold mb-2 flex items-center justify-between">
+            เหตุการณ์ที่บันทึกแล้ว
+            {topScorer && (
+              <span className="text-xs font-normal text-accent">
+                🎯 {topScorer.name} {topScorer.goals >= 3 ? "แฮตทริก" : "ยิงคู่"} ({topScorer.goals})
+              </span>
+            )}
+          </h3>
           <div className="grid grid-cols-4 gap-2 text-center">
             {[
               { label: "ประตู", value: eventCounts.goals, tone: "text-accent" },

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { computeLiveMinute } from "@/lib/matchClock";
+import { computeStandings } from "@/lib/standings";
 import { MobileNav } from "@/components/mobile-nav";
 
 export const dynamic = "force-dynamic";
@@ -75,11 +76,41 @@ export default async function LivePage() {
     take: 10,
   });
 
+  // Feature: goals scored across the whole platform in the last 60 minutes
+  // (time-windowed count, distinct from the "8 most recent" ticker which has no window)
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const goalsLastHour = await prisma.matchEvent.count({
+    where: { type: { in: ["GOAL", "OWN_GOAL"] }, createdAt: { gte: oneHourAgo } },
+  });
+
   const liveByLeague = new Map<string, typeof live>();
   for (const m of live) {
     if (!liveByLeague.has(m.league.name)) liveByLeague.set(m.league.name, []);
     liveByLeague.get(m.league.name)!.push(m);
   }
+
+  // Feature: closest title race among leagues with a live match right now —
+  // smallest points gap between 1st and 2nd (LEAGUE stage, via computeStandings)
+  const liveLeagues = [
+    ...new Map(live.map((m) => [m.leagueId, m.league.name])).entries(),
+  ];
+  const liveStandings = await Promise.all(
+    liveLeagues.map(async ([leagueId, name]) => {
+      const table = await computeStandings(leagueId);
+      const contenders = table.filter((r) => r.played > 0);
+      if (contenders.length < 2) return null;
+      return {
+        leagueId,
+        name,
+        leader: contenders[0],
+        chaser: contenders[1],
+        gap: contenders[0].points - contenders[1].points,
+      };
+    }),
+  );
+  const titleRace = liveStandings
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => a.gap - b.gap)[0] ?? null;
 
   // Feature 1: live goals now + hottest live match (highest combined score, tie-broken by latest minute)
   const liveGoalsNow = live.reduce((s, m) => s + m.homeScore + m.awayScore, 0);
@@ -175,6 +206,10 @@ export default async function LivePage() {
               <div className="text-xs text-foreground/45">แมตช์สดทั้งหมด</div>
               <div className="font-display italic font-black text-3xl text-foreground mt-1">{live.length}</div>
             </div>
+            <div className="rounded-xl border border-white/10 bg-card p-4">
+              <div className="text-xs text-foreground/45">⚡ ประตูใน 60 นาทีล่าสุด</div>
+              <div className="font-display italic font-black text-3xl text-accent mt-1">{goalsLastHour}</div>
+            </div>
             {hottestLive && hottestLive.homeScore + hottestLive.awayScore > 0 && (
               <Link
                 href={`/matches/${hottestLive.id}`}
@@ -201,6 +236,30 @@ export default async function LivePage() {
               </Link>
             )}
           </div>
+        )}
+
+        {titleRace && (
+          <Link
+            href={`/leagues/${titleRace.leagueId}`}
+            className="block rounded-xl border border-accent/30 bg-card p-4 max-w-2xl hover:border-accent/60"
+          >
+            <div className="text-xs text-foreground/45">
+              🏆 ลุ้นแชมป์สูสีที่สุด (ในลีกที่แข่งสด) · {titleRace.name}
+            </div>
+            <div className="flex items-center justify-between gap-3 mt-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm truncate">{titleRace.leader.teamName}</span>
+                <span className="font-display font-black text-accent shrink-0">{titleRace.leader.points}</span>
+              </div>
+              <span className="text-xs text-foreground/40 shrink-0">
+                {titleRace.gap === 0 ? "เท่ากันแต้ม!" : `นำอยู่ ${titleRace.gap} แต้ม`}
+              </span>
+              <div className="flex items-center gap-2 min-w-0 justify-end">
+                <span className="font-display font-black text-foreground shrink-0">{titleRace.chaser.points}</span>
+                <span className="text-sm truncate">{titleRace.chaser.teamName}</span>
+              </div>
+            </div>
+          </Link>
         )}
 
         {liveGoals.length > 0 && (
