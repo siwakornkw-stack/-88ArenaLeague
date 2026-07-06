@@ -374,6 +374,12 @@ export async function reopenMatch(matchId: string) {
   });
   await prisma.$transaction([
     prisma.matchEvent.deleteMany({ where: { matchId, type: "FULL_TIME" } }),
+    // Re-anchor the live clock: computeLiveMinute derives the minute from the
+    // KICK_OFF event's createdAt, so a stale timestamp would read a capped 130'.
+    prisma.matchEvent.updateMany({
+      where: { matchId, type: "KICK_OFF" },
+      data: { createdAt: new Date() },
+    }),
     prisma.match.update({ where: { id: matchId }, data: { status: "LIVE", minute: 0 } }),
   ]);
   await logAdmin(session, "เปิดแมตช์ใหม่", `${match.homeTeam.name} vs ${match.awayTeam.name}`);

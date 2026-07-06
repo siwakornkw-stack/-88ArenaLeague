@@ -70,10 +70,26 @@ export async function updateMyTeam(teamId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const abbr = String(formData.get("abbr") ?? "").trim();
   const color = String(formData.get("color") ?? "").trim();
-  const coachName = String(formData.get("coachName") ?? "").trim();
-  const homeVenue = String(formData.get("homeVenue") ?? "").trim();
-  const foundedYearRaw = Number(formData.get("foundedYear"));
   if (!name || !abbr) return;
+
+  // Only touch coachName/homeVenue/foundedYear when the submitting form actually
+  // includes them — otherwise a name/color/logo edit would null out fields it
+  // never rendered.
+  const optional: {
+    coachName?: string | null;
+    homeVenue?: string | null;
+    foundedYear?: number | null;
+  } = {};
+  if (formData.has("coachName")) {
+    optional.coachName = String(formData.get("coachName") ?? "").trim() || null;
+  }
+  if (formData.has("homeVenue")) {
+    optional.homeVenue = String(formData.get("homeVenue") ?? "").trim() || null;
+  }
+  if (formData.has("foundedYear")) {
+    const y = Number(formData.get("foundedYear"));
+    optional.foundedYear = Number.isInteger(y) && y > 1900 ? y : null;
+  }
 
   const logoUrl = await maybeUploadLogo(teamId, formData);
   await prisma.team.update({
@@ -81,9 +97,7 @@ export async function updateMyTeam(teamId: string, formData: FormData) {
     data: {
       name,
       abbr,
-      coachName: coachName || null,
-      homeVenue: homeVenue || null,
-      foundedYear: Number.isInteger(foundedYearRaw) && foundedYearRaw > 1900 ? foundedYearRaw : null,
+      ...optional,
       ...(HEX_COLOR.test(color) ? { color } : {}),
       ...(logoUrl ? { logoUrl } : {}),
     },

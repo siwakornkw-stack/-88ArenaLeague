@@ -12,15 +12,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       select: { id: true },
     }),
     prisma.team.findMany({
-      where: { league: { status: { not: "DRAFT" } } },
+      where: { league: { status: { not: "DRAFT" }, hidden: false } },
       select: { id: true, leagueId: true },
     }),
     prisma.match.findMany({
-      where: { league: { status: { not: "DRAFT" } } },
+      where: { league: { status: { not: "DRAFT" }, hidden: false } },
       select: { id: true },
     }),
     prisma.player.findMany({
-      where: { team: { league: { status: { not: "DRAFT" } } } },
+      where: { team: { league: { status: { not: "DRAFT" }, hidden: false } } },
       select: { id: true, team: { select: { leagueId: true } } },
     }),
   ]);

@@ -315,7 +315,10 @@ export default async function PublicPlayerPage({
                 )}
                 {teamLeagueGoals > 0 && (goals + assistsGiven) > 0 && (
                   <Stat
-                    value={Math.round(((goals + assistsGiven) / teamLeagueGoals) * 100)}
+                    value={Math.min(
+                      100,
+                      Math.round(((goals + assistsGiven) / teamLeagueGoals) * 100)
+                    )}
                     label="% ประตูทีม (มีส่วนร่วม)"
                   />
                 )}

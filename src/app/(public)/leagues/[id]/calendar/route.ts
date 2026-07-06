@@ -5,7 +5,7 @@ function fmt(d: Date) {
 }
 
 function esc(s: string) {
-  return s.replace(/([,;\\])/g, "\\$1");
+  return s.replace(/([,;\\])/g, "\\$1").replace(/\r?\n/g, "\\n");
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {

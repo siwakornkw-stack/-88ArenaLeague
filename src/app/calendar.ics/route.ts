@@ -4,7 +4,7 @@ function fmt(d: Date) {
   return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 }
 function esc(s: string) {
-  return s.replace(/([,;\\])/g, "\\$1");
+  return s.replace(/([,;\\])/g, "\\$1").replace(/\r?\n/g, "\\n");
 }
 
 export async function GET() {

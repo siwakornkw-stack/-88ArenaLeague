@@ -44,10 +44,18 @@ export default async function ChampionsPage({
       let note = standings[0] ? `${standings[0].points} แต้ม` : null;
       let finalMargin: number | null = null;
       if (finalMatch) {
-        const homeWon = finalMatch.homeScore >= finalMatch.awayScore;
+        // A FINAL can legitimately finish level (no shootout/ET mechanism); settle
+        // a drawn final by the better league seed, matching generateFinal.
+        const seed = new Map(standings.map((r, i) => [r.teamId, i]));
+        const drawn = finalMatch.homeScore === finalMatch.awayScore;
+        const homeWon = drawn
+          ? (seed.get(finalMatch.homeTeamId) ?? 99) < (seed.get(finalMatch.awayTeamId) ?? 99)
+          : finalMatch.homeScore > finalMatch.awayScore;
         championName = homeWon ? finalMatch.homeTeam.name : finalMatch.awayTeam.name;
         runnerUp = homeWon ? finalMatch.awayTeam.name : finalMatch.homeTeam.name;
-        note = `ชนะนัดชิง ${finalMatch.homeScore}-${finalMatch.awayScore}`;
+        note = drawn
+          ? `เสมอนัดชิง ${finalMatch.homeScore}-${finalMatch.awayScore} (ตัดสินด้วยอันดับลีก)`
+          : `ชนะนัดชิง ${finalMatch.homeScore}-${finalMatch.awayScore}`;
         finalMargin = Math.abs(finalMatch.homeScore - finalMatch.awayScore);
       }
 
